@@ -1,0 +1,218 @@
+---
+title: Introduction
+description: React.js kya hai, kyun use hoti hai, aur UI Components aur State ke through kaise kaam karti hai — Roman Urdu mein shuruat.
+---
+
+## 1. What is it?
+
+### Definition
+
+<Callout variant="tip" title="Short definition">
+
+**React.js ek JavaScript library hai jo user interfaces (UI) banane ke liye use hoti hai.**
+
+</Callout>
+
+Simple words mein, React UI ko chhote **reusable Components** mein divide karta hai. Har Component apna specific UI ka kaam karta hai, aur in Components ko combine karke complete application banayi jati hai.
+
+<Flow title="UI = chhote parts ka combination">
+
+Navbar
+   +
+Product Card
+   +
+Shopping Cart
+   +
+Footer
+   ↓
+Complete UI
+
+</Flow>
+
+React.js **JavaScript ecosystem** ka part hai aur mainly frontend UI development ke liye use hoti hai.
+
+
+## 2. Why does it exist?
+
+### Problem kya solve karta hai?
+
+Traditional JavaScript mein complex UI ko manually update karna difficult ho sakta hai — jaise user ke action ke baad multiple UI elements ek saath update karne hon.
+
+<CompareTable leftTitle="Bina React" rightTitle="React ke saath">
+
+User action | State / data change
+DOM manually dhoondho | React change detect karta hai
+Har element khud update karo | UI automatically update
+Code jaldi complex ho jata hai | Components + state se organize UI
+
+</CompareTable>
+
+<Flow title="React ka simple flow">
+
+State/Data change
+      ↓
+React
+      ↓
+UI update
+
+</Flow>
+
+React Components aur State ke through complex UI ko organize aur manage karna easier banata hai.
+
+
+## 3. Where is it used?
+
+React un jagahon par use hota hai jahan **interactive UI** chahiye:
+
+| Area | React se kya banaya jata hai |
+| --- | --- |
+| **E-commerce** | Product cards, cart, filters, checkout UI |
+| **Dashboard** | Tables, charts, filters, interactive panels |
+| **SaaS apps** | Settings, forms, modals, user dashboards |
+| **Social apps** | Posts, likes, comments, notifications |
+
+React ko **Next.js** jaise frameworks ke andar bhi use kiya jata hai (routing, SSR, aur production setup ke saath).
+
+
+## 4. How does it work?
+
+### Basic mental model
+
+React ka basic idea ye hai ke **UI current data / state ke mutabiq render hoti hai**.
+
+<Flow title="User action se UI tak">
+
+User Action
+     ↓
+State/Data Change
+     ↓
+React re-render
+     ↓
+UI update
+
+</Flow>
+
+**Example:** User `Like` button press karta hai → state change hoti hai → React component dubara render karta hai → updated like count screen par aa jata hai.
+
+<Callout variant="important" title="Mental model">
+
+**Data / state change → UI us change ke mutabiq update**
+
+</Callout>
+
+
+## 5. How do I use it?
+
+React mein UI **Components** ke form mein likhte hain:
+
+```tsx
+function Welcome() {
+  return <h1>Hello React</h1>;
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `Welcome` | Ek React **Component** (reusable UI piece) |
+| `return (...)` | JSX — HTML jaisa syntax jo UI describe karta hai |
+| Screen par | `Hello React` heading show hoti hai |
+
+Real app mein multiple components combine hote hain:
+
+<Flow title="Component tree (simple)">
+
+App
+ ↓
+Navbar
+ ↓
+ProductList
+ ↓
+ProductCard
+
+</Flow>
+
+
+## 6. What are common mistakes?
+
+<Mistake
+  title="Ek hi bohot bara Component banana"
+  why="Code samajhna aur maintain karna mushkil ho jata hai."
+  better="UI ko chhote, reusable Components mein divide karo — har part ka ek clear kaam ho."
+/>
+
+<Mistake
+  title="Har cheez ko State banana"
+  why="Extra state code confusing banati hai aur kabhi performance par bhi asar karti hai."
+  better="Sirf wohi data State mein rakho jo UI mein change hota hai; baqi normal variables ya props use karo."
+/>
+
+<Mistake
+  title="Props aur State ko mix karna"
+  why="Dono alag roles play karte hain — galat use se bugs aate hain."
+  better="Props = parent se aaya hua data; State = is component ka khud ka changing data."
+/>
+
+| Topic | **Props** | **State** |
+| --- | --- | --- |
+| **Kahan se aata hai** | Parent component | Khud component ke andar |
+| **Change kaun karta hai** | Parent (read-only child ke liye) | Component khud (user action, API, etc.) |
+| **Kab use karein** | Data pass karna neeche | UI jo change ho rahi ho |
+
+<Mistake
+  title="React ko sirf HTML likhne ka tareeqa samajhna"
+  why="Asli faida Components, State, Props aur data-driven UI mein hai."
+  better="Pehle mental model samjho — JSX syntax baad mein naturally aa jati hai."
+/>
+
+
+## 7. What comes before / after it?
+
+### Learning path
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle (Before)** | HTML/CSS basics, JavaScript basics, functions, arrays & objects, `map()`, `import` / `export` |
+| **React ke saath (Related)** | Components, JSX, Props, State, Events, Hooks |
+| **Baad mein (After)** | API integration, routing, advanced Hooks, Next.js |
+
+<Flow title="Suggested order">
+
+JavaScript
+     ↓
+React.js
+     ↓
+Components + JSX
+     ↓
+Props + State
+     ↓
+Hooks
+     ↓
+API Integration
+     ↓
+Next.js
+
+</Flow>
+
+
+## Final quick revision
+
+### Simple words mein
+
+React.js ek **JavaScript library** hai jo interactive UI banane ke liye use hoti hai. UI ko **Components** mein divide kiya jata hai; jab **state / data** change hoti hai, UI update hoti hai.
+
+### Key points
+
+| Point | Detail |
+| --- | --- |
+| React kya hai | UI banane ki JavaScript library |
+| UI structure | Reusable Components |
+| Update ka trigger | State / data change |
+| Components ke beech data | **Props** |
+
+<Callout variant="important" title="Ek baat yaad rakhein">
+
+React mein hum UI ko **Components** mein divide karte hain aur **data / state** ke mutabiq UI ko update karte hain.
+
+</Callout>
