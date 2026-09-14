@@ -3,7 +3,6 @@ import path from "path";
 
 import GithubSlugger from "github-slugger";
 import { compileMDX } from "next-mdx-remote/rsc";
-import rehypePrettyCode from "rehype-pretty-code";
 import rehypeSlug from "rehype-slug";
 import remarkGfm from "remark-gfm";
 
@@ -50,20 +49,7 @@ export async function getChapterMDX(courseSlug: string, chapterSlug: string) {
       parseFrontmatter: true,
       mdxOptions: {
         remarkPlugins: [remarkGfm],
-        rehypePlugins: [
-          rehypeSlug,
-          rehypeNormalizeHeadingIds,
-          [
-            rehypePrettyCode,
-            {
-              theme: {
-                dark: "github-dark",
-                light: "github-light",
-              },
-              keepBackground: false,
-            },
-          ],
-        ],
+        rehypePlugins: [rehypeSlug, rehypeNormalizeHeadingIds],
       },
     },
   });

@@ -8,6 +8,17 @@
   --border: #e4e4e7;
   --accent: #2d6a4f;
   --card: #ffffff;
+  --code-fg: #24292e;
+  --code-comment: #77746b;
+  --code-keyword: #7b3fa1;
+  --code-string: #256a4b;
+  --code-number: #a24b2a;
+  --code-function: #1f5e93;
+  --code-type: #246a73;
+  --code-property: #8b5a12;
+  --code-operator: #875289;
+  --code-builtin: #8a3e5e;
+  --code-preprocessor: #98512a;
 }
 
 .dark {
@@ -18,6 +29,17 @@
   --border: #27272a;
   --accent: #52b788;
   --card: #111111;
+  --code-fg: #e1e4e8;
+  --code-comment: #737985;
+  --code-keyword: #c792ea;
+  --code-string: #addb67;
+  --code-number: #f78c6c;
+  --code-function: #82aaff;
+  --code-type: #89ddff;
+  --code-property: #ffcb6b;
+  --code-operator: #89ddff;
+  --code-builtin: #f07178;
+  --code-preprocessor: #ff9cac;
 }
 
 @theme inline {
@@ -40,4 +62,49 @@ body {
 
 html {
   scroll-behavior: smooth;
+}
+
+.syntax-highlighted {
+  color: var(--code-fg);
+}
+
+.syntax-comment {
+  color: var(--code-comment);
+  font-style: italic;
+}
+
+.syntax-keyword {
+  color: var(--code-keyword);
+}
+
+.syntax-string {
+  color: var(--code-string);
+}
+
+.syntax-number {
+  color: var(--code-number);
+}
+
+.syntax-function {
+  color: var(--code-function);
+}
+
+.syntax-type {
+  color: var(--code-type);
+}
+
+.syntax-property {
+  color: var(--code-property);
+}
+
+.syntax-operator {
+  color: var(--code-operator);
+}
+
+.syntax-builtin {
+  color: var(--code-builtin);
+}
+
+.syntax-preprocessor {
+  color: var(--code-preprocessor);
 }
