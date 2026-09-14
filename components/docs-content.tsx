@@ -37,8 +37,7 @@ export function DocsContent({
             "[&_h2+p]:pl-3 [&_h3+p]:pl-6",
             "[&_p]:my-3.5 [&_strong]:font-semibold [&_strong]:text-foreground",
             "[&_a]:font-medium [&_a]:text-foreground [&_a]:underline [&_a]:underline-offset-2 hover:[&_a]:text-foreground/80",
-            "[&_code:not(pre_code)]:rounded [&_code:not(pre_code)]:bg-muted/60 [&_code:not(pre_code)]:px-1.5 [&_code:not(pre_code)]:py-0.5 [&_code:not(pre_code)]:text-[13px] [&_code:not(pre_code)]:font-mono [&_code:not(pre_code)]:text-foreground",
-            "[&_figure[data-rehype-pretty-code-figure]]:my-0 [&_pre]:my-0 [&_pre]:border-0 [&_pre]:bg-transparent [&_pre]:p-0"
+            "[&_code:not(pre_code)]:rounded [&_code:not(pre_code)]:bg-muted/60 [&_code:not(pre_code)]:px-1.5 [&_code:not(pre_code)]:py-0.5 [&_code:not(pre_code)]:text-[13px] [&_code:not(pre_code)]:font-mono [&_code:not(pre_code)]:text-foreground"
           )}
         >
           {children}
