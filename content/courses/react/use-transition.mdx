@@ -1,0 +1,187 @@
+---
+title: useTransition & useDeferredValue
+description: React useTransition aur useDeferredValue se slow updates ko background mein chala kar UI ko responsive rakhna seekhein, React 19 async transitions ke saath.
+keywords:
+  - react usetransition usedeferredvalue
+  - react concurrent rendering
+  - starttransition async react 19
+  - react ui responsive urdu
+---
+
+## 1. useTransition & useDeferredValue kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Dono hooks React ko batate hain ke kaunsa update urgent hai aur kaunsa thora intezar kar sakta hai, taake UI kabhi atke nahi.**
+
+</Callout>
+
+- `useTransition` ek **state update** ko non-urgent (transition) mark karta hai.
+- `useDeferredValue` ek **value** ka "lagging" version deta hai jo urgent kaam ke baad update hota hai.
+
+Typing, click aur hover jaise kaam urgent hain. Bari list ka render ya naya tab load karna transition ho sakta hai.
+
+## 2. Kyun zaroori hain?
+
+<CompareTable leftTitle="Normal update" rightTitle="Transition ke saath">
+
+Slow tab par click se UI freeze | Purana tab dikhta rehta hai, UI responsive
+Input mein typing atakti hai | Typing smooth, list baad mein update
+Loading state khud manage karo | isPending khud mil jata hai
+Har keystroke par bhari render | React purana render chhor kar naya shuru karta hai
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Use case | Hook |
+| --- | --- |
+| Tabs ke beech switch jahan tab slow ho | `useTransition` |
+| Form submit ya server call (Action) | `useTransition` |
+| Search input aur bari results list | `useDeferredValue` |
+| Chart jo filter ke saath re-render ho | `useDeferredValue` |
+
+Rule of thumb: agar aapke paas **setState** ka control hai to `useTransition`. Agar sirf **value** mil rahi hai (jaise prop), to `useDeferredValue`.
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Transition ka flow">
+
+User click karta hai
+↓
+startTransition ke andar setState
+↓
+React background mein naya UI render karta hai
+↓
+Is dauran purana UI interactive rehta hai, isPending true
+↓
+Render complete, naya UI screen par
+
+</Flow>
+
+Agar transition ke dauran user koi urgent kaam kare (jaise typing), to React transition wala render **interrupt** kar ke pehle urgent update dikhata hai.
+
+## 5. Code example
+
+### useTransition: slow tabs
+
+```tsx
+import { useState, useTransition } from "react";
+
+export function Tabs() {
+  const [tab, setTab] = useState("home");
+  const [isPending, startTransition] = useTransition();
+
+  function selectTab(next: string) {
+    startTransition(() => {
+      setTab(next);
+    });
+  }
+
+  return (
+    <div>
+      <button onClick={() => selectTab("home")}>Home</button>
+      <button onClick={() => selectTab("posts")}>Posts (slow)</button>
+      {isPending && <p>Loading...</p>}
+      {tab === "home" ? <HomeTab /> : <SlowPostsTab />}
+    </div>
+  );
+}
+```
+
+### React 19: async transition (Action)
+
+```tsx
+const [isPending, startTransition] = useTransition();
+
+function handleSave() {
+  startTransition(async () => {
+    const result = await saveName(name);
+    startTransition(() => {
+      setMessage(result.message);
+    });
+  });
+}
+```
+
+React 19 mein `startTransition` async function le sakta hai. Is ko **Action** kehte hain. `await` ke baad wala `setState` dobara `startTransition` mein lapetna parta hai, warna woh transition nahi mana jata.
+
+### useDeferredValue: search list
+
+```tsx
+import { useDeferredValue, useState } from "react";
+
+export function Search() {
+  const [query, setQuery] = useState("");
+  const deferredQuery = useDeferredValue(query);
+  const isStale = query !== deferredQuery;
+
+  return (
+    <>
+      <input value={query} onChange={(e) => setQuery(e.target.value)} />
+      <div style={{ opacity: isStale ? 0.5 : 1 }}>
+        <SlowResults query={deferredQuery} />
+      </div>
+    </>
+  );
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `[isPending, startTransition]` | Pending flag aur transition shuru karne ka function |
+| `startTransition(() => setTab(next))` | Tab change non-urgent ban gaya |
+| `startTransition(async () => ...)` | React 19 Action, `isPending` await tak true |
+| `useDeferredValue(query)` | Input foran update, list purani query par thori der |
+| `isStale` | Purana result dim kar ke user ko signal |
+
+`SlowResults` ko `memo` mein rakhna zaroori hai (ya React Compiler on ho), taake woh sirf `deferredQuery` badalne par re-render ho.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Controlled input ki state transition mein update karna"
+  why="Input ko har keystroke foran dikhana hota hai, transition se typing atakti lagti hai."
+  better="Input ki state normal setState se rakhein, aur bhari hissa useDeferredValue ya alag transition mein."
+/>
+
+<Mistake
+  title="await ke baad setState ko startTransition mein na lapetna"
+  why="await ke baad wala update transition context kho deta hai aur urgent update ban jata hai."
+  better="await ke baad ki state updates ko dobara startTransition ke andar likhein."
+/>
+
+<Mistake
+  title="Debounce ki jagah samajhna ke yeh network calls kam karta hai"
+  why="useDeferredValue rendering ko defer karta hai, fetch requests ko nahi rokta."
+  better="Network calls kam karni hon to debounce ya caching library use karein."
+/>
+
+### Interview tip
+
+Transitions **concurrent rendering** par based hain. React render ko chhote hisson mein kar ke beech mein urgent kaam handle kar sakta hai. Yeh `setTimeout` ya debounce se behtar hai kyunke koi fixed delay nahi hota.
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [State with useState](/courses/react/state), [How React Renders](/courses/react/how-react-renders), [useMemo & useCallback](/courses/react/use-memo-and-use-callback) |
+| **Saath** | [Suspense & lazy()](/courses/react/suspense-and-lazy), [React.memo & Performance](/courses/react/memo-and-performance) |
+| **Baad mein** | [Actions, useActionState & useOptimistic](/courses/react/actions-and-form-hooks), [The use() API](/courses/react/use-hook) |
+
+## Final quick revision
+
+| Point | `useTransition` | `useDeferredValue` |
+| --- | --- | --- |
+| Kis cheez par | State update | Value |
+| Return | `[isPending, startTransition]` | Deferred value |
+| Async support | Haan, React 19 Actions | Nahi chahiye |
+| Best for | Tabs, navigation, Actions | Search, filters, charts |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Urgent kaam (typing, click feedback) foran, bhari rendering baad mein. **`useTransition`** jab setState aapke haath mein ho, **`useDeferredValue`** jab sirf value mile.
+
+</Callout>

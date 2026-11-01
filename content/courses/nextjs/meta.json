@@ -1,7 +1,179 @@
 {
   "title": "Next.js",
   "slug": "nextjs",
-  "description": "Structured Next.js course documentation — chapters and lessons coming soon.",
+  "description": "Next.js 16 App Router Roman Urdu mein, routing, server components, data fetching, Cache Components, server actions, SEO aur deployment.",
   "badge": "NX",
-  "chapters": ["introduction"]
+  "sections": [
+    {
+      "title": "Getting Started",
+      "chapters": [
+        {
+          "slug": "introduction",
+          "title": "Introduction"
+        },
+        {
+          "slug": "installation-and-project-structure",
+          "title": "Installation & Project Structure"
+        },
+        {
+          "slug": "nextjs-16-whats-new",
+          "title": "What's New in Next.js 16"
+        }
+      ]
+    },
+    {
+      "title": "Routing",
+      "chapters": [
+        {
+          "slug": "routing-and-pages",
+          "title": "Routing & Pages"
+        },
+        {
+          "slug": "layouts-and-templates",
+          "title": "Layouts & Templates"
+        },
+        {
+          "slug": "linking-and-navigation",
+          "title": "Linking & Navigation"
+        },
+        {
+          "slug": "dynamic-routes",
+          "title": "Dynamic Routes"
+        },
+        {
+          "slug": "route-groups-and-private-folders",
+          "title": "Route Groups & Private Folders"
+        },
+        {
+          "slug": "parallel-and-intercepting-routes",
+          "title": "Parallel & Intercepting Routes"
+        },
+        {
+          "slug": "loading-and-error-ui",
+          "title": "Loading, Error & Not Found UI"
+        }
+      ]
+    },
+    {
+      "title": "Rendering",
+      "chapters": [
+        {
+          "slug": "server-and-client-components",
+          "title": "Server & Client Components"
+        },
+        {
+          "slug": "rendering-strategies",
+          "title": "Rendering Strategies: SSR, SSG, ISR"
+        },
+        {
+          "slug": "streaming-and-suspense",
+          "title": "Streaming & Suspense"
+        }
+      ]
+    },
+    {
+      "title": "Data & Caching",
+      "chapters": [
+        {
+          "slug": "data-fetching",
+          "title": "Data Fetching"
+        },
+        {
+          "slug": "cache-components",
+          "title": "Cache Components & use cache"
+        },
+        {
+          "slug": "revalidation",
+          "title": "Revalidation: revalidateTag, updateTag, refresh"
+        },
+        {
+          "slug": "server-actions",
+          "title": "Server Actions"
+        },
+        {
+          "slug": "forms-and-validation",
+          "title": "Forms & Validation"
+        }
+      ]
+    },
+    {
+      "title": "Backend",
+      "chapters": [
+        {
+          "slug": "route-handlers",
+          "title": "Route Handlers (API)"
+        },
+        {
+          "slug": "proxy",
+          "title": "Proxy (formerly Middleware)"
+        },
+        {
+          "slug": "cookies-and-headers",
+          "title": "Cookies & Headers"
+        },
+        {
+          "slug": "environment-variables",
+          "title": "Environment Variables"
+        },
+        {
+          "slug": "authentication",
+          "title": "Authentication"
+        },
+        {
+          "slug": "database-integration",
+          "title": "Database Integration"
+        }
+      ]
+    },
+    {
+      "title": "Styling & Optimization",
+      "chapters": [
+        {
+          "slug": "styling",
+          "title": "Styling: CSS Modules & Tailwind"
+        },
+        {
+          "slug": "image-optimization",
+          "title": "Image Optimization"
+        },
+        {
+          "slug": "font-optimization",
+          "title": "Font Optimization"
+        },
+        {
+          "slug": "metadata-and-seo",
+          "title": "Metadata & SEO"
+        },
+        {
+          "slug": "sitemap-and-robots",
+          "title": "Sitemap, Robots & OG Images"
+        },
+        {
+          "slug": "performance",
+          "title": "Performance & Core Web Vitals"
+        }
+      ]
+    },
+    {
+      "title": "Production",
+      "chapters": [
+        {
+          "slug": "next-config-and-turbopack",
+          "title": "next.config & Turbopack"
+        },
+        {
+          "slug": "internationalization",
+          "title": "Internationalization (i18n)"
+        },
+        {
+          "slug": "testing",
+          "title": "Testing Next.js Apps"
+        },
+        {
+          "slug": "deployment",
+          "title": "Deployment"
+        }
+      ]
+    }
+  ]
 }

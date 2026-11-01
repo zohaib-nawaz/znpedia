@@ -1,0 +1,198 @@
+---
+title: Optional Chaining & Nullish Coalescing
+description: JavaScript optional chaining nullish coalescing yani ?. aur ?? se missing data ko safely handle karna, || se farq aur ??= operator, Roman Urdu mein.
+keywords:
+  - javascript optional chaining nullish coalescing
+  - optional chaining urdu
+  - nullish coalescing operator
+  - difference between ?? and ||
+  - nullish assignment operator
+---
+
+## 1. Optional Chaining & Nullish Coalescing kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**`?.` missing object par crash hone ke bajaye `undefined` deta hai, aur `??` sirf `null` ya `undefined` par fallback value deta hai.**
+
+</Callout>
+
+API se aane wala data aksar adhoora hota hai. Kabhi `user.address` hi nahi hota, aur `user.address.city` likhte hi `TypeError` aa jata hai. Optional chaining (`?.`) is crash ko rokta hai.
+
+Nullish coalescing (`??`) default value deta hai, lekin sirf tab jab value **sach mein missing** ho (`null` ya `undefined`). `0`, `""` aur `false` jaisi valid values ko nahi chherta.
+
+## 2. Kyun zaroori hai?
+
+Pehle har level par `&&` checks likhne parte the, aur `||` se defaults dene par `0` jaisi sahi values bhi gayab ho jati thin.
+
+<CompareTable leftTitle="Purana tareeqa" rightTitle="?. aur ?? ke saath">
+
+user && user.address && user.address.city | Ek chhoti chain, har level safe
+OR operator se 0 bhi default ban jata | ?? sirf null aur undefined par
+Method hai ya nahi, alag if check | Method ke saath bhi optional call
+Lambi, repeat hone wali conditions | Ek saaf expression
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Situation | Example |
+| --- | --- |
+| API ka nested data | `res.data?.user?.name` |
+| Optional callback | `props.onClose?.()` |
+| Array ka pehla item | `orders?.[0]?.id` |
+| Settings ka default | `settings.volume ?? 50` |
+| Form ki khaali field | `input.value ?? ""` |
+| Lazy default set karna | `cache.items ??= []` |
+
+## 4. Kaise kaam karta hai?
+
+### Optional chaining ki teen shaklen
+
+| Syntax | Kab use karein |
+| --- | --- |
+| `obj?.prop` | Property access |
+| `obj?.[key]` | Dynamic key ya array index |
+| `fn?.()` | Function hai to call karo |
+
+<Flow title="Optional chaining ka flow">
+
+user?.address?.city
+↓
+Kya user null ya undefined hai? Haan to poori chain undefined
+↓
+Nahi to address parho
+↓
+Kya address null ya undefined hai? Haan to undefined
+↓
+Nahi to city wapas do
+
+</Flow>
+
+### `??` vs `||`
+
+| Value | `value \|\| "default"` | `value ?? "default"` |
+| --- | --- | --- |
+| `undefined` | `"default"` | `"default"` |
+| `null` | `"default"` | `"default"` |
+| `0` | `"default"` | `0` |
+| `""` | `"default"` | `""` |
+| `false` | `"default"` | `false` |
+
+`??=` (logical nullish assignment) value sirf tab set karta hai jab woh `null` ya `undefined` ho.
+
+<Callout variant="important" title="Mental model">
+
+**`?.` = "agar hai to aage barho". `??` = "agar bilkul nahi hai to yeh lo".**
+
+</Callout>
+
+## 5. Code example
+
+### API data ko safely parhna
+
+```js
+const response = {
+  user: {
+    name: "Ali",
+    stats: { followers: 0 },
+    tags: [],
+  },
+};
+
+const city = response.user?.address?.city ?? "Unknown";
+const followers = response.user?.stats?.followers ?? 100;
+const wrong = response.user?.stats?.followers || 100;
+const firstTag = response.user?.tags?.[0] ?? "no tags";
+
+console.log(city, followers, wrong, firstTag);
+```
+
+### Optional call aur `??=`
+
+```js
+function closeModal(options = {}) {
+  options.onClose?.();
+  return "closed";
+}
+
+console.log(closeModal());
+console.log(closeModal({ onClose: () => console.log("cleanup") }));
+
+const config = { retries: 0 };
+config.retries ??= 3;
+config.timeout ??= 5000;
+console.log(config);
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `user?.address?.city` | `address` missing, crash ke bajaye `undefined`, phir `Unknown` |
+| `followers ?? 100` | `0` valid value hai, `0` hi milta hai |
+| `followers \|\| 100` | `0` falsy hai, ghalti se `100` aa gaya |
+| `tags?.[0]` | Khaali array, `undefined`, phir `no tags` |
+| `onClose?.()` | Function na ho to kuch nahi hota |
+| `retries ??= 3` | `0` nullish nahi, `0` hi raha |
+| `timeout ??= 5000` | Missing tha, `5000` set hua |
+
+### Interview tip
+
+`??` ko `||` ya `&&` ke saath bina parentheses mix nahi kar sakte, `a || b ?? c` SyntaxError hai. Parentheses lagayein: `(a || b) ?? c`.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Numbers aur booleans ke default ke liye OR operator"
+  why="0, khaali string aur false falsy hain, OR unhein bhi default se badal deta hai, jaise volume 0 ka 50 ban jana."
+  better="Sirf missing values ke liye default chahiye to ?? use karo."
+/>
+
+<Mistake
+  title="Har jagah ?. laga dena"
+  why="Jo data hamesha hona chahiye wahan ?. asal bug chhupa deta hai aur problem baad mein kahin aur nikalti hai."
+  better="Sirf sach mein optional data par ?. lagao, zaroori data missing ho to saaf error behtar hai."
+/>
+
+<Mistake
+  title="Assignment ki left side par ?. use karna"
+  why="user?.name = 'Ali' SyntaxError hai, optional chaining sirf parhne ke liye hai."
+  better="Pehle check karo: if (user) user.name = 'Ali'."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Objects](/courses/javascript/objects), [Truthy, Falsy & Equality](/courses/javascript/truthy-falsy-and-equality), [Operators](/courses/javascript/operators) |
+| **Saath mein** | [Destructuring](/courses/javascript/destructuring), [JSON](/courses/javascript/json) |
+| **Baad mein** | [Fetch API](/courses/javascript/fetch-api), [Error Handling](/courses/javascript/error-handling) |
+
+<Flow title="Suggested order">
+
+Truthy, Falsy & Equality
+↓
+Objects
+↓
+Optional Chaining & Nullish
+↓
+Fetch API
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `?.` | `null` / `undefined` par chain rok kar `undefined` |
+| `?.[ ]` aur `?.()` | Dynamic key aur optional function call |
+| `??` | Sirf `null` / `undefined` par fallback |
+| `\|\|` | Har falsy value par fallback |
+| `??=` | Missing ho to hi value set karo |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Missing data ke liye `?.` aur `??` ki jodi use karein. Jahan `0`, `""` ya `false` valid values hon wahan `||` nahi, `??` likhein.
+
+</Callout>

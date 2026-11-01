@@ -1,0 +1,196 @@
+---
+title: The this Keyword
+description: JavaScript this keyword ki value kaise tay hoti hai, method call, new, call/bind aur arrow functions ke rules, Roman Urdu mein simple examples ke saath.
+keywords:
+  - javascript this keyword
+  - this in javascript urdu
+  - this binding rules
+  - arrow function this
+---
+
+## 1. The this Keyword kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**`this` ek special keyword hai jis ki value is baat par depend karti hai ke function kaise call hua, is par nahi ke kahan likha gaya.**
+
+</Callout>
+
+Simple words mein, `this` function se poochhta hai: "mujhe kis ne bulaya?" Agar `user.greet()` likha to `this` `user` hai. Wahi function kisi aur tareeqe se call karo to `this` badal jata hai.
+
+Sirf arrow functions is rule se bahar hain. Un ka `this` likhne ki jagah se tay hota hai.
+
+## 2. Kyun zaroori hai?
+
+`this` ki wajah se ek hi method bohot saare objects ke saath kaam kar sakta hai. Lekin rule na samjho to `undefined` errors aate hain.
+
+<CompareTable leftTitle="Bina this" rightTitle="this ke saath">
+
+Har object ke liye alag function | Ek method, har object par chalta hai
+Object ka naam hardcode | this khud current object batata hai
+Class instances ka data access mushkil | this se har instance ka apna data
+Copy paste wala code | Reusable methods aur classes
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Area | `this` kya hota hai |
+| --- | --- |
+| **Object methods** | Woh object jis par method call hua |
+| **Classes** | Naya bana hua instance |
+| **DOM event listener** (normal function) | Woh element jis par listener laga |
+| **Callbacks with arrow** | Bahar wale function ka `this` |
+| **Library code** | `call`, `apply`, `bind` se khud set kiya gaya `this` |
+
+## 4. Kaise kaam karta hai?
+
+`this` ke rules priority ke order mein:
+
+| Rule | Call ki shakal | `this` |
+| --- | --- | --- |
+| **new binding** | `new User()` | Naya object |
+| **Explicit** | `fn.call(obj)`, `fn.bind(obj)` | `obj` |
+| **Implicit** | `obj.fn()` | Dot se pehle wala `obj` |
+| **Default** | `fn()` | Strict mode mein `undefined` |
+| **Arrow** | `() => this` | Bahar wale scope ka `this` |
+
+<Flow title="this ki value kaise dhoondein">
+
+Kya yeh arrow function hai? To bahar wala this
+↓
+Kya new se call hua? To naya object
+↓
+Kya call, apply ya bind use hua? To diya gaya object
+↓
+Kya obj.method() ki shakal hai? To obj
+↓
+Warna strict mode mein undefined
+
+</Flow>
+
+Modules aur classes hamesha strict mode mein chalte hain, is liye modern code mein plain `fn()` call par `this` `undefined` hota hai.
+
+<Callout variant="important" title="Mental model">
+
+**Call site dekho: dot se pehle kya hai? Wahi `this` hai.**
+
+</Callout>
+
+## 5. Code example
+
+### Implicit binding aur lost `this`
+
+```js
+const user = {
+  name: "Ayesha",
+  greet() {
+    return `Hi, I am ${this.name}`;
+  },
+};
+
+console.log(user.greet());
+
+const greetFn = user.greet;
+try {
+  console.log(greetFn());
+} catch (error) {
+  console.log(error.message);
+}
+
+const bound = user.greet.bind(user);
+console.log(bound());
+```
+
+### Class aur arrow callback
+
+```js
+class Cart {
+  items = [];
+
+  add(item) {
+    this.items.push(item);
+    return this;
+  }
+
+  total() {
+    return this.items.reduce((sum, item) => sum + item.price, 0);
+  }
+}
+
+const cart = new Cart();
+cart.add({ price: 300 }).add({ price: 200 });
+console.log(cart.total());
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `user.greet()` | Implicit binding, `this` = `user` |
+| `greetFn()` | Method alag ho gaya, `this` `undefined`, error aata hai (module mein) |
+| `bind(user)` | Naya function jis ka `this` hamesha `user` |
+| `new Cart()` | `this` naya cart instance |
+| `return this` | Method chaining mumkin hoti hai |
+| Arrow in `reduce` | Apna `this` nahi, lekin yahan zaroorat bhi nahi |
+
+### Interview tip
+
+`this` define karte waqt nahi, call karte waqt tay hota hai (arrow ke ilawa). Interview mein code dekh kar pehle call site dhoondein, phir upar wali priority list lagayein.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Method ko callback mein seedha pass karna"
+  why="setTimeout(user.greet, 100) mein method object se alag ho jata hai aur this kho jata hai."
+  better="Arrow wrapper do, jaise setTimeout(() => user.greet(), 100), ya user.greet.bind(user) use karo."
+/>
+
+<Mistake
+  title="Object method ko arrow function banana"
+  why="Arrow ka this object nahi balkay bahar wala scope hota hai, this.name undefined aata hai."
+  better="Methods ke liye method shorthand likho: greet() aur andar this."
+/>
+
+<Mistake
+  title="Event listener mein arrow aur this se element expect karna"
+  why="Arrow function ka this element nahi hota, is liye this.classList kaam nahi karta."
+  better="Element ke liye event.currentTarget use karo, ye arrow aur normal dono mein sahi hai."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Functions](/courses/javascript/functions), [Arrow Functions](/courses/javascript/arrow-functions), [Objects](/courses/javascript/objects) |
+| **Saath mein** | [call, apply & bind](/courses/javascript/call-apply-bind) |
+| **Baad mein** | [Classes](/courses/javascript/classes), [Prototypes & Inheritance](/courses/javascript/prototypes) |
+
+<Flow title="Suggested order">
+
+Objects
+↓
+The this Keyword
+↓
+call, apply & bind
+↓
+Classes
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `this` kab tay hota hai | Call time par |
+| `obj.fn()` | `this` = `obj` |
+| `new Fn()` | `this` = naya object |
+| `call` / `apply` / `bind` | `this` khud set karo |
+| Plain `fn()` strict mode | `undefined` |
+| Arrow function | Bahar wala `this` |
+
+<Callout variant="important" title="Yaad rakhein">
+
+`this` ka sawal hamesha call site se hal karein. Method ko object se alag karte hi `this` kho jata hai, is liye callbacks mein arrow wrapper ya `bind` use karein.
+
+</Callout>

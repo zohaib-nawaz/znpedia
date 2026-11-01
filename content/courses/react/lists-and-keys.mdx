@@ -1,0 +1,160 @@
+---
+title: Lists & Keys
+description: React lists keys map ke saath arrays ko render karna, key prop kyun zaroori hai aur index ko key banane ka nuqsan, Roman Urdu mein examples.
+keywords:
+  - react lists keys map
+  - react key prop
+  - render array in react
+  - react filter list
+---
+
+## 1. Lists & Keys kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**React mein list array ke `map()` se render hoti hai, aur har item ko ek stable, unique `key` di jati hai taake React usay pehchan sake.**
+
+</Callout>
+
+Data aksar array mein hota hai: products, users, comments. `map()` har item ko JSX mein badal deta hai. `key` ek chhota sa naam tag hai jo React ko batata hai ke kaunsa JSX kis item ka hai.
+
+## 2. Kyun zaroori hai?
+
+<CompareTable leftTitle="Bina key ya galat key" rightTitle="Stable unique key">
+
+React items ko sirf position se pehchanta hai | React har item ko id se pehchanta hai
+Item delete ho to state galat row mein chali jati hai | State sahi item ke saath rehti hai
+Console mein key warning | Koi warning nahi
+Zyada DOM kaam | Sirf badla hua item update
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Use case | Key kya ho |
+| --- | --- |
+| **Products grid** | `product.id` |
+| **Chat messages** | `message.id` |
+| **Todo list** | Todo banate waqt `crypto.randomUUID()` |
+| **Table rows** | Database primary key |
+| **Static menu** | Unique `href` ya `slug` |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="List render aur update">
+
+Array of data
+↓
+map() har item ko JSX banata hai
+↓
+Har JSX ko unique key milti hai
+↓
+Agle render par React keys compare karta hai
+↓
+Naya item add, hata hua remove, baqi same
+
+</Flow>
+
+Key sirf **siblings** ke beech unique honi chahiye, poori app mein nahi. Key component ko prop ki tarah nahi milti, yeh React ke liye hai.
+
+## 5. Code example
+
+### Basic list
+
+```jsx
+const products = [
+  { id: "p1", name: "Keyboard", price: 4500 },
+  { id: "p2", name: "Mouse", price: 1800 },
+  { id: "p3", name: "Monitor", price: 32000 },
+];
+
+export default function ProductList() {
+  return (
+    <ul>
+      {products.map((product) => (
+        <li key={product.id}>
+          {product.name}: Rs. {product.price}
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
+
+### Filter phir map
+
+```jsx
+function CheapProducts({ products }) {
+  const cheap = products.filter((p) => p.price < 5000);
+
+  if (cheap.length === 0) {
+    return <p>Koi sasta product nahi mila.</p>;
+  }
+
+  return (
+    <ul>
+      {cheap.map((p) => (
+        <ProductRow key={p.id} product={p} />
+      ))}
+    </ul>
+  );
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `products.map(...)` | Har object se ek `li` banta hai |
+| `key={product.id}` | Stable unique id, data se aati hai |
+| `filter` phir `map` | Pehle chhanto, phir render karo |
+| `<ProductRow key=... />` | Key component par lagti hai, uske andar ke `li` par nahi |
+| Empty check | Khali list par message dikhana |
+
+## 6. Common mistakes
+
+<Mistake
+  title="Array index ko key bana dena jab list reorder, delete ya insert hoti ho"
+  why="Item hatne par index shift ho jate hain, React galat item ko purani state aur input value de deta hai."
+  better="Data ki apni id use karo. Index sirf tab theek hai jab list kabhi badalti hi na ho."
+/>
+
+<Mistake
+  title="Render ke dauran Math.random() ya randomUUID() se key banana"
+  why="Har render par nayi key milti hai, React har item ko naya samajh kar DOM aur state dobara banata hai."
+  better="Id data banate waqt ek dafa generate karo aur item ke saath save rakho."
+/>
+
+<Mistake
+  title="Key ko component ke andar wale element par lagana"
+  why="React ko key map se return hone wale bahar wale element par chahiye, andar lagane se warning aati hai."
+  better="Key wahan lagao jahan map ka callback JSX return karta hai."
+/>
+
+### Interview tip
+
+"Index as key kyun bura hai?" ka jawab ek example se do: input wali list mein beech ka item delete karo, typed text galat row mein shift ho jata hai. Yeh **reconciliation** ka masla hai.
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Chapters |
+| --- | --- |
+| **Pehle** | [Conditional Rendering](/courses/react/conditional-rendering), [Props](/courses/react/props) |
+| **Saath mein** | [How React Renders](/courses/react/how-react-renders) |
+| **Baad mein** | [Forms & Controlled Inputs](/courses/react/forms), [React.memo & Performance](/courses/react/memo-and-performance) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Render list | `array.map()` |
+| `key` | Siblings mein unique aur stable |
+| Best key | Data ki id |
+| Index key | Sirf static list ke liye |
+| Random key | Kabhi nahi |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Key ka kaam item ki **pehchan** hai. Id stable ho to React state aur DOM sahi item ke saath rakhta hai.
+
+</Callout>

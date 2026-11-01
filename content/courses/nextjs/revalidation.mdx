@@ -1,0 +1,188 @@
+---
+title: "Revalidation: revalidateTag, updateTag, refresh"
+description: Next.js revalidateTag, updateTag, refresh aur revalidatePath se cached data ko on-demand fresh karna seekhein, Next.js 16 ke naye rules ke saath.
+keywords:
+  - next.js revalidatetag updatetag
+  - next.js revalidatepath
+  - next.js refresh server action
+  - on-demand revalidation
+  - stale-while-revalidate
+---
+
+## 1. Revalidation kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**Revalidation ka matlab hai cached data ko purana mark karna taake agli dafa fresh data aaye.**
+
+</Callout>
+
+Jab aap `"use cache"` aur `cacheTag` se data cache karte hain, to kabhi na kabhi data badalta hai. Naya post publish hua, price update hui, user ne profile edit ki. Us waqt cache ko batana parta hai ke ab purana data mat dikhao.
+
+Next.js 16 mein iske chaar tools hain: `revalidateTag`, `updateTag`, `refresh` aur `revalidatePath`. Har ek ka kaam thora alag hai.
+
+## 2. Kyun zaroori hai?
+
+Sirf time based expiry (`cacheLife`) kaafi nahi hoti. Agar cache ek din ka hai aur aapne abhi post edit ki, to user ko poora din purana content nazar aayega.
+
+<CompareTable leftTitle="Sirf time based cache" rightTitle="On-demand revalidation">
+
+Data change ho, cache phir bhi purana | Mutation ke fauran baad cache invalidate
+User apni edit nahi dekh pata | updateTag se user ko fauran naya data
+Chhota cacheLife rakhna parta hai | Lamba cache rakho, zaroorat par invalidate
+Server par zyada load | Sirf zaroori entries refresh
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| API | Kahan call hoti hai | Kab use karein |
+| --- | --- | --- |
+| `revalidateTag(tag, profile)` | Server Actions, Route Handlers | CMS webhook, blog, catalog jahan thori der chalti hai |
+| `updateTag(tag)` | Sirf Server Actions | User ne form submit kiya aur fauran apni change dekhni hai |
+| `refresh()` | Sirf Server Actions | Uncached data (jaise notification count) dobara render karna |
+| `revalidatePath(path)` | Server Actions, Route Handlers | Poora route refresh jab tags ka pata na ho |
+
+## 4. Kaise kaam karta hai?
+
+`revalidateTag` **stale-while-revalidate** chalata hai: agla visitor turant purana data dekhta hai aur background mein naya data ban jata hai. `updateTag` cache ko fauran expire karta hai aur isi request mein fresh data parhta hai, isay **read-your-writes** kehte hain.
+
+<Flow title="Mutation ke baad revalidation">
+
+User form submit karta hai
+↓
+Server Action database update karta hai
+↓
+updateTag ya revalidateTag call
+↓
+Tagged cache entries stale ya expire
+↓
+Agli render par fresh data
+
+</Flow>
+
+<Callout variant="important" title="Mental model">
+
+**User ko apni change fauran dikhani hai: `updateTag`. Thori der chalti hai: `revalidateTag(tag, "max")`. Cache se bahar wala data: `refresh()`.**
+
+</Callout>
+
+## 5. Code example
+
+### Example 1: Cached data jis par tag laga hai
+
+```ts
+import { cacheLife, cacheTag } from "next/cache";
+import { db } from "@/lib/db";
+
+export async function getPosts() {
+  "use cache";
+  cacheLife("max");
+  cacheTag("posts");
+  return db.post.findMany({ orderBy: { createdAt: "desc" } });
+}
+```
+
+### Example 2: Server Action mein updateTag aur refresh
+
+```ts
+"use server";
+
+import { updateTag, refresh } from "next/cache";
+import { redirect } from "next/navigation";
+import { db } from "@/lib/db";
+
+export async function createPost(formData: FormData) {
+  const title = String(formData.get("title") ?? "");
+  const post = await db.post.create({ data: { title } });
+
+  updateTag("posts");
+  redirect(`/posts/${post.id}`);
+}
+
+export async function markAllRead() {
+  await db.notification.updateMany({ data: { read: true } });
+  refresh();
+}
+```
+
+### Example 3: CMS webhook Route Handler mein revalidateTag
+
+```ts
+import { revalidateTag } from "next/cache";
+
+export async function POST(request: Request) {
+  const secret = request.headers.get("x-webhook-secret");
+  if (secret !== process.env.CMS_WEBHOOK_SECRET) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  revalidateTag("posts", "max");
+  return Response.json({ revalidated: true });
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `cacheTag("posts")` | Cached result par label lagaya |
+| `updateTag("posts")` | Cache fauran expire, redirect ke baad user naya post dekhta hai |
+| `refresh()` | Cache ko nahi chheerta, sirf uncached data dobara render |
+| `revalidateTag("posts", "max")` | Stale data fauran serve, fresh background mein |
+| Webhook secret check | Koi bhi bahar se cache clear na kar sake |
+
+Next.js 16 mein `revalidateTag` ka **single argument wala form deprecated** hai. Doosra argument ek `cacheLife` profile (`"max"`, `"hours"`, `"days"`) ya `{ expire: 3600 }` jaisa object hota hai.
+
+### Interview tip
+
+`updateTag` aur `revalidateTag` ka farq poocha jaye to kahein: `updateTag` sirf Server Actions mein chalta hai aur read-your-writes deta hai, jab ke `revalidateTag` Route Handlers mein bhi chalta hai aur stale-while-revalidate karta hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="revalidateTag sirf ek argument ke saath likhna"
+  why="Next.js 16 mein yeh form deprecated hai aur SWR behavior clear nahi hota."
+  better="Doosra argument do, zyada tar cases mein max profile behtar hai."
+/>
+
+<Mistake
+  title="Route Handler mein updateTag call karna"
+  why="updateTag sirf Server Actions ke liye bana hai, Route Handler mein error aata hai."
+  better="Route Handlers aur webhooks mein revalidateTag use karo."
+/>
+
+<Mistake
+  title="Har jagah revalidatePath laga dena"
+  why="Poore route ka cache urr jata hai, zaroorat se zyada kaam hota hai."
+  better="Jahan mumkin ho tag based revalidation use karo, yeh zyada precise hai."
+/>
+
+<Mistake
+  title="refresh se cached data update hone ki umeed rakhna"
+  why="refresh cache ko touch hi nahi karta, sirf uncached hisse dobara render karta hai."
+  better="Cached data ke liye updateTag ya revalidateTag use karo."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Cache Components & use cache](/courses/nextjs/cache-components), [Data Fetching](/courses/nextjs/data-fetching) |
+| **Saath mein** | [Server Actions](/courses/nextjs/server-actions), [Route Handlers (API)](/courses/nextjs/route-handlers) |
+| **Baad mein** | [Forms & Validation](/courses/nextjs/forms-and-validation), [Database Integration](/courses/nextjs/database-integration) |
+
+## Final quick revision
+
+| API | Yaad rakhne ka tareeqa |
+| --- | --- |
+| `revalidateTag(tag, profile)` | Background refresh, Actions aur Route Handlers |
+| `updateTag(tag)` | Fauran fresh, sirf Server Actions |
+| `refresh()` | Uncached data re-render, cache untouched |
+| `revalidatePath(path)` | Poora route, jab tag na pata ho |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Lamba cache rakho aur mutation ke baad sahi tool se invalidate karo. User ki apni edit ke liye `updateTag`, baqi content ke liye `revalidateTag(tag, "max")`.
+
+</Callout>

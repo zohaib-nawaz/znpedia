@@ -1,0 +1,185 @@
+---
+title: Event Bubbling & Delegation
+description: JavaScript event delegation aur bubbling kya hai, capture phase, event.target aur closest() se ek parent listener mein bohot se items handle karna, Roman Urdu mein.
+keywords:
+  - javascript event delegation bubbling
+  - event bubbling in urdu
+  - event capturing javascript
+  - event.target closest
+---
+
+## 1. Event Bubbling aur Delegation kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**Bubbling mein event target se upar parents tak jata hai, aur delegation isi ka faida utha kar parent par ek listener lagata hai.**
+
+</Callout>
+
+Jab aap kisi button par click karte hain to woh click sirf button ka nahi rehta. Event button se uske parent, phir uske parent, aur aakhir mein `document` tak "bubble" karta hai.
+
+**Event delegation** ek pattern hai: har child par listener lagane ki jagah, common parent par ek listener lagao aur `event.target` se pata karo ke asal mein kis child par click hua.
+
+## 2. Kyun zaroori hai?
+
+Agar list mein 500 items hon to 500 listeners memory lete hain. Aur jo items baad mein add hon, un par listener hota hi nahi.
+
+<CompareTable leftTitle="Har item par listener" rightTitle="Event delegation">
+
+500 items, 500 listeners | Parent par sirf 1 listener
+Naye items par listener khud lagao | Naye items khud handle hote hain
+Item hatane par listener cleanup | Kuch cleanup nahi
+Setup code bikhra hua | Ek jagah saara logic
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Jagah | Example |
+| --- | --- |
+| **Todo list** | Delete aur done buttons har item mein |
+| **Tables** | Row par click se detail kholna |
+| **Menus / tabs** | Kaunsa tab click hua |
+| **Infinite scroll feeds** | Naye posts ke like buttons |
+| **Dropdown band karna** | `document` par click sun kar bahar click detect |
+
+## 4. Kaise kaam karta hai?
+
+Event ke teen phases hote hain:
+
+<Flow title="Event ke phases">
+
+Capture phase: window se neeche target tak
+↓
+Target phase: asal element par
+↓
+Bubble phase: target se upar window tak
+
+</Flow>
+
+`addEventListener` default mein **bubble phase** mein sunta hai. Capture phase mein sunne ke liye `{ capture: true }` dein.
+
+<Flow title="Delegation ka flow">
+
+User li ke andar Delete button click karta hai
+↓
+Event bubble ho kar ul tak pohanchta hai
+↓
+ul ka listener event.target dekhta hai
+↓
+closest se sahi button aur li dhoondta hai
+↓
+Sirf us item par kaam
+
+</Flow>
+
+<Callout variant="important" title="Mental model">
+
+**Click neeche hota hai, suna upar jata hai.** Parent ek receptionist ki tarah har child ka call leta hai.
+
+</Callout>
+
+## 5. Code example
+
+HTML:
+
+```html
+<ul id="todos">
+  <li data-id="1">Parhna <button data-action="delete">Delete</button></li>
+  <li data-id="2">Walk <button data-action="done">Done</button></li>
+</ul>
+```
+
+JavaScript:
+
+```js
+const list = document.querySelector("#todos");
+
+list.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-action]");
+  if (!button || !list.contains(button)) return;
+
+  const item = button.closest("li");
+  const { action } = button.dataset;
+
+  if (action === "delete") item.remove();
+  if (action === "done") item.classList.toggle("done");
+
+  console.log(`Item ${item.dataset.id}: ${action}`);
+});
+
+const li = document.createElement("li");
+li.dataset.id = "3";
+li.innerHTML = `Groceries <button data-action="delete">Delete</button>`;
+list.append(li);
+```
+
+### Code kaise kaam kar raha hai?
+
+| Line | Kya ho raha hai |
+| --- | --- |
+| `list.addEventListener("click", ...)` | Sirf parent `ul` par ek listener |
+| `event.target.closest(...)` | Click button ke andar kisi bhi hisse par ho, button mil jata hai |
+| `if (!button ...) return` | Khaali hissa ya list se bahar ka button ignore |
+| `button.dataset.action` | `data-action` se pata chala kya karna hai |
+| Naya `li` | Koi naya listener nahi, phir bhi kaam karta hai |
+
+### Interview tip
+
+`focus`, `blur`, `mouseenter` aur `mouseleave` bubble nahi karte. Delegation ke liye inke bubbling versions `focusin`, `focusout`, `mouseover`, `mouseout` use hote hain.
+
+## 6. Common mistakes
+
+<Mistake
+  title="event.target ko seedha button samajh lena"
+  why="Button ke andar icon ya span ho to target woh inner element hota hai, dataset khaali milta hai."
+  better="event.target.closest('button') se sahi element dhoondein."
+/>
+
+<Mistake
+  title="Null check bhool jana"
+  why="Parent ke khaali hisse par click ho to closest null deta hai aur aage TypeError aata hai."
+  better="if (!button) return se pehle guard lagayein."
+/>
+
+<Mistake
+  title="Bila wajah stopPropagation lagana"
+  why="Upar wale delegated listeners tak event nahi pohanchta aur features toot jate hain."
+  better="Propagation band karne ki jagah target check karke faisla karein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [DOM Basics](/courses/javascript/dom-basics), [DOM Events](/courses/javascript/dom-events) |
+| **Baad mein** | [Forms & Validation](/courses/javascript/forms-and-validation), [localStorage, sessionStorage & Cookies](/courses/javascript/web-storage) |
+
+<Flow title="Suggested order">
+
+DOM Basics
+↓
+DOM Events
+↓
+Bubbling aur Delegation
+↓
+Forms aur Validation
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Bubbling | Event target se upar parents tak jata hai |
+| Capturing | Upar se neeche, `{ capture: true }` se suno |
+| Delegation | Parent par ek listener, children handle |
+| `event.target` | Asal clicked element |
+| `closest()` | Target se upar matching element dhoondna |
+| Faida | Kam listeners, dynamic items khud cover |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Dynamic lists ke liye **parent par ek listener** lagayein aur `event.target.closest()` se sahi child pakrein.
+
+</Callout>

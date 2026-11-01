@@ -1,0 +1,181 @@
+---
+title: Type Conversion
+description: JavaScript type conversion coercion samjhein, Number, String, Boolean, parseInt aur implicit conversion ke ajeeb results. Roman Urdu mein examples.
+keywords:
+  - javascript type conversion coercion
+  - implicit vs explicit conversion
+  - javascript number string conversion
+  - parseint vs number
+---
+
+## 1. Type conversion kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**Type conversion ka matlab hai ek type ki value ko doosre type mein badalna, jaise string "42" ko number 42 banana.**
+
+</Callout>
+
+Yeh do tarah se hota hai:
+
+| Qism | Kaun karta hai | Example |
+| --- | --- | --- |
+| **Explicit conversion** | Aap khud, jaan boojh kar | `Number("42")` |
+| **Implicit conversion (coercion)** | JavaScript khud, operation ke dauran | `"5" * 2` |
+
+## 2. Kyun zaroori hai?
+
+Input fields, URL params aur `localStorage` hamesha **string** dete hain. Agar aap unhein number samajh kar jodein to `"10" + "5"` ka result `"105"` aata hai, `15` nahi.
+
+<CompareTable leftTitle="Coercion par bharosa" rightTitle="Explicit conversion">
+
+Result guess karna padta hai | Result saaf aur predictable
+Price jodne par 105 jaisa text | Number se pehle convert, sahi total
+Bugs chhupe rehte hain | NaN check karke foran pata
+Code parhne wala confuse | Intent code mein likha hua
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Situation | Conversion |
+| --- | --- |
+| **Form input se age ya price** | `Number(input.value)` |
+| **URL se page number** | `Number(params.get("page"))` |
+| **CSS value "16px" se 16** | `parseInt("16px", 10)` |
+| **Number ko text mein dikhana** | `String(total)` ya template literal |
+| **Value ke hone ya na hone ka check** | `Boolean(value)` |
+
+## 4. Kaise kaam karta hai?
+
+JavaScript teen hi conversions karti hai: **to string**, **to number**, **to boolean**.
+
+<Flow title="Operator dekh kar coercion">
+
+Operation dekha
+     ↓
+Plus aur koi side string ho, to string jodo
+     ↓
+Minus, multiply, divide, to number banao
+     ↓
+if ya logical operators, to boolean banao
+
+</Flow>
+
+Number conversion ke kuch rules:
+
+| Value | `Number(value)` |
+| --- | --- |
+| `"42"` | `42` |
+| `" 12 "` | `12` (spaces ignore) |
+| `""` | `0` |
+| `"12px"` | `NaN` |
+| `true` / `false` | `1` / `0` |
+| `null` | `0` |
+| `undefined` | `NaN` |
+
+<Callout variant="important" title="Mental model">
+
+**`+` ko string mili to jodne ka kaam (concatenation). Baqi math operators hamesha number banane ki koshish karte hain.**
+
+</Callout>
+
+## 5. Code example
+
+Explicit conversion:
+
+```js
+const ageInput = "25";
+const age = Number(ageInput);
+console.log(age + 1);
+
+console.log(String(99));
+console.log(Boolean("hello"));
+console.log(Boolean(""));
+```
+
+Output: `26`, `"99"`, `true`, `false`.
+
+`Number()` vs `parseInt()` / `parseFloat()`:
+
+```js
+console.log(Number("12px"));
+console.log(parseInt("12px", 10));
+console.log(parseFloat("3.75kg"));
+console.log(Number.isNaN(Number("abc")));
+```
+
+Output: `NaN`, `12`, `3.75`, `true`.
+
+Implicit coercion ke results:
+
+```js
+console.log("5" + 1);
+console.log("5" - 1);
+console.log("4" * "2");
+console.log(true + 1);
+console.log(null + 1);
+console.log(undefined + 1);
+```
+
+Output: `"51"`, `4`, `8`, `2`, `1`, `NaN`.
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `Number("25")` | Poori string valid number ho to number deta hai |
+| `parseInt("12px", 10)` | Shuru se jitna number mile parhta hai, base 10 mein |
+| `parseFloat` | Decimal wale numbers ke liye |
+| `"5" + 1` | String mili, is liye jodna: `"51"` |
+| `"5" - 1` | Minus sirf numbers ke liye, `"5"` number ban gaya |
+| `Number.isNaN()` | Sahi tareeqa check karne ka ke value `NaN` hai |
+
+### Interview tip
+
+`[] + []` ka result `""` (empty string) aur `[] + {}` ka `"[object Object]"` kyun? Plus operator dono objects ko pehle primitive (string) mein badalta hai. Array empty string banta hai aur object `"[object Object]"`. Yeh sawal coercion ki samajh check karta hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Input value ko seedha jodna"
+  why="input.value hamesha string hota hai, is liye 10 aur 5 jod kar 105 milta hai."
+  better="Pehle Number() ya input.valueAsNumber se convert karein, phir calculation karein."
+/>
+
+<Mistake
+  title="parseInt bina radix ke likhna"
+  why="Kuch formats mein base ghalat guess ho sakta hai aur code ka intent saaf nahi hota."
+  better="Hamesha parseInt(value, 10) likhein, ya poori string ke liye Number() use karein."
+/>
+
+<Mistake
+  title="NaN ko value === NaN se check karna"
+  why="NaN kisi ke barabar nahi, khud ke bhi nahi, is liye yeh check hamesha false deta hai."
+  better="Number.isNaN(value) use karein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Data Types](/courses/javascript/data-types) |
+| **Is ke baad** | [Operators](/courses/javascript/operators), [Truthy, Falsy & Equality](/courses/javascript/truthy-falsy-and-equality) |
+| **Related** | [Numbers & Math](/courses/javascript/numbers-and-math), [Forms & Validation](/courses/javascript/forms-and-validation) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Explicit | `Number()`, `String()`, `Boolean()` |
+| Implicit | Operators ke dauran JavaScript khud badalti hai |
+| `+` aur string | Hamesha string jodta hai |
+| `-`, `*`, `/` | Number banane ki koshish |
+| `parseInt` | Shuru ka number parhta hai, radix 10 do |
+| `NaN` check | `Number.isNaN()` |
+
+<Callout variant="important" title="Yaad rakhein">
+
+User input hamesha string hota hai. **Calculation se pehle explicit convert karein** aur coercion par bharosa na karein.
+
+</Callout>

@@ -1,0 +1,205 @@
+---
+title: "Streaming & Suspense"
+description: "Next.js streaming suspense: slow data ke liye page ko hisson mein stream karna, Suspense boundaries, loading.tsx aur parallel data fetching Roman Urdu mein."
+keywords:
+  - next.js streaming suspense
+  - react suspense next.js
+  - next.js streaming
+  - next.js loading skeleton
+  - parallel data fetching
+---
+
+## 1. Streaming aur Suspense kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**Streaming page ka HTML hisson mein bhejta hai: jo tayyar hai woh foran, aur slow hissay `Suspense` ke fallback ke baad jaise hi tayyar hon.**
+
+</Callout>
+
+`Suspense` React ka component hai jo kehta hai "jab tak andar wala component tayyar nahi, yeh fallback dikhao". Next.js server par isi boundary ko dekh kar HTML ko tukron mein stream karta hai.
+
+## 2. Kyun zaroori hai?
+
+Agar page ka ek hissa 3 second leta hai, to bina streaming ke poora page 3 second blank rehta hai.
+
+<CompareTable leftTitle="Bina streaming" rightTitle="Streaming ke saath">
+
+Sab se slow query tak blank screen | Header aur layout foran dikhte hain
+Ek slow widget poora page rokta hai | Har widget apne waqt par aata hai
+User ko lagta hai site hang hai | Skeleton se progress nazar aati hai
+Time to First Byte zyada | Pehla byte jaldi pohanchta hai
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Page | Kya stream karein |
+| --- | --- |
+| **Dashboard** | Har chart aur stats card alag boundary mein |
+| **Product page** | Reviews aur recommendations baad mein |
+| **Blog post** | Comments section baad mein |
+| **Search results** | Results list skeleton ke saath |
+| **Cache Components page** | Har dynamic (request time) hissa |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Ek streamed response">
+
+Request aayi
+   ↓
+Layout aur static hissay render
+   ↓
+Suspense boundaries par fallback
+   ↓
+Pehla HTML chunk browser ko (user kuch dekh leta hai)
+   ↓
+Slow component ka data aaya
+   ↓
+Us ka HTML usi response mein stream
+   ↓
+React fallback ko asal UI se replace karta hai
+
+</Flow>
+
+Streaming ke do tareeqay hain:
+
+| Tareeqa | Scope |
+| --- | --- |
+| `loading.tsx` | Poora page segment ek boundary mein |
+| `<Suspense>` | Aap khud chhote hissay chunte hain |
+
+`loading.tsx` asal mein page ko `Suspense` mein hi wrap karta hai. Zyada control chahiye to `Suspense` khud lagayein.
+
+<Callout variant="important" title="Mental model">
+
+**Har `Suspense` boundary ek alag "tukra" hai. Jitni boundaries, utni independent loading states.**
+
+</Callout>
+
+## 5. Code example
+
+### Dashboard jis ke widgets alag stream hon
+
+```tsx
+import { Suspense } from "react";
+
+async function Revenue() {
+  const res = await fetch("https://api.example.com/revenue");
+  const data = await res.json();
+  return <p>Revenue: {data.total}</p>;
+}
+
+async function LatestOrders() {
+  const res = await fetch("https://api.example.com/orders?limit=5");
+  const orders: { id: string; amount: number }[] = await res.json();
+  return (
+    <ul>
+      {orders.map((order) => (
+        <li key={order.id}>{order.amount}</li>
+      ))}
+    </ul>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <main>
+      <h1>Dashboard</h1>
+      <Suspense fallback={<p>Revenue load ho raha hai...</p>}>
+        <Revenue />
+      </Suspense>
+      <Suspense fallback={<p>Orders load ho rahe hain...</p>}>
+        <LatestOrders />
+      </Suspense>
+    </main>
+  );
+}
+```
+
+### Parallel fetching, waterfall se bachna
+
+```tsx
+async function getUser(id: string) {
+  return fetch(`https://api.example.com/users/${id}`).then((r) => r.json());
+}
+
+async function getPosts(id: string) {
+  return fetch(`https://api.example.com/users/${id}/posts`).then((r) => r.json());
+}
+
+export default async function ProfilePage({ params }: PageProps<"/users/[id]">) {
+  const { id } = await params;
+  const [user, posts] = await Promise.all([getUser(id), getPosts(id)]);
+  return (
+    <h1>
+      {user.name} ki {posts.length} posts
+    </h1>
+  );
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `async function Revenue` | Async Server Component, khud data fetch karta hai |
+| `<Suspense fallback=...>` | Data tak fallback, phir asal UI stream |
+| Do alag boundaries | Revenue aur orders ek doosre ka intezar nahi karte |
+| `<h1>Dashboard</h1>` | Boundary ke bahar, foran dikhta hai |
+| `Promise.all` | Dono requests saath shuru, waterfall nahi |
+
+### Interview tip
+
+"Streaming se SEO kharab hota hai?" Nahi. Streamed content bhi server se aane wala HTML hai jo usi HTTP response mein aata hai, aur Google jaise crawlers use parh lete hain.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Suspense ko async component ke andar lagana"
+  why="Boundary us component ke upar honi chahiye jo suspend karta hai, andar lagane se kaam nahi karti."
+  better="Parent mein Suspense lagayein aur slow async component ko us ke andar rakhein."
+/>
+
+<Mistake
+  title="Ek ke baad ek await karna jab requests independent hon"
+  why="Har request pichli ka intezar karti hai, total time sab ka jor ban jata hai."
+  better="Independent requests Promise.all se saath chalayein, ya alag Suspense boundaries mein rakhein."
+/>
+
+<Mistake
+  title="Poore page ko ek hi boundary mein band karna"
+  why="Sab se slow hissa baqi sab ko bhi rok leta hai."
+  better="Har independent slow hissay ko apni Suspense boundary dein."
+/>
+
+<Mistake
+  title="Fallback ka size asal UI se bilkul alag rakhna"
+  why="Content aane par layout shift hota hai aur CLS score kharab hota hai."
+  better="Skeleton ka size aur shape asal UI jaisa rakhein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [React Suspense](/courses/react/suspense-and-lazy), [Loading, Error & Not Found UI](/courses/nextjs/loading-and-error-ui), [Promises](/courses/javascript/promises) |
+| **Saath** | [Rendering Strategies](/courses/nextjs/rendering-strategies), [Server & Client Components](/courses/nextjs/server-and-client-components) |
+| **Baad mein** | [Data Fetching](/courses/nextjs/data-fetching), [Cache Components](/courses/nextjs/cache-components), [Performance](/courses/nextjs/performance) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Streaming | HTML hisson mein, ek hi response |
+| Boundary | `<Suspense fallback=...>` |
+| Page level | `loading.tsx` |
+| Faida | Tez first paint, independent widgets |
+| Waterfall se bachao | `Promise.all` ya alag boundaries |
+| Cache Components | Request time data Suspense mein hona chahiye |
+
+<Callout variant="important" title="Yaad rakhein">
+
+**Fast hissa foran, slow hissa Suspense ke peeche.** Har independent slow component ki apni boundary.
+
+</Callout>

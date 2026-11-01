@@ -1,0 +1,193 @@
+---
+title: Destructuring
+description: JavaScript destructuring se arrays aur objects ki values alag variables mein nikalna, default values, rename, nested aur function parameters, Roman Urdu mein.
+keywords:
+  - javascript destructuring
+  - object destructuring urdu
+  - array destructuring javascript
+  - destructuring default values
+---
+
+## 1. Destructuring kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**Destructuring ek syntax hai jis se array ya object ki values ek hi line mein alag variables mein nikal jati hain.**
+
+</Callout>
+
+Object destructuring **naam** se kaam karti hai (`{ name }`), array destructuring **position** se (`[first, second]`). Dono mein default values, rename aur nested pattern ki support hai.
+
+## 2. Kyun zaroori hai?
+
+Ek object se paanch fields nikalni hon to paanch lines `const x = obj.x` likhni parti hain. Destructuring is repetition ko khatam karti hai.
+
+<CompareTable leftTitle="Bina destructuring" rightTitle="Destructuring ke saath">
+
+const name = user.name | const name aur email ek line mein
+const email = user.email | Naam se values nikal gayin
+Missing value par alag if check | Default value pattern mein hi
+props.title, props.price har jagah | Function parameters mein hi nikal lo
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Area | Example |
+| --- | --- |
+| **React props** | `function Card({ title, price })` |
+| **React hooks** | `const [count, setCount] = useState(0)` |
+| **API data** | `const { data, error } = await res.json()` |
+| **Loops** | `for (const [key, value] of Object.entries(obj))` |
+| **Swap** | `[a, b] = [b, a]` |
+
+## 4. Kaise kaam karta hai?
+
+Left side par ek **pattern** hota hai jo right side ki shakal se match karta hai.
+
+| Pattern | Matlab |
+| --- | --- |
+| `const { a } = obj` | `obj.a` ko `a` mein |
+| `const { a: x } = obj` | `obj.a` ko `x` naam se |
+| `const { a = 5 } = obj` | `obj.a` `undefined` ho to `5` |
+| `const { a: { b } } = obj` | Nested, `obj.a.b` |
+| `const { a, ...rest } = obj` | Baqi properties `rest` mein |
+| `const [first, , third] = arr` | Position se, beech wala skip |
+
+<Flow title="Object destructuring ka flow">
+
+Right side object mila
+↓
+Pattern ki har key us object mein dhoondi
+↓
+Value mili to variable mein rakh di
+↓
+Value undefined thi to default use hui
+↓
+Baqi keys rest variable mein (agar likha ho)
+
+</Flow>
+
+<Callout variant="important" title="Mental model">
+
+**Object = naam se match. Array = position se match.**
+
+</Callout>
+
+## 5. Code example
+
+### Object destructuring
+
+```js
+const user = {
+  id: 7,
+  name: "Hina",
+  address: { city: "Multan" },
+};
+
+const { name, role = "student", address: { city }, ...rest } = user;
+
+console.log(name, role, city);
+console.log(rest);
+
+const { name: fullName } = user;
+console.log(fullName);
+```
+
+### Array destructuring aur function parameters
+
+```js
+const [first, , third = "none"] = ["red", "green"];
+console.log(first, third);
+
+let a = 1;
+let b = 2;
+[a, b] = [b, a];
+console.log(a, b);
+
+function formatOrder({ id, items = [], status = "pending" } = {}) {
+  return `#${id}: ${items.length} items, ${status}`;
+}
+
+console.log(formatOrder({ id: 42, items: ["pen", "book"] }));
+console.log(formatOrder());
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `role = "student"` | `user.role` nahi tha, default lag gaya |
+| `address: { city }` | Nested `city` nikali, `address` variable nahi bana |
+| `...rest` | `{ id: 7 }`, baqi bachi hui properties |
+| `name: fullName` | Rename, variable ka naam `fullName` |
+| `[first, , third = "none"]` | `red` aur `none` (third missing tha) |
+| `[a, b] = [b, a]` | Swap, `2 1` |
+| `= {}` parameter par | Bina argument call par crash nahi hota |
+
+### Interview tip
+
+Default value sirf `undefined` par lagti hai, `null` par nahi. `const { x = 5 } = { x: null }` mein `x` `null` hi rahega.
+
+## 6. Common mistakes
+
+<Mistake
+  title="undefined ya null ko destructure karna"
+  why="const { name } = undefined TypeError deta hai, jaise function bina argument call ho."
+  better="Parameter par default object do: function f({ name } = {}) aur API data ke liye fallback rakho."
+/>
+
+<Mistake
+  title="Default ko null par expect karna"
+  why="Default sirf undefined par kaam karta hai, null wesa hi aa jata hai."
+  better="null ke liye bhi fallback chahiye to ?? use karo: const city = data.city ?? 'N/A'."
+/>
+
+<Mistake
+  title="Statement ki shuru mein bina parentheses object destructuring assignment"
+  why="Line shuru mein curly brace block samjha jata hai aur SyntaxError aata hai."
+  better="Pehle se declared variables ke liye poori line parentheses mein likho."
+/>
+
+<Mistake
+  title="Bohot gehra nested destructuring"
+  why="Ek line mein 4 level nested pattern parhna mushkil hai aur ek missing level crash kar deta hai."
+  better="Do steps mein nikalo ya optional chaining use karo."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Arrays](/courses/javascript/arrays), [Objects](/courses/javascript/objects) |
+| **Saath mein** | [Spread & Rest](/courses/javascript/spread-and-rest), [Functions](/courses/javascript/functions) |
+| **Baad mein** | [Optional Chaining & Nullish Coalescing](/courses/javascript/optional-chaining-and-nullish), [Modules](/courses/javascript/modules) |
+
+<Flow title="Suggested order">
+
+Objects
+↓
+Destructuring
+↓
+Spread & Rest
+↓
+Optional Chaining & Nullish
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Object pattern | Naam se, `{ a, b }` |
+| Array pattern | Position se, `[a, b]` |
+| Rename | `{ a: newName }` |
+| Default | `{ a = 5 }`, sirf `undefined` par |
+| Rest | `{ a, ...rest }` |
+| Parameter safety | `({ a } = {})` |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Destructuring code ko chhota aur saaf banati hai. Function parameters mein default `= {}` lagana mat bhoolein taake bina argument call par crash na ho.
+
+</Callout>

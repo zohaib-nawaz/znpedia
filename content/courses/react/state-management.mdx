@@ -1,0 +1,199 @@
+---
+title: State Management Libraries
+description: React state management zustand redux Roman Urdu mein, global state kab chahiye, Zustand v5 aur Redux Toolkit ka setup, selectors aur sahi choice.
+keywords:
+  - react state management zustand redux
+  - zustand v5
+  - redux toolkit
+  - global state react
+---
+
+## 1. State Management Libraries kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**State management library ek central store deti hai jahan shared client state rehti hai, aur koi bhi component props ke baghair use parh ya update kar sakta hai.**
+
+</Callout>
+
+React mein state normally component ke andar `useState` ya `useReducer` mein hoti hai. Jab bohot saare door door ke components ko same state chahiye, to library madad karti hai.
+
+Aaj kal do mashhoor choices hain: **Zustand** (chhota, simple, hook based store) aur **Redux Toolkit** (structured, bari teams aur complex apps ke liye).
+
+## 2. Kyun zaroori hai?
+
+Shared state ko top par rakh kar har level se props pass karna (prop drilling) thaka deta hai. Context madad karta hai, lekin har value change par saare consumers re-render ho jate hain.
+
+<CompareTable leftTitle="Props aur Context" rightTitle="Store library">
+
+Har level par props pass | Koi bhi component seedha store se le
+Context value change par sab re-render | Selector se sirf zaroori component re-render
+Update logic components mein bikhri | Actions ek jagah organize
+Debugging mushkil | Redux DevTools se har change trace
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| State | Behtar jagah |
+| --- | --- |
+| **Input ki value, modal open** | `useState` (local) |
+| **Theme, logged in user** | Context ya Zustand |
+| **Cart, filters, multi step wizard** | Zustand ya Redux Toolkit |
+| **Bari team, strict patterns, undo** | Redux Toolkit |
+| **API se aaya data** | TanStack Query (store nahi) |
+
+## 4. Kaise kaam karta hai?
+
+Store React ke bahar rehta hai. Component ek **selector** ke zariye store ka chhota hissa subscribe karta hai. Jab action state badalta hai, sirf wahi components re-render hote hain jinka selected hissa badla.
+
+<Flow title="Store ka data flow">
+
+Component action call karta hai
+↓
+Store nayi state banata hai (immutable update)
+↓
+Store subscribers ko batata hai
+↓
+Har component apna selector chalata hai
+↓
+Value badli ho to sirf woh re-render
+
+</Flow>
+
+## 5. Code example
+
+### Example 1: Zustand v5
+
+```bash
+npm install zustand
+```
+
+```tsx
+import { create } from "zustand";
+
+type CartState = {
+  items: string[];
+  add: (item: string) => void;
+  clear: () => void;
+};
+
+export const useCart = create<CartState>()((set) => ({
+  items: [],
+  add: (item) => set((state) => ({ items: [...state.items, item] })),
+  clear: () => set({ items: [] }),
+}));
+
+export function CartBadge() {
+  const count = useCart((state) => state.items.length);
+  return <span>Cart: {count}</span>;
+}
+
+export function AddButton() {
+  const add = useCart((state) => state.add);
+  return <button onClick={() => add("Shoes")}>Add shoes</button>;
+}
+```
+
+### Example 2: Redux Toolkit
+
+```bash
+npm install @reduxjs/toolkit react-redux
+```
+
+```tsx
+import { configureStore, createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import { Provider, useDispatch, useSelector } from "react-redux";
+
+const counterSlice = createSlice({
+  name: "counter",
+  initialState: { value: 0 },
+  reducers: {
+    incrementBy: (state, action: PayloadAction<number>) => {
+      state.value += action.payload;
+    },
+  },
+});
+
+export const store = configureStore({ reducer: { counter: counterSlice.reducer } });
+type RootState = ReturnType<typeof store.getState>;
+
+function Counter() {
+  const value = useSelector((state: RootState) => state.counter.value);
+  const dispatch = useDispatch();
+  return <button onClick={() => dispatch(counterSlice.actions.incrementBy(1))}>{value}</button>;
+}
+
+export default function App() {
+  return (
+    <Provider store={store}>
+      <Counter />
+    </Provider>
+  );
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `create<CartState>()(...)` | Zustand store aur hook ek saath, TS ke liye double call |
+| `set((state) => ...)` | Nayi state merge hoti hai |
+| `useCart((state) => ...)` | Selector, sirf yeh value badle to re-render |
+| `createSlice` | Reducers aur actions ek jagah banata hai |
+| `state.value += ...` | Immer ki wajah se "mutate" jaisa likhna safe hai |
+| `Provider` | Redux store ko poori app tak pohnchata hai |
+
+### Interview tip
+
+"Zustand ya Redux?" ka jawab: chhoti se medium app mein Zustand kam code ke saath kaafi hai. Redux Toolkit tab chuniye jab strict structure, middleware, DevTools time travel aur bari team ki consistency chahiye. Aur API data ke liye dono ki jagah TanStack Query.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Zustand selector se har baar naya object return karna"
+  why="v5 mein naya object reference har render par alag hota hai, jis se extra re-renders ya infinite loop error aata hai."
+  better="Alag alag selectors use karo, ya zustand/react/shallow ka useShallow lagao."
+/>
+
+<Mistake
+  title="Poora store ek saath select karna"
+  why="Store ki koi bhi value badle to component re-render hota hai."
+  better="Sirf woh field select karo jo component ko chahiye."
+/>
+
+<Mistake
+  title="Server data ko global store mein rakhna"
+  why="Caching, refetch aur stale data ka saara kaam khud karna parta hai."
+  better="API data TanStack Query ko do, store sirf client state ke liye."
+/>
+
+<Mistake
+  title="Har state ko global bana dena"
+  why="Code samajhna mushkil hota hai aur components aapas mein tight couple ho jate hain."
+  better="Pehle local state, phir lifting state up, aur sirf zaroorat par global store."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Lifting State Up](/courses/react/lifting-state-up), [useContext](/courses/react/use-context), [useReducer](/courses/react/use-reducer) |
+| **Saath mein** | [Data Fetching](/courses/react/data-fetching), [Custom Hooks](/courses/react/custom-hooks) |
+| **Baad mein** | [TypeScript with React](/courses/react/typescript-with-react), [Testing React Apps](/courses/react/testing) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Kab chahiye | Bohot saare door ke components ko same client state |
+| Zustand | `create()` se hook, selectors, kam boilerplate |
+| Redux Toolkit | `createSlice`, `configureStore`, `Provider` |
+| Performance | Chhote selectors, naya object return na karo |
+| API data | Store nahi, TanStack Query |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Pehle **local state**, phir **Context**, aur sirf zaroorat par **store library**. Store mein sirf client state rakho, server data ka kaam data fetching library ka hai.
+
+</Callout>

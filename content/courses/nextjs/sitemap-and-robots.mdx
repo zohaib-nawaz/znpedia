@@ -1,0 +1,205 @@
+---
+title: Sitemap, Robots & OG Images
+description: Next.js sitemap robots opengraph files, app/sitemap.ts, app/robots.ts aur ImageResponse se dynamic OG images banana, Roman Urdu mein simple examples.
+keywords:
+  - next.js sitemap robots opengraph
+  - next.js sitemap.ts
+  - next.js robots.ts
+  - opengraph-image next.js
+  - imageresponse next/og
+---
+
+## 1. Sitemap, Robots & OG Images kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Yeh `app` folder ki special metadata files hain: `sitemap.ts` search engines ko pages ki list deti hai, `robots.ts` crawl rules deti hai, aur `opengraph-image.tsx` share preview ki image code se banati hai.**
+
+</Callout>
+
+In files ko aap TypeScript mein likhte hain, Next.js inhein `/sitemap.xml`, `/robots.txt` aur OG image URL mein badal deta hai, aur zaroori `head` tags khud add karta hai.
+
+## 2. Kyun zaroori hai?
+
+Static `sitemap.xml` naye blog posts ke saath update karna bhool jate hain. Har post ke liye Figma mein alag share image banana bhi practical nahi.
+
+<CompareTable leftTitle="Haath se files" rightTitle="Code se metadata files">
+
+sitemap.xml manually update | Database se har request ya build par list
+Naya page sitemap mein missing | Har naya record khud shamil
+robots.txt mein typo | Typed object, galat key par error
+Har post ki OG image designer banaye | JSX se har post ki image automatically
+og:image tag haath se likho | Next.js tags khud add karta hai
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| File | URL | Kaam |
+| --- | --- | --- |
+| `app/sitemap.ts` | `/sitemap.xml` | Saare public pages ki list |
+| `app/robots.ts` | `/robots.txt` | Kaun se paths crawl hon, sitemap kahan hai |
+| `app/opengraph-image.tsx` | Route ki OG image | WhatsApp, LinkedIn, X preview |
+| `app/blog/[slug]/opengraph-image.tsx` | Har post ki alag image | Title wali dynamic image |
+| `twitter-image.tsx` | X ke liye alag image | Zaroorat ho to |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Crawler ka safar">
+
+Crawler /robots.txt parhta hai
+↓
+robots.ts ke rules aur sitemap ka URL milta hai
+↓
+/sitemap.xml se pages ki list
+↓
+Har page ke head mein og:image tag
+↓
+opengraph-image.tsx se PNG image generate
+
+</Flow>
+
+Yeh files special Route Handlers hain. Default mein yeh static hoti hain aur build par cache ho jati hain, jab tak aap Request-time APIs ya uncached data use na karein.
+
+## 5. Code example
+
+### `app/sitemap.ts`
+
+```ts
+import type { MetadataRoute } from "next";
+import { getAllPosts } from "@/lib/posts";
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const posts = await getAllPosts();
+
+  const postEntries = posts.map((post) => ({
+    url: `https://znpedia.com/blog/${post.slug}`,
+    lastModified: post.updatedAt,
+    changeFrequency: "weekly" as const,
+    priority: 0.7,
+  }));
+
+  return [
+    { url: "https://znpedia.com", lastModified: new Date(), priority: 1 },
+    ...postEntries,
+  ];
+}
+```
+
+### `app/robots.ts`
+
+```ts
+import type { MetadataRoute } from "next";
+
+export default function robots(): MetadataRoute.Robots {
+  return {
+    rules: {
+      userAgent: "*",
+      allow: "/",
+      disallow: ["/admin/", "/api/"],
+    },
+    sitemap: "https://znpedia.com/sitemap.xml",
+  };
+}
+```
+
+### `app/blog/[slug]/opengraph-image.tsx`
+
+```tsx
+import { ImageResponse } from "next/og";
+import { getPost } from "@/lib/posts";
+
+export const alt = "ZnPedia blog post";
+export const size = { width: 1200, height: 630 };
+export const contentType = "image/png";
+
+export default async function Image({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const post = await getPost(slug);
+
+  return new ImageResponse(
+    (
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          alignItems: "center",
+          padding: 80,
+          background: "#0f766e",
+          color: "white",
+          fontSize: 64,
+        }}
+      >
+        {post.title}
+      </div>
+    ),
+    size
+  );
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `MetadataRoute.Sitemap` | Return type, har entry mein `url` zaroori |
+| `lastModified` | Search engine ko batata hai page kab badla |
+| `disallow` | In paths ko crawl na karne ki request |
+| `sitemap` (robots mein) | Crawler ko sitemap ka pata |
+| `ImageResponse` | JSX aur inline styles ko PNG mein badalta hai |
+| `size`, `alt`, `contentType` | Next.js inse `og:image:width`, `og:image:alt` waghera tags banata hai |
+
+<Callout variant="note" title="Static image bhi chalegi">
+
+Agar dynamic image nahi chahiye to sirf `opengraph-image.png` file route folder mein rakh do. Next.js khud sahi tags add kar dega.
+
+</Callout>
+
+## 6. Common mistakes
+
+<Mistake
+  title="Sitemap mein relative URLs dena"
+  why="Sitemap protocol absolute URLs maangta hai, /blog/post jaisa URL search engines reject kar dete hain."
+  better="Poora URL do, domain ko ek constant ya environment variable mein rakh kar."
+/>
+
+<Mistake
+  title="robots disallow ko security samajhna"
+  why="robots.txt sirf achhe crawlers ke liye request hai, koi bhi user us path ko khol sakta hai."
+  better="Private pages ko authentication se protect karo, robots sirf crawling ke liye hai."
+/>
+
+<Mistake
+  title="ImageResponse mein normal CSS ya grid use karna"
+  why="ImageResponse sirf flexbox aur CSS ka ek subset support karta hai, Tailwind classes ya display grid kaam nahi karte."
+  better="Inline style objects aur display flex use karo, aur image 1200 x 630 rakho."
+/>
+
+### Interview tip
+
+"`robots.txt` mein `disallow` kiya hua page Google index kar sakta hai?" Haan, agar doosri sites us ka link dein. Index se rokne ke liye page par `noindex` meta (Metadata API mein `robots: { index: false }`) chahiye, aur us page ko crawl allow hona chahiye taake Google woh tag parh sake.
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Chapters |
+| --- | --- |
+| Pehle | [Metadata & SEO](/courses/nextjs/metadata-and-seo), [Route Handlers (API)](/courses/nextjs/route-handlers), [Dynamic Routes](/courses/nextjs/dynamic-routes) |
+| Saath mein | [Image Optimization](/courses/nextjs/image-optimization) |
+| Baad mein | [Performance & Core Web Vitals](/courses/nextjs/performance), [Deployment](/courses/nextjs/deployment) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Sitemap | `app/sitemap.ts` se `/sitemap.xml` |
+| Robots | `app/robots.ts` se `/robots.txt` |
+| OG image | `opengraph-image.tsx` aur `ImageResponse` from `next/og` |
+| Image size | 1200 x 630 recommended |
+| URLs | Hamesha absolute |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Sitemap aur robots ko code se generate karo taake naye pages khud shamil hon, aur OG images `ImageResponse` se banao. Robots sirf crawl rules hai, security nahi.
+
+</Callout>

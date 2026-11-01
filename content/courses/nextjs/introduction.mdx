@@ -1,12 +1,188 @@
 ---
-title: Introduction
-description: Placeholder for the Introduction chapter.
+title: "Introduction"
+description: "What is Next.js? Next.js 16 kya hai, React ke upar yeh framework kyun bana aur App Router kaise kaam karta hai, Roman Urdu mein shuruat."
+keywords:
+  - what is next.js
+  - next.js in urdu
+  - next.js app router
+  - react framework
+  - next.js 16
 ---
 
-# Introduction
+## 1. Next.js kya hai?
 
-This chapter is a placeholder. Course content will be added here later.
+<Callout variant="tip" title="Short definition">
 
-<Callout>
-Educational content for this section has not been written yet.
+**Next.js ek React framework hai jo routing, server rendering, data fetching aur production build ek hi jagah deta hai.**
+
+</Callout>
+
+React sirf UI library hai. Woh aap ko components banana sikhati hai, lekin routing, SEO, server, bundling aur deployment ka faisla aap par chhorti hai. Next.js yeh sab faislay pehle se kar ke deta hai, taake aap seedha app banane par focus karein.
+
+Is course mein hum **Next.js 16** aur **App Router** (`app/` folder) parhenge. Purana `pages/` router ab bhi chalta hai, lekin naye projects App Router se hi bante hain.
+
+<Flow title="Next.js = React + full-stack features">
+
+React components
+   +
+File-based routing
+   +
+Server Components
+   +
+Data fetching aur caching
+   +
+Turbopack build
+   ↓
+Production-ready web app
+
+</Flow>
+
+## 2. Kyun zaroori hai?
+
+Sirf React (jaise Vite setup) mein page browser mein JavaScript load hone ke baad banta hai. Is se pehla paint late hota hai, SEO kamzor hota hai aur routing ke liye alag library lagani parti hai.
+
+<CompareTable leftTitle="Sirf React (client-side)" rightTitle="Next.js App Router">
+
+Routing ke liye alag library | Folders hi routes hain
+HTML khaali, JS ke baad content | Server par HTML ban kar aata hai
+SEO ke liye extra kaam | Metadata API built-in
+API ke liye alag backend | Route Handlers aur Server Actions
+Bundler config khud karo | Turbopack default, zero config
+Data fetching useEffect mein | Server Component mein seedha await
+
+</CompareTable>
+
+Simple lafzon mein, Next.js aap ko **frontend aur backend dono** ek project mein likhne deta hai.
+
+## 3. Kahan use hota hai?
+
+| Area | Next.js se kya banta hai |
+| --- | --- |
+| **Marketing sites** | Fast, SEO-friendly landing pages aur blogs |
+| **E-commerce** | Product pages, cart, checkout, search |
+| **SaaS dashboards** | Auth wale panels, settings, reports |
+| **Docs aur content** | MDX docs, knowledge bases (jaise yeh ZnPedia) |
+| **Full-stack apps** | Database, forms aur APIs ek hi codebase mein |
+
+## 4. Kaise kaam karta hai?
+
+Next.js ka mental model yeh hai: **har request ek route se match hoti hai, route ke components server par render hote hain, aur sirf zaroori JavaScript browser ko jati hai.**
+
+<Flow title="Request se screen tak">
+
+Browser /blog request bhejta hai
+   ↓
+Next.js app/blog/page.tsx dhoondta hai
+   ↓
+Server Components server par render
+   ↓
+HTML + RSC payload browser ko
+   ↓
+Client Components hydrate hote hain
+   ↓
+Page interactive
+
+</Flow>
+
+<Callout variant="important" title="Mental model">
+
+**Default sab kuch Server Component hai. Interactivity chahiye to `"use client"` lagao.**
+
+</Callout>
+
+Next.js 16 mein bundler **Turbopack** default hai, request intercept karne ke liye `proxy.ts` hai, aur caching **Cache Components** (`"use cache"`) ke zariye opt-in hai.
+
+## 5. Code example
+
+Ek chhota Next.js page. File ka naam aur jagah hi route banati hai.
+
+```tsx
+export default async function HomePage() {
+  const res = await fetch("https://api.github.com/repos/vercel/next.js");
+  const repo = await res.json();
+
+  return (
+    <main>
+      <h1>Welcome to Next.js</h1>
+      <p>Next.js repo ke stars: {repo.stargazers_count}</p>
+    </main>
+  );
+}
+```
+
+Yeh file `app/page.tsx` mein rakhein to `/` route par yeh page dikhega.
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `app/page.tsx` | Is file ki location `/` route banati hai |
+| `export default` | Har page ka ek default export component hota hai |
+| `async function` | Server Component async ho sakta hai |
+| `await fetch(...)` | Data server par fetch hota hai, browser mein nahi |
+| `<main>` JSX | Server par HTML ban kar browser ko jata hai |
+
+### Interview tip
+
+Agar poocha jaye "React aur Next.js mein farq?" to kahein: React UI library hai, Next.js React par bana full-stack framework hai jo routing, server rendering, caching aur build tooling deta hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Next.js ko React ka replacement samajhna"
+  why="Next.js andar se React hi use karta hai, components, hooks aur JSX wohi hain."
+  better="Pehle React basics seekhein, phir Next.js ko React ke upar framework layer samjhein."
+/>
+
+<Mistake
+  title="Har component mein use client laga dena"
+  why="Is se server rendering ka faida khatam ho jata hai aur JavaScript bundle bara ho jata hai."
+  better="Default Server Component rakhein, sirf interactive hisson ko Client Component banayein."
+/>
+
+<Mistake
+  title="Pages Router ke purane tutorials follow karna"
+  why="getServerSideProps aur getStaticProps App Router mein nahi chalte."
+  better="Next.js 16 aur app folder wale docs aur tutorials follow karein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [JavaScript async/await](/courses/javascript/async-await), [React components](/courses/react/components), [React state](/courses/react/state) |
+| **Saath** | [React Server Components](/courses/react/server-components), [Suspense](/courses/react/suspense-and-lazy) |
+| **Baad mein** | [Installation & Project Structure](/courses/nextjs/installation-and-project-structure), [What's New in Next.js 16](/courses/nextjs/nextjs-16-whats-new), [Routing & Pages](/courses/nextjs/routing-and-pages) |
+
+<Flow title="Suggested order">
+
+JavaScript
+   ↓
+React basics
+   ↓
+Next.js setup
+   ↓
+Routing aur layouts
+   ↓
+Server aur Client Components
+   ↓
+Data fetching aur caching
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Next.js kya hai | React par bana full-stack framework |
+| Router | App Router, `app/` folder |
+| Default component | Server Component |
+| Bundler | Turbopack (Next.js 16 default) |
+| Caching | Opt-in, `"use cache"` ke saath |
+| Request interception | `proxy.ts` |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Next.js mein **folder = route**, **default = Server Component**, aur **caching aap khud choose karte hain**.
+
 </Callout>

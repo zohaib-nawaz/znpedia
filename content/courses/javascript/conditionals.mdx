@@ -1,0 +1,202 @@
+---
+title: "Conditionals: if, switch, ternary"
+description: JavaScript if else switch aur ternary operator se faisle lena seekhein, early return aur object lookup jaise clean patterns. Roman Urdu mein.
+keywords:
+  - javascript if else switch
+  - javascript ternary operator
+  - switch case javascript
+  - early return pattern
+---
+
+## 1. Conditionals kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Conditional code ko faisla karne deta hai: agar condition true ho to ek kaam, warna doosra kaam.**
+
+</Callout>
+
+JavaScript mein faisle ke teen main tools hain:
+
+| Tool | Kab use karein |
+| --- | --- |
+| `if / else if / else` | General conditions, ranges, multiple checks |
+| `switch` | Ek value ko kai fixed options se match karna |
+| Ternary `? :` | Do mein se ek value chunni ho, ek line mein |
+
+## 2. Kyun zaroori hai?
+
+Har app ko faisle karne padte hain. User logged in hai ya nahi, cart khaali hai ya nahi, order ka status kya hai. Conditionals ke bina program har dafa ek hi kaam karta.
+
+<CompareTable leftTitle="Messy conditionals" rightTitle="Clean conditionals">
+
+If ke andar if ke andar if | Early return se seedha flow
+Lambi else if chain fixed values ke liye | switch ya object lookup
+Chhoti value ke liye poora if else | Ternary se ek line
+Condition ko samajhna mushkil | Condition ko naam wale variable mein rakhna
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Real use | Tool |
+| --- | --- |
+| **Login check, redirect** | `if` + early return |
+| **Marks se grade** | `if / else if` (ranges) |
+| **Order status ka message** | `switch` ya object lookup |
+| **Button ka text "Follow" ya "Unfollow"** | Ternary |
+| **Form validation** | `if` checks |
+
+## 4. Kaise kaam karta hai?
+
+`if` condition ko **boolean** mein badal kar check karta hai. Pehli true condition ka block chalta hai, baqi skip ho jate hain.
+
+<Flow title="if / else if / else ka flow">
+
+Condition 1 check
+     ↓
+True ho to block 1 chalao aur bahar
+     ↓
+Warna condition 2 check
+     ↓
+Koi true na ho to else block
+
+</Flow>
+
+`switch` value ko `===` (strict equality) se har `case` ke saath compare karta hai. Match milne par `break` tak code chalta hai.
+
+<Callout variant="important" title="Mental model">
+
+**`if` sawal poochta hai, `switch` list mein value dhoondta hai, ternary do mein se ek value chunta hai.**
+
+</Callout>
+
+## 5. Code example
+
+`if / else if / else` ranges ke liye:
+
+```js
+function getGrade(marks) {
+  if (marks >= 80) {
+    return "A";
+  } else if (marks >= 65) {
+    return "B";
+  } else if (marks >= 50) {
+    return "C";
+  }
+  return "Fail";
+}
+
+console.log(getGrade(72));
+```
+
+Output: `B`.
+
+`switch` aur object lookup:
+
+```js
+function statusMessage(status) {
+  switch (status) {
+    case "pending":
+      return "Order mil gaya hai";
+    case "shipped":
+      return "Order raste mein hai";
+    case "delivered":
+      return "Order pohanch gaya";
+    default:
+      return "Status maloom nahi";
+  }
+}
+
+const messages = {
+  pending: "Order mil gaya hai",
+  shipped: "Order raste mein hai",
+};
+
+console.log(statusMessage("shipped"));
+console.log(messages["pending"] ?? "Status maloom nahi");
+```
+
+Ternary aur early return:
+
+```js
+const isFollowing = true;
+const label = isFollowing ? "Unfollow" : "Follow";
+
+function checkout(user, cart) {
+  if (!user) return "Pehle login karein";
+  if (cart.length === 0) return "Cart khaali hai";
+  return "Payment page par chalein";
+}
+
+console.log(label);
+console.log(checkout({ name: "Asad" }, []));
+```
+
+Output: `Unfollow`, `Cart khaali hai`.
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `else if` | Upar wali condition false ho to agli check |
+| `case "pending":` | `status === "pending"` ho to yahan se chalo |
+| `return` / `break` | `switch` se bahar nikalna, warna agle case mein gir jata hai |
+| `default` | Koi case match na ho |
+| `messages[status]` | Object lookup, `switch` ka chhota alternative |
+| `a ? b : c` | `a` true to `b`, warna `c` |
+| `if (!user) return` | Early return (guard clause), nesting kam |
+
+### Interview tip
+
+`switch` mein `break` bhoolne ko **fall through** kehte hain. Interview mein aksar poocha jata hai ke output kya hoga. Yaad rakhein: match ke baad `break` ya `return` tak saare neeche wale cases chal jate hain.
+
+## 6. Common mistakes
+
+<Mistake
+  title="switch mein break bhool jana"
+  why="Match ke baad neeche wale cases bhi chal jate hain, ghalat message ya double kaam hota hai."
+  better="Har case ke aakhir mein break ya return likhein."
+/>
+
+<Mistake
+  title="Nested ternary banana"
+  why="Ek line mein kai ternary parhna aur debug karna bohot mushkil hota hai."
+  better="Do se zyada options hon to if else, switch ya object lookup use karein."
+/>
+
+<Mistake
+  title="Condition mein = likhna"
+  why="if (role = 'admin') assignment karta hai aur hamesha true chalta hai, har user admin ban jata hai."
+  better="Comparison ke liye === likhein, = sirf value assign karne ke liye hai."
+/>
+
+<Mistake
+  title="Gehri nesting"
+  why="if ke andar if ke andar if, code daayein taraf khisakta jata hai aur logic chhup jata hai."
+  better="Ghalat cases ko pehle early return se nikal dein, main logic aakhir mein seedha likhein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Operators](/courses/javascript/operators), [Data Types](/courses/javascript/data-types) |
+| **Is ke baad** | [Loops](/courses/javascript/loops), [Truthy, Falsy & Equality](/courses/javascript/truthy-falsy-and-equality) |
+| **Aage** | [Functions](/courses/javascript/functions), [Optional Chaining & Nullish Coalescing](/courses/javascript/optional-chaining-and-nullish) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `if / else` | General conditions aur ranges |
+| `switch` | Fixed values, `===` se match, `break` zaroori |
+| Ternary | Do mein se ek value, ek line |
+| Object lookup | Value se message ya config map karna |
+| Early return | Nesting kam, code saaf |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Ranges ke liye `if`, fixed values ke liye `switch` ya object lookup, aur chhoti do-option value ke liye **ternary**. Nesting barhe to **early return** use karein.
+
+</Callout>

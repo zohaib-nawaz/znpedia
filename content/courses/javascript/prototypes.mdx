@@ -1,0 +1,189 @@
+---
+title: Prototypes & Inheritance
+description: JavaScript prototype inheritance kya hai, prototype chain kaise kaam karti hai aur Object.create se objects kaise share karte hain, Roman Urdu mein.
+keywords:
+  - javascript prototype inheritance
+  - prototype chain in javascript urdu
+  - object.create
+  - __proto__ vs prototype
+---
+
+## 1. Prototypes kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Prototype ek doosra object hai jis se koi object missing properties aur methods borrow karta hai.**
+
+</Callout>
+
+JavaScript mein har object ke andar ek hidden link hota hai jise `[[Prototype]]` kehte hain. Jab aap kisi object par koi property dhoondte hain aur woh wahan nahi milti, to JavaScript us link ko follow karke prototype object mein dhoondti hai.
+
+Isi system ko **prototypal inheritance** kehte hain. JavaScript ki classes bhi andar se isi par chalti hain.
+
+## 2. Kyun zaroori hai?
+
+Agar 1000 user objects hon aur har ek ke andar apni `greet` function ki copy ho, to memory waste hoti hai. Prototype ki madad se ek hi method sab objects share karte hain.
+
+<CompareTable leftTitle="Bina prototype" rightTitle="Prototype ke saath">
+
+Har object mein method ki alag copy | Method ek jagah, sab objects share karte hain
+Zyada memory use | Kam memory use
+Method change karna ho to har object update karo | Prototype par ek change, sab par asar
+Code repeat hota hai | Reuse aur inheritance asaan
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Jagah | Prototype ka role |
+| --- | --- |
+| **Arrays** | `[1, 2].map()` asal mein `Array.prototype.map` se aata hai |
+| **Strings** | `"hi".toUpperCase()` `String.prototype` se milta hai |
+| **Classes** | `class` ke methods prototype par store hote hain |
+| **Libraries** | Shared behaviour ek base object par rakh kar extend karna |
+| **Interviews** | Prototype chain aur `__proto__` vs `prototype` common sawal hain |
+
+## 4. Kaise kaam karta hai?
+
+Property lookup ek chain ki tarah chalta hai. JavaScript neeche se upar jati hai jab tak property mil na jaye ya chain `null` par khatam na ho.
+
+<Flow title="Prototype chain lookup">
+
+user object mein property dhoondo
+↓
+Nahi mili, to userPrototype mein dhoondo
+↓
+Nahi mili, to Object.prototype mein dhoondo
+↓
+Nahi mili, to chain null par khatam
+↓
+Result undefined
+
+</Flow>
+
+<Callout variant="important" title="Mental model">
+
+**Object ke paas cheez nahi, to woh apne prototype se poochta hai, phir uske prototype se.**
+
+</Callout>
+
+`__proto__` aur `prototype` alag cheezein hain:
+
+| Cheez | Matlab |
+| --- | --- |
+| `obj.__proto__` | Purana tareeqa object ka prototype dekhne ka, aaj `Object.getPrototypeOf(obj)` use karein |
+| `Fn.prototype` | Sirf functions aur classes par hota hai, `new Fn()` se bane objects ka prototype yahi banta hai |
+
+## 5. Code example
+
+### Object.create se inheritance
+
+```js
+const animal = {
+  speak() {
+    return `${this.name} awaaz nikalta hai`;
+  },
+};
+
+const dog = Object.create(animal);
+dog.name = "Moti";
+
+console.log(dog.speak());
+console.log(Object.getPrototypeOf(dog) === animal);
+console.log(Object.hasOwn(dog, "speak"));
+```
+
+### Constructor function aur prototype
+
+```js
+function User(name) {
+  this.name = name;
+}
+
+User.prototype.greet = function () {
+  return `Salam, ${this.name}`;
+};
+
+const ali = new User("Ali");
+const sara = new User("Sara");
+
+console.log(ali.greet());
+console.log(ali.greet === sara.greet);
+```
+
+### Code kaise kaam kar raha hai?
+
+| Line | Kya ho raha hai |
+| --- | --- |
+| `Object.create(animal)` | Naya khaali object jiska prototype `animal` hai |
+| `dog.speak()` | `dog` mein `speak` nahi, chain se `animal.speak` milta hai |
+| `Object.hasOwn(dog, "speak")` | `false`, kyunki method apna nahi, borrowed hai |
+| `User.prototype.greet` | Method ek dafa prototype par, sab users share karte hain |
+| `ali.greet === sara.greet` | `true`, dono ek hi function use kar rahe hain |
+
+### Interview tip
+
+Sawal aata hai: "Prototype chain ka end kya hai?" Jawab: `Object.prototype`, aur uska prototype `null` hai. Isi liye `Object.getPrototypeOf(Object.prototype)` `null` return karta hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Arrow function ko prototype method banana"
+  why="Arrow function ka apna this nahi hota, is liye this.name undefined aata hai."
+  better="Prototype methods ke liye normal function ya class method syntax use karein."
+/>
+
+<Mistake
+  title="Built-in prototypes jaise Array.prototype ko modify karna"
+  why="Doosri libraries aur future JavaScript features ke saath conflict ho sakta hai."
+  better="Apni helper functions alag likhein, built-in prototypes ko haath na lagayein."
+/>
+
+<Mistake
+  title="__proto__ ko code mein directly set karna"
+  why="Yeh purana aur slow tareeqa hai, performance aur readability dono kharab hoti hain."
+  better="Object.create, Object.getPrototypeOf aur classes use karein."
+/>
+
+<Mistake
+  title="for...in loop mein inherited properties bhool jana"
+  why="for...in prototype ki enumerable properties bhi deta hai, ajeeb results aate hain."
+  better="Object.keys ya Object.entries use karein jo sirf own properties dete hain."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Objects](/courses/javascript/objects), [The this Keyword](/courses/javascript/this-keyword), [Functions](/courses/javascript/functions) |
+| **Saath mein** | [call, apply & bind](/courses/javascript/call-apply-bind) |
+| **Baad mein** | [Classes](/courses/javascript/classes), [Iterators & Generators](/courses/javascript/iterators-and-generators) |
+
+<Flow title="Suggested order">
+
+Objects
+↓
+this keyword
+↓
+Prototypes
+↓
+Classes
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Prototype | Woh object jis se properties borrow hoti hain |
+| Prototype chain | Lookup upar jata hai jab tak `null` na aa jaye |
+| `Object.create(proto)` | Diye gaye prototype ke saath naya object |
+| `Object.getPrototypeOf` | Prototype padhne ka modern tareeqa |
+| `Object.hasOwn` | Check karo property apni hai ya inherited |
+| Classes | Prototypes ke upar clean syntax |
+
+<Callout variant="important" title="Yaad rakhein">
+
+JavaScript mein inheritance **objects se objects** tak hoti hai. Class syntax ho ya constructor function, andar prototype chain hi kaam kar rahi hoti hai.
+
+</Callout>

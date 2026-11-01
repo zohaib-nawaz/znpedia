@@ -1,0 +1,167 @@
+---
+title: Children & Composition
+description: React children prop aur composition kya hai, components ko ek doosre ke andar kaise rakhein aur prop drilling kaise kam karein, Roman Urdu mein.
+keywords:
+  - react children composition
+  - react children prop
+  - component composition urdu
+  - react layout components
+---
+
+## 1. Children & Composition kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**`children` ek special prop hai jis mein woh JSX hota hai jo aap component ke opening aur closing tag ke beech likhte hain.**
+
+</Callout>
+
+**Composition** ka matlab hai chhote components ko jor kar bara UI banana. Inheritance (class extend karna) ki jagah React components ko ek doosre ke **andar rakh kar** compose karta hai.
+
+Jaise HTML mein `div` ke andar kuch bhi rakh sakte hain, waise hi aap apne `Card` ya `Modal` ke andar kuch bhi rakh sakte hain.
+
+## 2. Kyun zaroori hai?
+
+Kai components ka kaam sirf ek "dabba" banana hota hai: border, padding, title. Andar kya aayega yeh pehle se pata nahi hota.
+
+<CompareTable leftTitle="Bina children" rightTitle="Children ke saath">
+
+Har variation ke liye naya prop | Andar ka content parent khud likhta hai
+Card ke andar sirf text pass ho sakta | Card ke andar koi bhi JSX
+Data kai levels neeche bhejna parta hai | Component seedha sahi jagah rakh do
+Rigid, mushkil se reuse | Flexible wrapper components
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Use case | Example |
+| --- | --- |
+| **Layout** | `PageLayout` jis mein header, sidebar aur `children` content |
+| **Card / Panel** | Border aur padding wala wrapper |
+| **Modal / Dialog** | Overlay ke andar koi bhi form ya message |
+| **Providers** | Context provider jo poori app ko wrap karta hai |
+| **Slots** | `header`, `footer` jaise alag props mein JSX pass karna |
+
+## 4. Kaise kaam karta hai?
+
+Jab aap tags ke beech kuch likhte hain, React usay automatically `children` naam ke prop mein daal deta hai.
+
+<Flow title="Children ka flow">
+
+Parent tags ke beech JSX likhta hai
+↓
+React woh JSX props.children mein rakhta hai
+↓
+Wrapper component children ko kahin bhi render karta hai
+↓
+Final UI mein wrapper + andar ka content
+
+</Flow>
+
+Wrapper ko pata nahi hota ke andar kya hai, aur usay pata hona bhi nahi chahiye. Yahi composition ki taqat hai.
+
+## 5. Code example
+
+### Basic children
+
+```jsx
+function Card({ title, children }) {
+  return (
+    <section className="card">
+      <h3>{title}</h3>
+      <div className="card-body">{children}</div>
+    </section>
+  );
+}
+
+export default function App() {
+  return (
+    <Card title="Profile">
+      <p>Naam: Ayesha</p>
+      <button>Edit</button>
+    </Card>
+  );
+}
+```
+
+### Multiple slots
+
+```jsx
+function PageLayout({ sidebar, children }) {
+  return (
+    <div className="layout">
+      <aside>{sidebar}</aside>
+      <main>{children}</main>
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <PageLayout sidebar={<nav>Home | Settings</nav>}>
+      <h1>Dashboard</h1>
+    </PageLayout>
+  );
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `{ title, children }` | `children` baqi props jaisa hi ek prop hai |
+| `{children}` | Jahan likha, wahin andar ka JSX render hoga |
+| `sidebar={<nav>...</nav>}` | JSX ko normal prop mein bhi pass kar sakte hain (slot) |
+| `<Card>...</Card>` | Opening aur closing tag, beech ka content `children` |
+
+### Prop drilling kam karna
+
+Agar `App` ke paas `user` hai aur woh `Layout` se guzar kar `Avatar` tak jana hai, to `Layout` ko `user` pass karne ki zaroorat nahi. `App` khud `<Avatar user={user} />` bana kar `Layout` ko `children` mein de sakta hai. Bichla component data ko chhoota hi nahi.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Wrapper component mein children render karna bhool jana"
+  why="Agar return mein children kahin likha hi nahi to andar ka content screen par nahi aayega aur koi error bhi nahi milega."
+  better="Wrapper ke JSX mein woh jagah tay karo jahan children render hon."
+/>
+
+<Mistake
+  title="Har choti cheez ke liye naya prop banana"
+  why="title, subtitle, icon, footerText jaise props ki lambi list component ko rigid bana deti hai."
+  better="Jo hissa flexible hona chahiye usay children ya JSX slot prop bana do."
+/>
+
+<Mistake
+  title="Data ko paanch levels neeche props se bhejna"
+  why="Beech ke components ko woh data use hi nahi karna, phir bhi unhein pass karna parta hai."
+  better="Pehle composition try karo, component ko upar bana kar children mein do. Zaroorat ho to context use karo."
+/>
+
+### Interview tip
+
+"Composition vs inheritance" ka sawal aaye to kahein: React mein code reuse **composition** se hota hai, components ko extend nahi kiya jata.
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Chapters |
+| --- | --- |
+| **Pehle** | [Props](/courses/react/props), [Components](/courses/react/components) |
+| **Baad mein** | [useContext](/courses/react/use-context), [Portals](/courses/react/portals) |
+| **Related** | [Lifting State Up](/courses/react/lifting-state-up) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `children` | Tags ke beech likha gaya JSX |
+| Composition | Chhote components jor kar bara UI |
+| Slots | JSX ko named props mein pass karna |
+| Faida | Flexible wrappers, kam prop drilling |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Wrapper ko andar ka content **jaanne** ki zaroorat nahi. Bas `{children}` ko sahi jagah rakho.
+
+</Callout>

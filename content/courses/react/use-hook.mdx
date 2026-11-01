@@ -1,0 +1,178 @@
+---
+title: The use() API
+description: React use hook (use API) se render ke dauran Promise aur Context parhna seekhein, Suspense ke saath, aur yeh baqi hooks se kaise alag hai, Roman Urdu mein.
+keywords:
+  - react use hook
+  - react use api promise
+  - use context react 19
+  - react suspense data
+---
+
+## 1. The use() API kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**`use` React 19 ka ek API hai jo render ke dauran kisi resource, yaani Promise ya Context, ki value parhta hai.**
+
+</Callout>
+
+`use(promise)` Promise resolve hone tak component ko **suspend** kar deta hai, aur qareebi `Suspense` boundary ka fallback dikhta hai. Resolve hone par value mil jati hai.
+
+`use(Context)` bilkul `useContext` jaisa kaam karta hai, bas zyada flexible hai.
+
+## 2. Kyun zaroori hai?
+
+Pehle data ka intezar karne ke liye `useEffect` + `useState` + loading flag likhna parta tha.
+
+<CompareTable leftTitle="Purana tareeqa" rightTitle="use() ke saath">
+
+useEffect mein fetch, useState mein data | Promise seedha use se parho
+Har component mein isLoading check | Suspense fallback loading dikhata hai
+Error state khud manage karo | Error Boundary error pakarti hai
+useContext condition ke andar nahi chal sakta | use if ke andar bhi chal sakta hai
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Situation | Kaise |
+| --- | --- |
+| Server Component se Client Component ko Promise dena | Server `fetch` ka Promise prop mein, client `use(promise)` |
+| Framework ya library ka cached Promise | `use(cachedPromise)` |
+| Condition ke baad Context parhna | `if` ke andar `use(ThemeContext)` |
+| Early return ke baad Context | `useContext` yeh nahi kar sakta, `use` kar sakta hai |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="use(promise) ka flow">
+
+Component render mein use(promise) call karta hai
+↓
+Promise pending hai to component suspend
+↓
+Qareebi Suspense ka fallback dikhta hai
+↓
+Promise resolve, React dobara render karta hai
+↓
+use resolved value return karta hai
+
+</Flow>
+
+Agar Promise **reject** ho, to qareebi Error Boundary error dikhati hai.
+
+<Callout variant="note" title="Hooks se fark">
+
+`use` ko `if` ya loop ke andar call kar sakte hain. Lekin isay bhi sirf **component ya hook ke andar** call karna hai, aur `try/catch` block ke andar nahi.
+
+</Callout>
+
+## 5. Code example
+
+### Server se Client ko Promise
+
+```tsx
+import { Suspense } from "react";
+import { Comments } from "./comments";
+
+export default async function PostPage() {
+  const commentsPromise = fetch("https://api.example.com/comments").then((r) => r.json());
+
+  return (
+    <Suspense fallback={<p>Comments load ho rahe hain...</p>}>
+      <Comments commentsPromise={commentsPromise} />
+    </Suspense>
+  );
+}
+```
+
+```tsx
+"use client";
+
+import { use } from "react";
+
+type Comment = { id: number; text: string };
+
+export function Comments({ commentsPromise }: { commentsPromise: Promise<Comment[]> }) {
+  const comments = use(commentsPromise);
+  return (
+    <ul>
+      {comments.map((c) => (
+        <li key={c.id}>{c.text}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+### Condition ke andar Context
+
+```tsx
+import { use, type ReactNode } from "react";
+import { ThemeContext } from "./theme-context";
+
+export function Heading({ show, children }: { show: boolean; children: ReactNode }) {
+  if (!show) {
+    return null;
+  }
+  const theme = use(ThemeContext);
+  return <h2 className={theme}>{children}</h2>;
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `fetch(...)` Server Component mein | Promise banaya, `await` nahi kiya, page block nahi hota |
+| `<Suspense fallback>` | Jab tak data na aaye, loading text |
+| `use(commentsPromise)` | Client par resolved data mila |
+| `if (!show) return null` | Early return ke baad bhi `use` chal sakta hai |
+| `use(ThemeContext)` | `useContext` jaisa, lekin conditional |
+
+## 6. Common mistakes
+
+<Mistake
+  title="Client Component ke render mein naya Promise banana"
+  why="Har render par naya Promise banta hai, component baar baar suspend hota hai aur kabhi resolve nahi lagta."
+  better="Promise Server Component se pass karein, ya kisi caching library ya framework ka stable Promise use karein."
+/>
+
+<Mistake
+  title="use ko try catch mein lapetna"
+  why="use suspend hone ke liye ek special exception use karta hai, try catch isay tod deta hai."
+  better="Errors ke liye Error Boundary use karein, ya Promise par catch laga kar fallback value dein."
+/>
+
+<Mistake
+  title="Suspense boundary bhool jana"
+  why="Bina Suspense ke suspend hone wala component upar tak loading ko le jata hai aur poora page atak jata hai."
+  better="use(promise) wale component ko hamesha munasib Suspense ke andar rakhein."
+/>
+
+### Interview tip
+
+`use` ek **hook nahi, API** hai, isi liye condition ke andar chal sakta hai. Data fetching ke liye yeh khud cache nahi karta. Real apps mein Promise framework (jaise Next.js) ya TanStack Query jaisi library se aata hai.
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [useContext](/courses/react/use-context), [Suspense & lazy()](/courses/react/suspense-and-lazy), [Error Boundaries](/courses/react/error-boundaries) |
+| **Saath** | [Server Components](/courses/react/server-components), [useTransition & useDeferredValue](/courses/react/use-transition) |
+| **Baad mein** | [Data Fetching](/courses/react/data-fetching), [Actions, useActionState & useOptimistic](/courses/react/actions-and-form-hooks) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Kya hai | Render mein Promise ya Context parhne ka API |
+| Promise pending | Component suspend, Suspense fallback |
+| Promise rejected | Error Boundary |
+| Conditional call | Haan, `if` aur loop ke andar bhi |
+| Mana hai | `try/catch` ke andar, render mein naya Promise banana |
+
+<Callout variant="important" title="Yaad rakhein">
+
+**`use(promise)`** ke saath hamesha **Suspense** aur **Error Boundary** sochein, aur Promise ko stable rakhein. Context ke liye `use` aur `useContext` dono chalte hain.
+
+</Callout>

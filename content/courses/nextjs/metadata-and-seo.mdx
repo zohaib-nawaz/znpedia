@@ -1,0 +1,206 @@
+---
+title: Metadata & SEO
+description: Next.js metadata SEO ke liye metadata object, generateMetadata, metadataBase, canonical URL, Open Graph aur JSON-LD, Roman Urdu mein App Router ke saath.
+keywords:
+  - next.js metadata seo
+  - generatemetadata next.js
+  - next.js open graph
+  - next.js canonical url
+  - json-ld next.js
+---
+
+## 1. Metadata & SEO kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**Metadata API se aap har page ka `title`, `description`, canonical URL aur social preview tags TypeScript object ki shakal mein define karte hain, aur Next.js inhein `head` mein tags bana deta hai.**
+
+</Callout>
+
+Do tareeqe hain:
+
+- **Static**: `layout.tsx` ya `page.tsx` se `export const metadata`.
+- **Dynamic**: `export async function generateMetadata()` jab title data par depend kare, jaise blog post ka naam.
+
+## 2. Kyun zaroori hai?
+
+Google aur social apps page ka matlab `head` ke tags se samajhte hain. Har page par haath se meta tags likhna, duplicate titles aur bhoole hue canonical links SEO kharab karte hain.
+
+<CompareTable leftTitle="Haath se meta tags" rightTitle="Metadata API">
+
+Har page par head tags copy paste | Ek typed object export karo
+Layout aur page ke tags duplicate | Layout se page tak automatic merge
+Relative image URLs social par toot jate hain | metadataBase se absolute URLs
+Typo ka pata nahi chalta | Metadata type se autocomplete aur errors
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Page | Metadata |
+| --- | --- |
+| Root layout | Site name, title template, `metadataBase` |
+| Blog post | `generateMetadata` se post ka title aur description |
+| Product page | Open Graph image, price wala JSON-LD |
+| Duplicate URLs (filters, query params) | `alternates.canonical` |
+| Admin pages | `robots: { index: false }` |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Metadata resolve hone ka order">
+
+Root layout ka metadata
+↓
+Nested layout ka metadata
+↓
+Page ka metadata ya generateMetadata
+↓
+Next.js sab merge karta hai, neeche wala segment override karta hai
+↓
+Final tags HTML head mein
+
+</Flow>
+
+`metadata` aur `generateMetadata` sirf Server Components mein export ho sakte hain. Ek hi segment se dono export nahi kar sakte.
+
+## 5. Code example
+
+### Root layout: base aur template
+
+```tsx
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  metadataBase: new URL("https://znpedia.com"),
+  title: {
+    default: "ZnPedia",
+    template: "%s | ZnPedia",
+  },
+  description: "Roman Urdu mein web development seekhein.",
+  openGraph: {
+    siteName: "ZnPedia",
+    locale: "ur_PK",
+    type: "website",
+  },
+  twitter: { card: "summary_large_image" },
+};
+```
+
+### Dynamic page: `generateMetadata`
+
+```tsx
+import type { Metadata } from "next";
+import { getPost } from "@/lib/posts";
+
+type Props = { params: Promise<{ slug: string }> };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const post = await getPost(slug);
+
+  return {
+    title: post.title,
+    description: post.excerpt,
+    alternates: { canonical: `/blog/${slug}` },
+    openGraph: {
+      title: post.title,
+      images: [{ url: post.cover, width: 1200, height: 630 }],
+      type: "article",
+    },
+  };
+}
+
+export default async function Page({ params }: Props) {
+  const { slug } = await params;
+  const post = await getPost(slug);
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: post.title,
+    datePublished: post.publishedAt,
+  };
+
+  return (
+    <article>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
+      />
+      <h1>{post.title}</h1>
+    </article>
+  );
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `metadataBase` | Relative URLs (canonical, OG image) ko absolute banata hai |
+| `title.template` | Child page ka title `%s` ki jagah aata hai, jaise "Closures \| ZnPedia" |
+| `await params` | Next.js 16 mein `params` ek Promise hai |
+| `alternates.canonical` | Google ko batata hai is page ka asal URL kaun sa hai |
+| `openGraph`, `twitter` | WhatsApp, LinkedIn, X par share preview |
+| JSON-LD `script` | Structured data, rich results ke liye, `<` escape kiya gaya |
+
+<Callout variant="note" title="Fetch ki fikr na karein">
+
+`generateMetadata` aur page dono mein same `getPost` call hai. `fetch` requests automatically memoize hoti hain, aur ORM wale function ko React ke `cache` se wrap kar ke ek hi request mein dobara call se bacha ja sakta hai.
+
+</Callout>
+
+## 6. Common mistakes
+
+<Mistake
+  title="metadataBase set na karna"
+  why="Relative Open Graph image ya canonical URL absolute nahi banta, social previews mein image nahi dikhti."
+  better="Root layout mein metadataBase: new URL(production domain) set karo."
+/>
+
+<Mistake
+  title="Client Component se metadata export karna"
+  why="metadata aur generateMetadata sirf Server Components mein support hain, use client file mein ignore ya error hota hai."
+  better="Page ko Server Component rakho aur interactive hissa alag Client Component mein le jao."
+/>
+
+<Mistake
+  title="Har page ka same description"
+  why="Google duplicate descriptions ko kamzor signal samajhta hai aur khud snippet bana leta hai."
+  better="Har page ki unique description likho, dynamic pages mein data se banao."
+/>
+
+<Mistake
+  title="Canonical bhool jana jab ek page kai URLs par khulta ho"
+  why="Query params ya filters wale URLs duplicate content ban jate hain aur ranking bat jati hai."
+  better="alternates.canonical se asal URL batao."
+/>
+
+### Interview tip
+
+"Static `metadata` aur `generateMetadata` mein farq?" Static object build time par fixed hai. `generateMetadata` async function hai jo `params` aur data fetch kar ke har route ke liye alag metadata banata hai.
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Chapters |
+| --- | --- |
+| Pehle | [Layouts & Templates](/courses/nextjs/layouts-and-templates), [Dynamic Routes](/courses/nextjs/dynamic-routes), [Data Fetching](/courses/nextjs/data-fetching) |
+| Saath mein | [Sitemap, Robots & OG Images](/courses/nextjs/sitemap-and-robots) |
+| Baad mein | [Internationalization (i18n)](/courses/nextjs/internationalization), [Performance & Core Web Vitals](/courses/nextjs/performance) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Static metadata | `export const metadata: Metadata` |
+| Dynamic metadata | `export async function generateMetadata` |
+| Absolute URLs | `metadataBase` root layout mein |
+| Duplicate URLs | `alternates.canonical` |
+| Social preview | `openGraph` aur `twitter` |
+| Structured data | JSON-LD `script` tag page mein |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Root layout mein `metadataBase` aur title template rakho, har page ki unique description do, dynamic pages ke liye `generateMetadata` use karo, aur canonical URL kabhi na bhoolo.
+
+</Callout>

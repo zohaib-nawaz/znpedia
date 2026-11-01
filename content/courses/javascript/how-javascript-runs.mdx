@@ -1,0 +1,178 @@
+---
+title: How JavaScript Runs
+description: JavaScript engine runtime kya hota hai, V8, call stack aur browser ya Node.js mein code kaise chalta hai. Roman Urdu mein simple mental model.
+keywords:
+  - javascript engine runtime
+  - how javascript works
+  - v8 engine
+  - javascript call stack
+  - browser vs node.js runtime
+---
+
+## 1. JavaScript runtime kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**JavaScript engine code ko run karta hai, aur runtime woh environment hai jo engine ke saath extra features (jaise DOM, timers, file system) deta hai.**
+
+</Callout>
+
+Aap ka likha hua JavaScript text khud se kuch nahi karta. Usay chalane ke liye ek **engine** chahiye. Engine akela sirf language samajhta hai. Page ka button, `fetch`, `setTimeout` jaisi cheezein **runtime** deta hai.
+
+| Runtime | Engine | Extra features |
+| --- | --- | --- |
+| Chrome / Edge | V8 | DOM, `fetch`, `localStorage`, timers |
+| Firefox | SpiderMonkey | DOM, `fetch`, timers |
+| Safari | JavaScriptCore | DOM, `fetch`, timers |
+| Node.js | V8 | File system, `process`, `fetch`, timers |
+| Deno / Bun | V8 / JavaScriptCore | File system, web APIs, built-in tools |
+
+## 2. Kyun zaroori hai?
+
+Beginners aksar sochte hain ke `document` har jagah milega. Phir Node.js mein `document is not defined` error aata hai. Engine aur runtime ka farq samajh kar yeh confusion khatam ho jata hai.
+
+<CompareTable leftTitle="Farq na samajhna" rightTitle="Farq samajhna">
+
+document har jagah use karne ki koshish | Pata hai document sirf browser deta hai
+Errors ka reason samajh nahi aata | Error dekh kar runtime ka masla pakar lete hain
+Code ka order confusing lagta hai | Call stack se order clear hota hai
+setTimeout ko magic samajhna | Pata hai timer runtime chalata hai, engine nahi
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Situation | Yeh knowledge kaise kaam aati hai |
+| --- | --- |
+| **Frontend code** | Pata hota hai ke DOM aur `window` browser runtime se aate hain |
+| **Backend code** | Node.js mein `fs` aur `process` milte hain, DOM nahi |
+| **Debugging** | Error ke stack trace mein call stack dikhta hai |
+| **Performance** | Bhari loop main thread ko block kar deta hai, yeh samajh aata hai |
+| **Async code** | [Event Loop](/courses/javascript/event-loop) samajhne ki buniyad |
+
+## 4. Kaise kaam karta hai?
+
+Engine pehle code ko **parse** karta hai (text ko structure mein badalna). Phir modern engines code ko **JIT (Just In Time) compile** karte hain: pehle jaldi chalne wala version, aur jo code bar bar chale usay aur optimize karte hain.
+
+<Flow title="Engine ke andar">
+
+JavaScript source code
+     ↓
+Parser (code ko structure mein badalta hai)
+     ↓
+Interpreter (code jaldi chalna shuru)
+     ↓
+JIT compiler (garam code ko fast banata hai)
+     ↓
+Machine code run hota hai
+
+</Flow>
+
+JavaScript **single threaded** hai. Matlab ek waqt mein ek hi kaam chalta hai. Har function call **call stack** par jata hai, aur kaam khatam hone par wahan se nikal jata hai.
+
+<Flow title="Call stack ka simple flow">
+
+Global code stack par
+     ↓
+greet() call, stack par push
+     ↓
+greet() khatam, stack se pop
+     ↓
+Agli line chalti hai
+
+</Flow>
+
+Timers aur network jaise slow kaam runtime khud sambhalta hai. Jab woh kaam ready ho jaye, uska callback ek queue mein lagta hai aur stack khali hone par chalta hai. Yeh poora system **event loop** kehlata hai.
+
+<Callout variant="important" title="Mental model">
+
+**Engine = language chalane wali machine. Runtime = engine + duniya se baat karne ke tools. Call stack = abhi kya chal raha hai.**
+
+</Callout>
+
+## 5. Code example
+
+Call stack ka order dekhein:
+
+```js
+function greet(name) {
+  console.log(`Hello, ${name}`);
+}
+
+console.log("Start");
+greet("Ali");
+console.log("End");
+```
+
+Output: `Start`, phir `Hello, Ali`, phir `End`. Har line apni bari par chalti hai.
+
+Ab runtime ka kaam dekhein:
+
+```js
+console.log("1");
+
+setTimeout(() => {
+  console.log("2 (timer se)");
+}, 0);
+
+console.log("3");
+```
+
+Output: `1`, `3`, phir `2 (timer se)`. Timer `0` ms ka hai, phir bhi callback baad mein chalta hai, kyun ke woh queue se tab aata hai jab call stack khali ho.
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `greet("Ali")` | Function call stack par jata hai aur khatam hone par nikal jata hai |
+| `setTimeout` | Engine ka nahi, runtime ka feature hai |
+| `0` ms delay | Kam se kam itna wait, guaranteed foran nahi |
+| Output order | Pehle saara sync code, phir queue wale callbacks |
+
+### Interview tip
+
+"JavaScript single threaded hai to async kaam kaise karti hai?" Jawab: engine single threaded hai, lekin runtime (browser ya Node.js) timers aur network background mein sambhalta hai, aur event loop un ke callbacks ko call stack khali hone par chalata hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Node.js mein document ya window use karna"
+  why="Yeh browser runtime ke objects hain. Node.js mein yeh exist nahi karte, is liye ReferenceError aata hai."
+  better="Pehle dekhein code kahan chalega. Dono jagah chalne wala code chahiye ho to globalThis use karein."
+/>
+
+<Mistake
+  title="setTimeout(fn, 0) ko foran chalne wala samajhna"
+  why="Callback queue mein jata hai aur tab chalta hai jab saara sync code khatam ho jaye."
+  better="Order ko call stack aur event loop ke hisaab se sochein, delay ko sirf minimum time samjhein."
+/>
+
+<Mistake
+  title="Bohot bhari loop main thread par chalana"
+  why="Single thread block ho jata hai, browser mein page freeze lagta hai aur clicks kaam nahi karte."
+  better="Bhari kaam ko chhote hisson mein todein ya Web Worker mein le jayein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Introduction](/courses/javascript/introduction) |
+| **Is ke baad** | [Setup & First Program](/courses/javascript/setup-and-first-program) |
+| **Aage depth** | [Event Loop](/courses/javascript/event-loop), [Timers](/courses/javascript/timers), [Scope & Hoisting](/courses/javascript/scope-and-hoisting) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Engine | Code parse, compile aur run karta hai (V8, SpiderMonkey) |
+| Runtime | Engine + extra APIs (browser ya Node.js) |
+| JIT | Bar bar chalne wale code ko runtime par optimize karna |
+| Single threaded | Ek waqt mein ek kaam, ek call stack |
+| Async kaam | Runtime sambhalta hai, event loop callback chalata hai |
+
+<Callout variant="important" title="Yaad rakhein">
+
+`document` browser deta hai, `fs` Node.js deta hai. Language dono jagah same hai, **runtime alag** hai.
+
+</Callout>

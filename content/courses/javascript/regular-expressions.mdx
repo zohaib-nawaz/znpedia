@@ -1,0 +1,179 @@
+---
+title: Regular Expressions
+description: JavaScript regex kya hai, patterns, flags, test, match aur replace kaise use karte hain, email aur phone validation ke examples ke saath.
+keywords:
+  - javascript regex
+  - regular expressions in urdu
+  - regex test match replace
+  - regex flags javascript
+---
+
+## 1. Regular Expressions kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Regular expression (regex) ek pattern hai jis se text ke andar koi khaas shape dhoondi, check ki ya badli jati hai.**
+
+</Callout>
+
+JavaScript mein regex do tareeqon se banta hai: literal `/abc/i` ya constructor `new RegExp("abc", "i")`. Literal zyada common hai, constructor tab jab pattern runtime par banana ho.
+
+## 2. Kyun zaroori hain?
+
+Socho aapko check karna hai ke string mein sirf 4 se 6 digits hain. Bina regex ke loop, `if` aur character checks likhne parenge. Regex ek line mein yeh kaam kar deta hai.
+
+<CompareTable leftTitle="Manual string code" rightTitle="Regex ke saath">
+
+Har character par loop aur if | Ek pattern poora rule batata hai
+Naya rule matlab naya function | Pattern thora sa badlo
+Saare matches dhoondna lamba kaam | g flag se saare matches ek saath
+Replace ke liye split aur join | replace ya replaceAll ek call mein
+
+</CompareTable>
+
+## 3. Kahan use hote hain?
+
+| Use case | Example |
+| --- | --- |
+| **Form validation** | Email, phone, postal code check |
+| **Search** | Text mein case-insensitive word dhoondna |
+| **Cleanup** | Extra spaces hatana, slug banana |
+| **Parsing** | Log lines ya dates se hissay nikalna |
+| **Editors** | VS Code ka find and replace regex support karta hai |
+
+## 4. Kaise kaam karte hain?
+
+Regex engine string ko left se right parhta hai aur har position par pattern match karne ki koshish karta hai.
+
+<Flow title="Regex match ka flow">
+
+Pattern aur flags banao
+↓
+String par method call karo
+↓
+Engine har position se match try karta hai
+↓
+Match mila to result, warna null ya false
+
+</Flow>
+
+### Common building blocks
+
+| Pattern | Matlab |
+| --- | --- |
+| `\d` | Koi bhi digit 0 se 9 |
+| `\w` | Letter, digit ya underscore |
+| `\s` | Space, tab, newline |
+| `.` | Newline ke ilawa koi bhi character |
+| `[abc]` | a, b ya c mein se ek |
+| `^` aur `$` | String ka shuru aur aakhir |
+| `+`, `*`, `?` | Ek ya zyada, zero ya zyada, optional |
+| `{2,4}` | 2 se 4 baar |
+| `a\|b` | a ya b |
+| `( )` | Group, value capture karta hai |
+
+### Flags
+
+| Flag | Kaam |
+| --- | --- |
+| `g` | Saare matches, sirf pehla nahi |
+| `i` | Case-insensitive |
+| `m` | Multiline, `^` aur `$` har line par |
+| `u` | Unicode support (emoji, Urdu text) |
+
+## 5. Code example
+
+### test, match aur replace
+
+```js
+const phone = /^03\d{2}-?\d{7}$/;
+console.log(phone.test("0300-1234567"));
+console.log(phone.test("12345"));
+
+const text = "Order 12 aur order 45 ship ho gaye";
+console.log(text.match(/\d+/g));
+
+const slug = "  Learn JS   Regex  ".trim().toLowerCase().replace(/\s+/g, "-");
+console.log(slug);
+```
+
+### Named groups aur matchAll
+
+```js
+const datePattern = /(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})/;
+const result = "2026-11-01".match(datePattern);
+console.log(result.groups.year, result.groups.month);
+
+const log = "user=ali id=7, user=sara id=9";
+for (const m of log.matchAll(/user=(\w+) id=(\d+)/g)) {
+  console.log(m[1], m[2]);
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `^03\d{2}` | String 03 se shuru ho, phir 2 digits |
+| `-?` | Dash optional hai |
+| `\d{7}$` | Aakhir mein exactly 7 digits |
+| `.test()` | true ya false deta hai |
+| `.match(/\d+/g)` | Saare numbers ka array: `["12", "45"]` |
+| `\s+` with `g` | Har space group ko dash se badal deta hai |
+| `(?<year>...)` | Named group, `result.groups.year` se milta hai |
+| `matchAll` | `g` flag ke saath har match aur us ke groups deta hai |
+
+### Interview tip
+
+`g` flag wala regex `lastIndex` yaad rakhta hai. Isi regex par baar baar `.test()` call karein to results badalte rehte hain. Validation ke liye `g` flag mat lagayein.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Validation pattern mein ^ aur $ bhool jana"
+  why="Bina anchors ke pattern string ke kisi bhi hissay mein match ho jata hai, abc12345xyz bhi pass ho jata hai."
+  better="Poori string check karni ho to pattern ko ^ se shuru aur $ par khatam karein."
+/>
+
+<Mistake
+  title="Special characters ko escape na karna"
+  why="Dot ka matlab koi bhi character hai, is liye /1.5/ wala pattern 125 ko bhi match kar leta hai."
+  better="Literal dot ke liye backslash lagayein, jaise /1\.5/."
+/>
+
+<Mistake
+  title="new RegExp mein single backslash likhna"
+  why="String ke andar backslash khud escape character hai, \d sirf d ban jata hai."
+  better="Constructor mein double backslash likhein, ya jahan mumkin ho regex literal use karein."
+/>
+
+<Mistake
+  title="Email jaisi cheezon ke liye perfect regex likhne ki koshish"
+  why="Bohot complex pattern parhna aur maintain karna mushkil hai aur phir bhi har case cover nahi hota."
+  better="Simple pattern se basic check karein aur asli verification server par ya confirmation email se karein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Strings & Template Literals](/courses/javascript/strings), [Conditionals](/courses/javascript/conditionals) |
+| **Saath** | [Forms & Validation](/courses/javascript/forms-and-validation) |
+| **Baad mein** | [Debounce & Throttle](/courses/javascript/debounce-and-throttle), [React Forms](/courses/react/forms) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Regex | Text ke liye pattern |
+| Banane ka tareeqa | `/pattern/flags` ya `new RegExp()` |
+| Check | `.test()` true ya false |
+| Nikalna | `.match()`, `.matchAll()` |
+| Badalna | `.replace()`, `.replaceAll()` |
+| Anchors | `^` aur `$` poori string ke liye |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Regex ko **chhota aur readable** rakhein. Validation ke liye anchors lagayein aur `g` flag sirf tab jab saare matches chahiye hon.
+
+</Callout>

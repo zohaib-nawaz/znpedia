@@ -1,0 +1,162 @@
+---
+title: Rules of Hooks
+description: React rules of hooks kya hain, hooks sirf top level aur React functions mein kyun call hote hain, aur ESLint plugin kaise madad karta hai, Roman Urdu mein.
+keywords:
+  - react rules of hooks
+  - hooks top level rule
+  - eslint plugin react hooks
+  - conditional hook error react
+---
+
+## 1. Rules of Hooks kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Hooks ke do rules hain: unhein sirf top level par call karo, aur sirf React function components ya custom hooks ke andar call karo.**
+
+</Callout>
+
+Hooks woh functions hain jin ka naam `use` se shuru hota hai: `useState`, `useEffect`, `useRef` waghera. Yeh React ki taqat use karne ka tareeqa hain, lekin inke saath kuch pabandiyan hain.
+
+## 2. Kyun zaroori hai?
+
+React hooks ko **naam se nahi, order se** pehchanta hai. Har render par hooks bilkul usi tarteeb se call hone chahiye.
+
+<CompareTable leftTitle="Rules torna" rightTitle="Rules follow karna">
+
+if ke andar hook, kabhi chale kabhi nahi | Har render par same hooks same order
+React state galat hook ko de deta hai | Har hook ko sahi state milti hai
+Ajeeb bugs aur crash | Predictable behaviour
+Debug karna bohot mushkil | Linter pehle hi pakar leta hai
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+Yeh rules **har jagah** apply hote hain jahan hooks hain:
+
+| Jagah | Allowed? |
+| --- | --- |
+| Function component ki top level | Haan |
+| Custom hook (naam `use` se shuru) ki top level | Haan |
+| `if`, `for`, `while` ke andar | Nahi |
+| Early `return` ke baad | Nahi |
+| Event handler ya `useEffect` callback ke andar | Nahi |
+| Normal JavaScript function mein | Nahi |
+
+## 4. Kaise kaam karta hai?
+
+React har component ke liye hooks ki ek **list** rakhta hai. Pehla `useState` call slot 1, doosra slot 2, aur aise hi.
+
+<Flow title="Hooks ka order">
+
+Render 1: useState name, useState age, useEffect
+↓
+React slots save karta hai: 1 name, 2 age, 3 effect
+↓
+Render 2: same order mein same hooks
+↓
+Slot 1 name ko, slot 2 age ko milta hai
+
+</Flow>
+
+Agar render 2 mein pehla hook kisi `if` ki wajah se skip ho jaye, to `age` wala hook slot 1 padh lega aur sab kuch ek jagah khisak jayega.
+
+<Callout variant="note" title="Ek exception">
+
+React 19 ki `use()` API hook nahi, ek special function hai. Isay `if` aur loops ke andar call kar sakte hain. Detail [The use() API](/courses/react/use-hook) mein.
+
+</Callout>
+
+## 5. Code example
+
+### Galat: condition ke andar hook
+
+```jsx
+function Profile({ isLoggedIn }) {
+  if (isLoggedIn) {
+    const [name, setName] = useState("");
+  }
+  const [theme, setTheme] = useState("light");
+}
+```
+
+### Sahi: hook top par, condition andar
+
+```jsx
+function Profile({ isLoggedIn }) {
+  const [name, setName] = useState("");
+  const [theme, setTheme] = useState("light");
+
+  if (!isLoggedIn) {
+    return <p>Pehle login karein</p>;
+  }
+
+  return <input value={name} onChange={(e) => setName(e.target.value)} />;
+}
+```
+
+### Linter setup
+
+```bash
+npm install -D eslint-plugin-react-hooks
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| Pehla example | `isLoggedIn` badla to hooks ki ginti badal gayi, React confuse |
+| Doosra example | Dono hooks hamesha chalte hain, sirf JSX conditional hai |
+| Early `return` | Hooks ke **baad** hai, isliye safe |
+| `eslint-plugin-react-hooks` | Rules tootne par editor mein error dikhata hai |
+
+Vite aur Next.js ke templates mein yeh plugin aam taur par pehle se laga hota hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Early return ke baad hook likhna"
+  why="Kuch renders mein return pehle ho jata hai aur neeche wala hook skip, order toot jata hai."
+  better="Saare hooks component ke bilkul upar likho, return aur conditions unke baad."
+/>
+
+<Mistake
+  title="Event handler ke andar useState ya useEffect call karna"
+  why="Handler render ke dauran nahi chalta, hook ka slot bana hi nahi sakta aur React error deta hai."
+  better="Hook top level par banao, handler mein sirf setter call karo."
+/>
+
+<Mistake
+  title="Custom function mein hook use karna jis ka naam use se shuru nahi hota"
+  why="React aur linter usay normal function samajhte hain aur rules check nahi hote."
+  better="Hooks wale function ka naam use se shuru karo, jaise useWindowSize."
+/>
+
+### Interview tip
+
+"Hooks loop mein kyun nahi?" Jawab: React hooks ko **call order** se track karta hai. Loop ya condition order badal sakti hai, isliye hooks top level par hone chahiye.
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Chapters |
+| --- | --- |
+| **Pehle** | [State with useState](/courses/react/state) |
+| **Baad mein** | [useEffect](/courses/react/use-effect), [useRef](/courses/react/use-ref), [Custom Hooks](/courses/react/custom-hooks) |
+| **Related** | [React Compiler](/courses/react/react-compiler) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Rule 1 | Sirf top level par, conditions aur loops se bahar |
+| Rule 2 | Sirf components aur custom hooks mein |
+| Wajah | React hooks ko order se pehchanta hai |
+| Madadgar | `eslint-plugin-react-hooks` |
+| Exception | `use()` conditionally call ho sakti hai |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Har render par **same hooks, same order**. Condition JSX mein lagao, hook par nahi.
+
+</Callout>

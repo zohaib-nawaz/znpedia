@@ -1,0 +1,180 @@
+---
+title: How React Renders
+description: React rendering virtual DOM ke saath kaise hoti hai, trigger, render aur commit phases, re-render kab hota hai aur reconciliation Roman Urdu mein.
+keywords:
+  - react rendering virtual dom
+  - react re-render
+  - react reconciliation
+  - render and commit phase
+---
+
+## 1. React rendering kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**Rendering ka matlab hai React ka aap ke component function ko call karna taake pata chale screen par kya dikhana hai.**
+
+</Callout>
+
+Render hone ka matlab yeh **nahi** ke DOM foran badal gaya. React pehle memory mein naya UI ka description (React elements ka tree) banata hai. Is in-memory tree ko aam taur par **virtual DOM** kaha jata hai. Phir React purane aur naye tree ko compare kar ke sirf zaroori DOM changes karta hai.
+
+## 2. Kyun zaroori hai?
+
+Real DOM ko baar baar chherna mehnga kaam hai. Agar har chhote change par poora page dobara banaya jaye to app slow ho jaye aur input ka focus ya scroll position kho jaye.
+
+<CompareTable leftTitle="Poora DOM dobara banana" rightTitle="React ka tareeqa">
+
+Har change par saare elements naye | Sirf badle hue nodes update
+Input focus aur scroll reset | Jo nahi badla woh waisa hi rehta hai
+Developer khud DOM manage kare | Developer sirf state badle, React baqi kaam kare
+Kai updates matlab kai DOM writes | Kai state updates batch ho kar ek commit
+
+</CompareTable>
+
+## 3. Kahan kaam aata hai?
+
+Yeh samajh har jagah kaam aati hai jahan React app slow ya ajeeb behave kare:
+
+| Situation | Rendering ki samajh kaise madad karti hai |
+| --- | --- |
+| **Performance** | Pata chalta hai kaun se components bekar re-render ho rahe hain |
+| **State reset** | Samajh aata hai ke state kab qaim rehti hai aur kab khatam |
+| **Lists** | `key` ka role samajh aata hai |
+| **Debugging** | React DevTools Profiler ki report parhna asaan |
+| **Interviews** | Virtual DOM aur reconciliation common sawal hain |
+
+## 4. Kaise kaam karta hai?
+
+React ka har screen update teen steps mein hota hai:
+
+<Flow title="Trigger, render, commit">
+
+Trigger: pehli baar createRoot render, ya state update
+↓
+Render: React component functions call karta hai
+↓
+Naya element tree banta hai
+↓
+Reconciliation: purane aur naye tree ka farq nikalta hai
+↓
+Commit: sirf zaroori DOM changes lagte hain
+↓
+Browser screen paint karta hai
+
+</Flow>
+
+### Re-render kab hota hai?
+
+| Wajah | Detail |
+| --- | --- |
+| **Apni state badli** | `setCount` jaisa setter naye value ke saath call hua |
+| **Parent re-render hua** | Parent render ho to by default saare children bhi render hote hain |
+| **Context value badli** | Jo component woh context use kar raha hai |
+
+Props badalna khud trigger nahi hai. Props tab badalte hain jab parent re-render hota hai.
+
+### Reconciliation ke do asool
+
+| Asool | Matlab |
+| --- | --- |
+| Same position, same type | React element ko reuse karta hai aur state qaim rehti hai |
+| Type badal gaya | Purana hissa hata kar naya banata hai, state khatam |
+
+Lists mein React `key` dekh kar pehchanta hai ke kaun sa item kaun sa hai.
+
+## 5. Code example
+
+```jsx
+import { useState } from "react";
+
+function Child() {
+  console.log("Child render hua");
+  return <p>Main child hoon</p>;
+}
+
+export default function Counter() {
+  const [count, setCount] = useState(0);
+  console.log("Counter render hua:", count);
+
+  function handleClick() {
+    setCount((c) => c + 1);
+    setCount((c) => c + 1);
+  }
+
+  return (
+    <div>
+      <h2>Count: {count}</h2>
+      <button onClick={handleClick}>+2</button>
+      <Child />
+    </div>
+  );
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| Pehla load | `Counter` aur `Child` dono render hote hain |
+| Button click | `setCount` re-render trigger karta hai |
+| Do `setCount` calls | Batch ho kar ek hi re-render, count 2 barhta hai |
+| `Child` ka log | Parent ke saath `Child` bhi render hota hai |
+| DOM mein | Sirf `h2` ka text badalta hai, `p` aur `button` wahi rehte hain |
+| StrictMode | Development mein render do baar chal sakta hai, is liye log double dikh sakta hai |
+
+React 19 ke saath **React Compiler** use karein to woh components ko automatic memoize kar deta hai, aur `Child` jaise components bekar re-render se bach jate hain. Details [React Compiler](/courses/react/react-compiler) mein.
+
+### Interview tip
+
+"Re-render ka matlab DOM update hai?" Nahi. Re-render sirf component function ka dobara chalna hai. DOM tabhi badalta hai jab reconciliation mein farq mile. Is liye har re-render mehnga nahi hota.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Re-render ko hamesha masla samajhna"
+  why="Zyada tar re-renders tez hote hain aur DOM ko chhoote bhi nahi."
+  better="Pehle React DevTools Profiler se naapein, phir sirf slow hisson ko optimize karein."
+/>
+
+<Mistake
+  title="Render ke dauran side effects karna"
+  why="Render pure hona chahiye. Render mein fetch ya DOM change karne se double calls aur bugs aate hain."
+  better="Side effects event handlers mein ya zaroorat ho to useEffect mein rakhein."
+/>
+
+<Mistake
+  title="State update ke foran baad nayi value expect karna"
+  why="setCount agle render ke liye value set karta hai, usi function mein count purana hi rehta hai."
+  better="Nayi value chahiye to updater function use karein ya calculated value ek variable mein rakh lein."
+/>
+
+<Mistake
+  title="List mein index ko key banana jab order badalta ho"
+  why="Reorder ya delete par React galat item ki state reuse kar leta hai."
+  better="Har item ki stable unique id ko key banayein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Components](/courses/react/components), [JSX](/courses/react/jsx), [DOM Basics](/courses/javascript/dom-basics) |
+| **Saath** | [State with useState](/courses/react/state), [Lists & Keys](/courses/react/lists-and-keys) |
+| **Baad mein** | [React.memo & Performance](/courses/react/memo-and-performance), [React Compiler](/courses/react/react-compiler), [useEffect](/courses/react/use-effect) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Render | Component function ka call hona |
+| Teen steps | Trigger, render, commit |
+| Virtual DOM | Memory mein React elements ka tree |
+| Reconciliation | Purane aur naye tree ka farq |
+| Re-render triggers | State, parent render, context |
+| Batching | Kai state updates ek re-render mein |
+
+<Callout variant="important" title="Yaad rakhein">
+
+**Render memory mein hota hai, commit DOM mein.** React sirf wohi DOM badalta hai jo sach mein badla ho.
+
+</Callout>

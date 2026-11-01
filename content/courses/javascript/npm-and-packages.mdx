@@ -1,0 +1,186 @@
+---
+title: npm & Packages
+description: npm packages javascript projects mein kaise install aur manage hote hain, package.json, node_modules, scripts aur versions Roman Urdu mein samjhein.
+keywords:
+  - npm packages javascript
+  - package json explained
+  - npm install dependencies
+  - npx and npm scripts
+---
+
+## 1. npm aur Packages kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**npm (Node Package Manager) ek tool aur online registry hai jahan se aap doosron ka likha hua JavaScript code (package) apne project mein install karte hain.**
+
+</Callout>
+
+**Package** ek folder hai jis mein code aur ek `package.json` file hoti hai. npm Node.js ke saath khud install ho jata hai, is liye `node -v` chalta hai to `npm -v` bhi chalega.
+
+## 2. Kyun zaroori hai?
+
+Date format karna, API call karna, ya React app banana, har cheez khud zero se likhna waqt ka zaya hai. npm se tested code ek command mein mil jata hai.
+
+<CompareTable leftTitle="Bina npm" rightTitle="npm ke saath">
+
+Library ki file haath se download karo | npm install se ek command mein
+Version yaad rakhna mushkil | package.json mein version likha hota hai
+Team ke paas alag alag versions | package-lock.json sab ko same version deta hai
+Update karna manual kaam | npm update aur npm outdated
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Kaam | Example |
+| --- | --- |
+| **Project banana** | `npm create vite@latest` |
+| **Library install** | `npm install react`, `npm install zod` |
+| **Dev tools** | ESLint, Prettier, TypeScript, Vitest |
+| **Scripts chalana** | `npm run dev`, `npm run build`, `npm test` |
+| **Bina install tool chalana** | `npx prettier --write .` |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="npm install ka flow">
+
+npm install zod
+↓
+npm registry se package download
+↓
+node_modules folder mein save
+↓
+package.json mein dependency add
+↓
+package-lock.json mein exact version lock
+
+</Flow>
+
+| File / folder | Kaam | Git mein? |
+| --- | --- | --- |
+| `package.json` | Project ka naam, scripts, dependencies | Haan |
+| `package-lock.json` | Har package ka exact version | Haan |
+| `node_modules/` | Asli downloaded code | Nahi, `.gitignore` mein |
+
+### Version numbers
+
+Version **major.minor.patch** format mein hota hai, jaise `19.2.0`.
+
+| Symbol | Matlab |
+| --- | --- |
+| `^19.2.0` | 19.2.0 ya us se naya 19.x.x, major nahi badlega |
+| `~19.2.0` | Sirf patch updates, 19.2.0 ya us se naya 19.2.x |
+| `19.2.0` | Bilkul yehi version |
+
+## 5. Code example
+
+### Naya project aur packages
+
+```bash
+mkdir my-app
+cd my-app
+npm init -y
+npm install dayjs
+npm install -D prettier
+npx prettier --version
+```
+
+### package.json
+
+```json
+{
+  "name": "my-app",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "dayjs": "^1.11.13"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2"
+  }
+}
+```
+
+### Package use karna
+
+```js
+import dayjs from "dayjs";
+
+console.log(dayjs().format("DD MMM YYYY"));
+```
+
+```bash
+npm run start
+npm run format
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `npm init -y` | Default `package.json` bana deta hai |
+| `npm install dayjs` | Runtime dependency, app chalne ke liye chahiye |
+| `-D` | devDependency, sirf development mein chahiye |
+| `npx` | Installed ya remote package ka command chalata hai |
+| `"type": "module"` | Node ko batata hai ke `import` / `export` use hoga |
+| `npm run format` | `scripts` mein likhi command chalata hai |
+
+### Interview tip
+
+`npm install` aur `npm ci` ka farq poocha jata hai. `npm ci` sirf `package-lock.json` se exact versions install karta hai aur `node_modules` pehle delete karta hai, is liye CI aur deployment ke liye behtar hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="node_modules ko Git mein commit karna"
+  why="Yeh folder hazaron files ka hota hai aur kabhi bhi npm install se dobara ban sakta hai."
+  better="node_modules ko .gitignore mein rakhein aur sirf package.json aur package-lock.json commit karein."
+/>
+
+<Mistake
+  title="package-lock.json delete kar dena"
+  why="Phir har developer ke paas thore alag versions aa sakte hain aur works on my machine wale bugs aate hain."
+  better="Lock file commit karein aur CI mein npm ci use karein."
+/>
+
+<Mistake
+  title="Har chhoti cheez ke liye package install karna"
+  why="Har package security risk aur bundle size badhata hai."
+  better="Install se pehle dekhein ke kaam built-in JavaScript se ho sakta hai ya nahi, aur package ki downloads aur maintenance check karein."
+/>
+
+<Mistake
+  title="Dev tools ko normal dependency bana dena"
+  why="Production install mein bekar packages aate hain."
+  better="ESLint, Prettier aur TypeScript jaise tools -D flag ke saath install karein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Setup & First Program](/courses/javascript/setup-and-first-program), [JSON](/courses/javascript/json) |
+| **Saath** | [Modules: import & export](/courses/javascript/modules) |
+| **Baad mein** | [React Setup with Vite](/courses/react/setup-with-vite), [Debugging JavaScript](/courses/javascript/debugging) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| npm | Package manager aur registry |
+| `package.json` | Project ki details, scripts, dependencies |
+| `package-lock.json` | Exact versions, commit karein |
+| `node_modules` | Downloaded code, commit na karein |
+| `-D` | devDependency |
+| `npx` | Package ka command bina global install |
+
+<Callout variant="important" title="Yaad rakhein">
+
+`package.json` aur `package-lock.json` project ka **recipe card** hain. In dono se koi bhi `npm install` chala kar poora project dobara bana sakta hai.
+
+</Callout>

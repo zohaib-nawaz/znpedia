@@ -1,0 +1,201 @@
+---
+title: "Loading, Error & Not Found UI"
+description: "Next.js loading error not-found files: loading.tsx se instant loading state, error.tsx se error boundary aur notFound() se 404 page banana Roman Urdu mein."
+keywords:
+  - next.js loading error not-found
+  - next.js loading.tsx
+  - next.js error.tsx
+  - next.js not-found page
+  - next.js global-error
+---
+
+## 1. Loading, error aur not found UI kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**`loading.tsx`, `error.tsx` aur `not-found.tsx` special files hain jo kisi route segment ke liye loading state, error fallback aur 404 UI automatically lagati hain.**
+
+</Callout>
+
+Har page mein manually `isLoading` aur `try catch` likhne ki bajaye, aap segment folder mein yeh files rakh dete hain. Next.js inhein React ke **Suspense** aur **Error Boundary** mein badal deta hai.
+
+## 2. Kyun zaroori hai?
+
+<CompareTable leftTitle="Bina special files" rightTitle="Special files ke saath">
+
+Data aane tak blank screen | loading.tsx foran skeleton dikhata hai
+Ek error se poori app crash | error.tsx sirf us segment ko fallback deta hai
+Ghalat ID par khaali page | notFound() se sahi 404 UI aur status
+Har page mein loading code | Ek file, poora segment covered
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| File | Kab dikhti hai |
+| --- | --- |
+| `loading.tsx` | Page ka data load ho raha ho |
+| `error.tsx` | Segment ke render mein unexpected error |
+| `not-found.tsx` | `notFound()` call ho ya URL match na ho |
+| `global-error.tsx` | Root layout khud fail ho jaye |
+
+Real misaalein: product page ka skeleton, dashboard widget fail hone par "Try again" button, deleted blog post par 404.
+
+## 4. Kaise kaam karta hai?
+
+Next.js ek segment ki files ko is tarteeb mein wrap karta hai:
+
+<Flow title="Segment ka component hierarchy">
+
+layout.tsx
+   ↓
+template.tsx
+   ↓
+error.tsx (Error Boundary)
+   ↓
+loading.tsx (Suspense fallback)
+   ↓
+not-found.tsx
+   ↓
+page.tsx
+
+</Flow>
+
+Is se do baatein nikalti hain:
+
+- `error.tsx` **usi segment ke layout** ki errors nahi pakarta, kyunke layout us ke upar hai. Woh parent segment ka `error.tsx` pakarta hai.
+- `loading.tsx` dikhte waqt layout interactive rehta hai, user navbar aur sidebar use kar sakta hai.
+
+<Callout variant="important" title="Mental model">
+
+**loading = Suspense fallback, error = Error Boundary, notFound() = 404 throw.**
+
+</Callout>
+
+## 5. Code example
+
+### loading.tsx
+
+```tsx
+export default function Loading() {
+  return <div className="animate-pulse h-40 rounded bg-gray-200" />;
+}
+```
+
+### error.tsx
+
+```tsx
+"use client";
+
+import { useEffect } from "react";
+
+export default function Error({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  useEffect(() => {
+    console.error(error);
+  }, [error]);
+
+  return (
+    <div>
+      <h2>Kuch ghalat ho gaya</h2>
+      <button onClick={() => reset()}>Dobara koshish karein</button>
+    </div>
+  );
+}
+```
+
+### notFound() aur not-found.tsx
+
+```tsx
+import { notFound } from "next/navigation";
+
+export default async function ProductPage({ params }: PageProps<"/products/[id]">) {
+  const { id } = await params;
+  const res = await fetch(`https://api.example.com/products/${id}`);
+  if (res.status === 404) notFound();
+  const product = await res.json();
+  return <h1>{product.name}</h1>;
+}
+```
+
+```tsx
+import Link from "next/link";
+
+export default function NotFound() {
+  return (
+    <div>
+      <h2>Product nahi mila</h2>
+      <Link href="/products">Sab products dekhein</Link>
+    </div>
+  );
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `loading.tsx` | Page ko Suspense mein wrap, data tak skeleton |
+| `"use client"` in `error.tsx` | Error boundaries Client Components hi hoti hain |
+| `error.digest` | Server error ka hash, server logs se match ke liye |
+| `reset()` | Error state clear kar ke segment dobara render |
+| `notFound()` | Render rokta hai aur qareebi `not-found.tsx` dikhata hai |
+
+<Callout variant="tip" title="Naye 16.x versions">
+
+Next.js 16.3 se `error.tsx` ko `retry` prop bhi milta hai jo segment ka data dobara fetch kar ke render karta hai. Docs ab zyada tar cases mein `retry` recommend karte hain, `reset` sirf state clear karta hai.
+
+</Callout>
+
+### Interview tip
+
+"Root layout ki error kaun pakarta hai?" `app/global-error.tsx`, aur us mein apne `html` aur `body` tags hone chahiye kyunke woh root layout ki jagah render hota hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="error.tsx mein use client bhool jana"
+  why="Error boundary Client Component honi chahiye, warna build error aata hai."
+  better="error.tsx aur global-error.tsx ki pehli line mein use client likhein."
+/>
+
+<Mistake
+  title="Production mein error.message user ko dikhana"
+  why="Server errors ka message production mein generic hota hai taake sensitive details leak na hon."
+  better="User ko friendly message dikhayein aur digest se server logs mein asal error dhoondein."
+/>
+
+<Mistake
+  title="Layout ki error usi folder ke error.tsx se pakarne ki umeed"
+  why="error.tsx apne segment ke layout ke andar hota hai, upar nahi."
+  better="Layout errors ke liye parent segment mein error.tsx rakhein, root ke liye global-error.tsx."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Routing & Pages](/courses/nextjs/routing-and-pages), [React error boundaries](/courses/react/error-boundaries), [Suspense](/courses/react/suspense-and-lazy) |
+| **Saath** | [Dynamic Routes](/courses/nextjs/dynamic-routes), [Layouts & Templates](/courses/nextjs/layouts-and-templates) |
+| **Baad mein** | [Streaming & Suspense](/courses/nextjs/streaming-and-suspense), [Data Fetching](/courses/nextjs/data-fetching) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `loading.tsx` | Suspense fallback, instant loading state |
+| `error.tsx` | Client Component Error Boundary |
+| `not-found.tsx` | `notFound()` ya unmatched URL par |
+| `global-error.tsx` | Root layout ki errors, apne `html` `body` ke saath |
+| Recovery | `reset()`, 16.3+ mein `retry()` |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Har segment apni **loading, error aur 404** UI rakh sakta hai, aur Next.js inhein Suspense aur Error Boundary mein khud wrap karta hai.
+
+</Callout>

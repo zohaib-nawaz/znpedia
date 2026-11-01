@@ -1,0 +1,173 @@
+---
+title: Setup & First Program
+description: JavaScript hello world console program likhna seekhein. Browser DevTools, VS Code aur Node.js setup Roman Urdu mein step by step.
+keywords:
+  - javascript hello world console
+  - javascript setup
+  - run javascript in browser
+  - node.js first program
+  - console.log
+---
+
+## 1. Setup aur first program kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**Setup ka matlab hai JavaScript likhne aur chalane ki jagah tayyar karna, aur first program aksar console mein "Hello World" print karna hota hai.**
+
+</Callout>
+
+JavaScript chalane ke teen asaan raste hain:
+
+1. **Browser console**, kuch install nahi karna.
+2. **HTML file** ke andar `script` tag.
+3. **Node.js**, terminal se file chalana.
+
+Code likhne ke liye **VS Code** sab se common editor hai.
+
+## 2. Kyun zaroori hai?
+
+Seekhte waqt sab se zaroori cheez hai ke code likhein, chalayein aur result foran dekhein. Achha setup is cycle ko tez bana deta hai.
+
+<CompareTable leftTitle="Bina proper setup" rightTitle="Proper setup ke saath">
+
+Notepad mein code, koi help nahi | VS Code mein autocomplete aur error hints
+Error ka pata nahi chalta | Console mein error aur line number dikhta hai
+Har test ke liye page dhoondna | Terminal mein ek command se run
+Output guess karna | console.log se har value dekhna
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Tareeqa | Kab use karein |
+| --- | --- |
+| **Browser console** | Chhoti cheez foran test karni ho |
+| **HTML + script file** | Web page ke saath kaam karna ho |
+| **Node.js** | Scripts, backend ya tools banane hon |
+| **VS Code** | Har tarah ka code likhne ke liye |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Pehla program chalane ka flow">
+
+VS Code mein file banayein
+     ↓
+JavaScript code likhein
+     ↓
+Browser ya Node.js mein chalayein
+     ↓
+Console mein output dekhein
+
+</Flow>
+
+**Browser console kholna:** Chrome mein page par right click karein, **Inspect** dabayein, phir **Console** tab. Shortcut: Windows par `Ctrl + Shift + J`, Mac par `Cmd + Option + J`.
+
+**Node.js install:** [nodejs.org](https://nodejs.org) se **LTS** version install karein. Phir terminal mein version check karein:
+
+```bash
+node --version
+npm --version
+```
+
+<Callout variant="note" title="console.log kya hai?">
+
+`console.log()` value ko console mein print karta hai. Yeh JavaScript seekhne aur debugging ka sab se basic tool hai.
+
+</Callout>
+
+## 5. Code example
+
+**Tareeqa 1: Browser console.** Console mein yeh likh kar Enter dabayein:
+
+```js
+console.log("Hello, World!");
+```
+
+**Tareeqa 2: HTML file.** Ek folder mein `index.html` aur `app.js` banayein:
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Mera pehla program</title>
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <h1>JavaScript seekh raha hoon</h1>
+  </body>
+</html>
+```
+
+```js
+const name = "Ayesha";
+console.log("Hello, World!");
+console.log(`Mera naam ${name} hai`);
+```
+
+`index.html` ko browser mein kholein aur console check karein.
+
+**Tareeqa 3: Node.js.** Wahi `app.js` terminal se chalayein:
+
+```bash
+node app.js
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `script src="app.js"` | Browser ko batata hai ke yeh JavaScript file load karni hai |
+| `defer` | HTML poora parse hone ke baad script chalti hai |
+| `console.log("...")` | Text console mein print hota hai |
+| Backticks aur `${name}` | Template literal, variable ko text mein jodta hai |
+| `node app.js` | Node.js file ko terminal mein run karta hai |
+
+### Interview tip
+
+`defer` aur `async` ka farq aksar pucha jata hai. `defer` wali scripts HTML parse hone ke baad apne order mein chalti hain. `async` wali scripts download hote hi chal jati hain, order fix nahi hota.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Script ko head mein bina defer ke lagana"
+  why="Script HTML se pehle chal jati hai, elements abhi bane nahi hote, is liye querySelector null deta hai."
+  better="Script tag par defer lagayein ya type module use karein, dono HTML ke baad chalte hain."
+/>
+
+<Mistake
+  title="File ka path ghalat likhna"
+  why="Browser file dhoond nahi pata aur console mein 404 error aata hai, code chalta hi nahi."
+  better="Network tab ya console dekhein aur src ka path HTML file ke hisaab se sahi karein."
+/>
+
+<Mistake
+  title="Console kholna bhool jana"
+  why="console.log ka output page par nahi, DevTools console mein aata hai. Lagta hai code kaam nahi kar raha."
+  better="Kaam karte waqt DevTools hamesha khula rakhein aur errors ko foran parhein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Introduction](/courses/javascript/introduction), [How JavaScript Runs](/courses/javascript/how-javascript-runs) |
+| **Is ke baad** | [Variables](/courses/javascript/variables), [Data Types](/courses/javascript/data-types) |
+| **Related** | [Debugging JavaScript](/courses/javascript/debugging), [npm & Packages](/courses/javascript/npm-and-packages) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Editor | VS Code |
+| Quick test | Browser DevTools console |
+| Web page ke saath | `script src` + `defer` |
+| Terminal se | `node app.js` |
+| Output dekhna | `console.log()` |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Code likhein, chalayein, console dekhein. Yeh chhota cycle jitna zyada dohrayenge, JavaScript utni jaldi aayegi.
+
+</Callout>

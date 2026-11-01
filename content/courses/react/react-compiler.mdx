@@ -1,0 +1,182 @@
+---
+title: React Compiler
+description: React Compiler 1.0 kya hai, build time par automatic memoization kaise karta hai, aur Vite ya Next.js 16 mein isay on karne ka tareeqa, Roman Urdu mein.
+keywords:
+  - react compiler
+  - babel-plugin-react-compiler
+  - react automatic memoization
+  - react compiler nextjs 16
+---
+
+## 1. React Compiler kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**React Compiler ek build-time tool hai jo aapke components aur hooks ko analyze kar ke automatically memoization add karta hai.**
+
+</Callout>
+
+Pehle faltu re-renders rokne ke liye hum khud `useMemo`, `useCallback` aur `memo` likhte the. Compiler yeh kaam **build ke waqt** khud kar deta hai, aur aksar insaan se zyada barikee se.
+
+React Compiler 1.0 stable release hai aur `babel-plugin-react-compiler` package ke taur par aata hai.
+
+## 2. Kyun zaroori hai?
+
+<CompareTable leftTitle="Manual memoization" rightTitle="React Compiler ke saath">
+
+Har jagah useMemo aur useCallback | Saada component code, memoization khud
+Dependency array bhoolne se bugs | Compiler dependencies khud samajhta hai
+memo lagana bhool gaye to slow | Har component by default optimize
+Code lamba aur parhna mushkil | Code chhota aur saaf
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Setup | Kaise on hota hai |
+| --- | --- |
+| **Next.js 16** | `next.config.ts` mein `reactCompiler: true` |
+| **Vite** | `@vitejs/plugin-react` ke Babel plugins mein |
+| **Expo** | Naye SDK templates mein default on |
+| **Purana codebase** | Folder by folder, dheere dheere adopt |
+
+Compiler React 19 ke saath best chalta hai. React 17 aur 18 ke liye `react-compiler-runtime` package aur `target` option chahiye.
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Build time par kya hota hai">
+
+Aap normal component likhte hain
+↓
+Build ke dauran Babel plugin code parhta hai
+↓
+Compiler check karta hai ke code Rules of React follow karta hai
+↓
+Values aur JSX ke liye automatic cache add hota hai
+↓
+Browser mein optimized code chalta hai
+
+</Flow>
+
+Agar koi component **Rules of React** torta hai (jaise render mein props mutate karna), to Compiler us component ko chhor deta hai aur woh pehle jaisa chalta hai. App tootti nahi.
+
+## 5. Code example
+
+### Next.js 16 mein on karna
+
+```bash
+npm install -D babel-plugin-react-compiler
+```
+
+```ts
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  reactCompiler: true,
+};
+
+export default nextConfig;
+```
+
+### Vite mein on karna
+
+```ts
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+
+export default defineConfig({
+  plugins: [
+    react({
+      babel: {
+        plugins: ["babel-plugin-react-compiler"],
+      },
+    }),
+  ],
+});
+```
+
+### Compiler ke saath component
+
+```tsx
+import { List } from "./list";
+
+type Product = { id: number; name: string };
+
+export function ProductList({ products, query }: { products: Product[]; query: string }) {
+  const visible = products.filter((p) => p.name.includes(query));
+  const handleSelect = (id: number) => console.log("Selected", id);
+
+  return <List items={visible} onSelect={handleSelect} />;
+}
+```
+
+Is code mein koi `useMemo` ya `useCallback` nahi, phir bhi Compiler `visible` aur `handleSelect` ko cache karta hai jab tak `products` aur `query` same hain.
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `babel-plugin-react-compiler` | Asal compiler, dev dependency |
+| `reactCompiler: true` | Next.js 16 mein stable option |
+| `babel.plugins` | Vite mein Compiler ko Babel pipeline mein daalna |
+| Plain `filter` aur arrow function | Compiler inhein khud memoize karta hai |
+
+### Kisi component ko opt out karna
+
+```tsx
+function LegacyWidget() {
+  "use no memo";
+  return <div>Purana code</div>;
+}
+```
+
+`"use no memo"` directive temporary escape hatch hai, jab koi component Compiler ke saath masla kare.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Compiler on kar ke Rules of React torte rehna"
+  why="Jo component rules torta hai, Compiler usay skip kar deta hai aur faida nahi milta."
+  better="eslint-plugin-react-hooks ka recommended config on karein, is mein Compiler wale lint rules shamil hain."
+/>
+
+<Mistake
+  title="Compiler aane ke baad tamam useMemo aur useCallback foran mita dena"
+  why="Kuch jagah, jaise effect dependencies, manual memoization behavior par asar karti hai."
+  better="Naye code mein inhein na likhein. Purana code test ke saath dheere dheere saaf karein."
+/>
+
+<Mistake
+  title="Compiler ko har performance masle ka hal samajhna"
+  why="Compiler faltu re-renders kam karta hai, lekin slow network, bari bundle ya bhari algorithm theek nahi karta."
+  better="Profiler se measure karte rahein, aur code splitting ya transitions bhi use karein."
+/>
+
+### Interview tip
+
+Compiler **runtime library nahi, build-time tool** hai. Yeh fine-grained memoization karta hai, yaani conditional code ke andar bhi, jo manual `useMemo` se mumkin nahi. Isi liye naye React code mein manual memoization ki zaroorat bohot kam hai.
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Rules of Hooks](/courses/react/rules-of-hooks), [useMemo & useCallback](/courses/react/use-memo-and-use-callback), [React.memo & Performance](/courses/react/memo-and-performance) |
+| **Saath** | [Setup with Vite](/courses/react/setup-with-vite), [How React Renders](/courses/react/how-react-renders) |
+| **Baad mein** | [Server Components](/courses/react/server-components), [Testing React Apps](/courses/react/testing) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Kya hai | Build-time tool jo automatic memoization karta hai |
+| Version | React Compiler 1.0, stable |
+| Package | `babel-plugin-react-compiler` |
+| Next.js 16 | `reactCompiler: true` |
+| Rules todne par | Component skip, app chalti rehti hai |
+| Opt out | `"use no memo"` directive |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Compiler on karein, **Rules of React** follow karein, aur naye code mein manual `useMemo`, `useCallback` aur `memo` sirf tab likhein jab koi khaas wajah ho.
+
+</Callout>

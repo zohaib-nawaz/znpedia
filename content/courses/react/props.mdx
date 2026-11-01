@@ -1,0 +1,169 @@
+---
+title: Props
+description: React props kya hain, parent se child component tak data kaise jata hai, destructuring aur default values, Roman Urdu mein examples ke saath.
+keywords:
+  - react props
+  - props in react urdu
+  - pass data to component
+  - react default props
+---
+
+## 1. Props kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Props woh inputs hain jo parent component apne child component ko deta hai, bilkul function ke arguments ki tarah.**
+
+</Callout>
+
+React mein component ek function hai. Jaise function ko arguments dete hain, waise hi component ko **props** dete hain. Props ka poora naam "properties" hai.
+
+Props ki madad se ek hi component alag alag data ke saath dobara use ho sakta hai. Ek `ProductCard` component, sau products.
+
+## 2. Kyun zaroori hai?
+
+Agar props na hon to har product ke liye alag component likhna parega. Props component ko **reusable** banate hain.
+
+<CompareTable leftTitle="Bina props" rightTitle="Props ke saath">
+
+Har card ke liye alag component | Ek component, data bahar se aata hai
+Text component ke andar hardcoded | Text parent decide karta hai
+Change ke liye har jagah edit | Sirf data badlo, UI khud update
+Copy paste code | Clean aur reusable code
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Use case | Props ka kaam |
+| --- | --- |
+| **Product card** | `name`, `price`, `image` pass karna |
+| **Button** | `label`, `variant`, `onClick` pass karna |
+| **User avatar** | `src`, `size`, `alt` pass karna |
+| **Layout** | `title` aur `children` pass karna |
+
+## 4. Kaise kaam karta hai?
+
+Parent JSX mein attributes likhta hai. React in sab ko ek **object** mein jama karke child function ko pehla argument bana kar deta hai.
+
+<Flow title="Props ka safar">
+
+Parent JSX mein attributes likhta hai
+↓
+React sab attributes ko ek props object banata hai
+↓
+Child function props object receive karta hai
+↓
+Child props ke mutabiq UI return karta hai
+
+</Flow>
+
+Data sirf **upar se neeche** jata hai (parent se child). Isay **one-way data flow** kehte hain.
+
+<Callout variant="important" title="Props read-only hain">
+
+Child component props ko kabhi change nahi karta. Agar value badalni hai to woh parent ki **state** hogi, aur parent hi naye props bhejega.
+
+</Callout>
+
+## 5. Code example
+
+### Basic props
+
+```jsx
+function Greeting(props) {
+  return <h2>Assalam o Alaikum, {props.name}!</h2>;
+}
+
+export default function App() {
+  return (
+    <>
+      <Greeting name="Ali" />
+      <Greeting name="Sara" />
+    </>
+  );
+}
+```
+
+### Destructuring aur default value
+
+```jsx
+function ProductCard({ name, price, inStock = true }) {
+  return (
+    <div className="card">
+      <h3>{name}</h3>
+      <p>Rs. {price}</p>
+      <p>{inStock ? "Available" : "Out of stock"}</p>
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <>
+      <ProductCard name="Keyboard" price={4500} />
+      <ProductCard name="Mouse" price={1800} inStock={false} />
+    </>
+  );
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `name="Ali"` | String prop, quotes mein |
+| `price={4500}` | Number ya koi bhi JS value, curly braces mein |
+| `{ name, price }` | Props object ko seedha destructure karna |
+| `inStock = true` | Default value, jab parent ne prop na diya ho |
+| `inStock={false}` | Boolean prop explicitly `false` |
+
+Strings ke ilawa har value (number, boolean, array, object, function) `{}` ke andar pass hoti hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Child component ke andar props ko change karna"
+  why="Props read-only hain. Unhein mutate karne se UI aur data out of sync ho jate hain aur bugs aate hain."
+  better="Value badalni ho to parent mein state rakho aur child ko ek function prop do jo parent ki state update kare."
+/>
+
+<Mistake
+  title="Number ko quotes mein pass karna, jaise price ko string bana dena"
+  why="Quotes wali value hamesha string hoti hai, phir math ya comparison galat result deta hai."
+  better="Number, boolean aur objects ko curly braces mein pass karo, jaise price={4500}."
+/>
+
+<Mistake
+  title="Destructuring mein curly braces bhool jana"
+  why="function Card(name) likhne se name poora props object ban jata hai, sirf name nahi."
+  better="function Card({ name }) likho taake props object se sirf name nikle."
+/>
+
+### Interview tip
+
+Agar poocha jaye "Props aur state mein kya farq hai?" to jawab: props **bahar se** aate hain aur read-only hain, state component ki **apni** memory hai jo woh khud update karta hai.
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Chapters |
+| --- | --- |
+| **Pehle** | [Components](/courses/react/components), [JSX](/courses/react/jsx) |
+| **Saath mein** | [Children & Composition](/courses/react/children-and-composition) |
+| **Baad mein** | [State with useState](/courses/react/state), [Lifting State Up](/courses/react/lifting-state-up) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Props kya hain | Parent se child ko diye gaye inputs |
+| Shape | Ek object, pehla function argument |
+| Direction | Sirf upar se neeche (one-way) |
+| Rule | Child props ko change nahi karta |
+| Default value | Destructuring mein `= value` |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Props = function arguments. Component unhein **padhta** hai, **badalta** nahi.
+
+</Callout>

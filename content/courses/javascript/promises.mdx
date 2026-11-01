@@ -1,0 +1,190 @@
+---
+title: Promises
+description: JavaScript promises kya hain, pending fulfilled rejected states, then catch finally, Promise.all, allSettled, any, race aur withResolvers, Roman Urdu mein.
+keywords:
+  - javascript promises
+  - promise in javascript urdu
+  - promise.all allsettled any
+  - promise then catch
+  - promise.withresolvers
+---
+
+## 1. Promises kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Promise ek object hai jo future mein aane wale result (ya error) ko represent karta hai.**
+
+</Callout>
+
+Jab aap koi async kaam shuru karte hain, jaise server se data lana, to result foran nahi milta. Promise ek "raseed" ki tarah hai: abhi khaali hai, baad mein value ya error se bhar jayegi.
+
+Har promise teen states mein se ek mein hota hai: **pending**, **fulfilled** ya **rejected**. Ek dafa settle ho jaye to state dobara nahi badalti.
+
+## 2. Kyun zaroori hai?
+
+[Callbacks](/courses/javascript/callbacks) mein nesting barhti jati hai aur errors har level par alag handle karne padte hain. Promises flat chain aur ek jagah error handling dete hain.
+
+<CompareTable leftTitle="Callbacks" rightTitle="Promises">
+
+Har step andar nested | then ki flat chain
+Har level par error check | Ek catch sab errors pakarta hai
+Parallel kaam combine karna mushkil | Promise.all aur allSettled
+Callback do dafa chal sakta hai | Promise sirf ek dafa settle hota hai
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Jagah | Example |
+| --- | --- |
+| **Network** | `fetch(url)` promise return karta hai |
+| **Files (Node.js)** | `fs/promises` ke methods |
+| **Parallel requests** | `Promise.all([getUser(), getPosts()])` |
+| **Timeouts** | `Promise.race` se slow request cancel karna |
+| **async / await** | `await` promises par hi kaam karta hai |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Promise ki zindagi">
+
+new Promise banta hai, state pending
+↓
+Kaam kamyab, resolve(value) aur state fulfilled
+↓
+Ya kaam fail, reject(error) aur state rejected
+↓
+then, catch ya finally ke callbacks microtask mein chalte hain
+
+</Flow>
+
+| Method | Kab chalta hai |
+| --- | --- |
+| `.then(fn)` | Fulfilled hone par, value ke saath |
+| `.catch(fn)` | Rejected hone par, error ke saath |
+| `.finally(fn)` | Dono surat mein, cleanup ke liye |
+
+<Callout variant="important" title="Mental model">
+
+**`.then` hamesha naya promise return karta hai**, is liye chain banti hai. Jo aap return karein woh agle `.then` ko milta hai.
+
+</Callout>
+
+## 5. Code example
+
+### Promise banana aur chain karna
+
+```js
+function getUser(id) {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      if (id > 0) resolve({ id, name: "Sara" });
+      else reject(new Error("User nahi mila"));
+    }, 300);
+  });
+}
+
+getUser(1)
+  .then((user) => user.name.toUpperCase())
+  .then((name) => console.log(name))
+  .catch((error) => console.error(error.message))
+  .finally(() => console.log("Done"));
+```
+
+### Combinators
+
+```js
+const tasks = [getUser(1), getUser(-1), getUser(2)];
+
+const all = await Promise.allSettled(tasks);
+all.forEach((r) => console.log(r.status));
+
+const first = await Promise.any(tasks);
+console.log(first.name);
+```
+
+### Promise.withResolvers
+
+```js
+const { promise, resolve } = Promise.withResolvers();
+
+button.addEventListener("click", () => resolve("clicked"), { once: true });
+
+console.log(await promise);
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `Promise.all` | Sab fulfilled to array, ek bhi reject to foran reject |
+| `Promise.allSettled` | Sab ka intezar, har ek ka `status` aur value ya reason |
+| `Promise.any` | Pehla fulfilled, sab fail hon to `AggregateError` |
+| `Promise.race` | Jo pehle settle ho, chahe success ya fail |
+| `Promise.withResolvers()` | Promise aur uske `resolve`, `reject` alag variables mein |
+
+### Interview tip
+
+`all` vs `allSettled` aksar poocha jata hai. Jab har result chahiye chahe kuch fail ho, `allSettled` use karein. Jab ek bhi fail hone par sab bekaar ho, `all`.
+
+## 6. Common mistakes
+
+<Mistake
+  title="then ke andar return bhool jana"
+  why="Agle then ko undefined milta hai aur chain toot jati hai."
+  better="Har then se value ya promise return karein."
+/>
+
+<Mistake
+  title="catch na lagana"
+  why="Unhandled promise rejection console mein error deta hai aur Node.js process band ho sakta hai."
+  better="Har chain ke aakhir mein catch lagayein ya await ko try catch mein rakhein."
+/>
+
+<Mistake
+  title="Promises ko then ke andar nest karna"
+  why="Yeh dobara callback hell bana deta hai."
+  better="Inner promise return karein taake chain flat rahe."
+/>
+
+<Mistake
+  title="Independent requests ek ke baad ek chalana"
+  why="Teen 1 second wali requests 3 second leti hain."
+  better="Promise.all se parallel chalayein, total waqt sab se slow request jitna."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Callbacks](/courses/javascript/callbacks), [Event Loop](/courses/javascript/event-loop), [Timers](/courses/javascript/timers) |
+| **Baad mein** | [Async / Await](/courses/javascript/async-await), [Fetch API](/courses/javascript/fetch-api), [Error Handling](/courses/javascript/error-handling) |
+
+<Flow title="Suggested order">
+
+Callbacks
+↓
+Promises
+↓
+Async Await
+↓
+Fetch API
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| States | pending, fulfilled, rejected |
+| `then` / `catch` / `finally` | Result, error, cleanup |
+| Chain | Har `then` naya promise deta hai |
+| `all` / `allSettled` | Sab saath, fail fast vs sab ka report |
+| `any` / `race` | Pehla success vs pehla settle |
+| `withResolvers` | Bahar se resolve karne ke liye |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Promise **ek dafa settle** hota hai. Hamesha return karein, hamesha `catch` lagayein, aur independent kaam parallel chalayein.
+
+</Callout>

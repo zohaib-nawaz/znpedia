@@ -1,0 +1,187 @@
+---
+title: React.memo & Performance
+description: React memo performance guide, React.memo se faltu re-renders rokna, React DevTools Profiler se measure karna, aur React Compiler ke daur mein sahi approach.
+keywords:
+  - react memo performance
+  - react.memo urdu
+  - react unnecessary re-renders
+  - react profiler
+---
+
+## 1. React.memo kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**`memo` ek function hai jo component ko wrap karta hai, taake props same hon to woh parent ke re-render par dobara render na ho.**
+
+</Callout>
+
+Default mein jab parent re-render hota hai, to uske **tamam children** bhi re-render hote hain, chahe unke props badle hon ya nahi.
+
+`memo` React ko kehta hai: "pehle props compare karo, kuch nahi badla to pichla result use kar lo."
+
+## 2. Kyun zaroori hai?
+
+Zyada tar re-renders sasti hoti hain. Lekin agar ek child bhari ho (bari list, chart, editor), to har chhoti parent update par usay render karna app ko slow bana deta hai.
+
+<CompareTable leftTitle="Bina memo" rightTitle="memo ke saath">
+
+Parent ka counter badla, bhari chart re-render | Chart ke props same, render skip
+Typing mein lag mehsoos hota hai | Sirf input wala hissa update
+Har list item har dafa render | Sirf badla hua item render
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Situation | memo faida dega? |
+| --- | --- |
+| Bhari component jiske props kam badalte hain | Haan |
+| Lambi list ke items | Haan, aksar |
+| Chhota button ya text | Nahi, comparison ki cost zyada |
+| Component jiske props har render par badlte hain | Nahi |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="memo ka decision">
+
+Parent re-render hota hai
+↓
+React memo wale child ke purane aur naye props compare karta hai
+↓
+Har prop Object.is se same hai to render skip
+↓
+Koi prop badla hai to child re-render
+
+</Flow>
+
+Yaad rakhein: `memo` sirf **props** dekhta hai. Agar child ki apni state ya woh Context jo woh parhta hai badle, to woh phir bhi re-render hoga.
+
+### Performance ka sahi tareeqa
+
+<Flow title="Optimize karne se pehle">
+
+React DevTools Profiler se record karo
+↓
+Slow component dhoondo
+↓
+Wajah samjho: bhari kaam ya faltu renders
+↓
+Pehle structure theek karo, phir memo
+↓
+Dobara measure karo
+
+</Flow>
+
+## 5. Code example
+
+### memo ke saath bhari list
+
+```tsx
+import { memo, useState } from "react";
+
+type Item = { id: number; title: string };
+
+const BigList = memo(function BigList({ items }: { items: Item[] }) {
+  return (
+    <ul>
+      {items.map((item) => (
+        <li key={item.id}>{item.title}</li>
+      ))}
+    </ul>
+  );
+});
+
+export function Page({ items }: { items: Item[] }) {
+  const [count, setCount] = useState(0);
+
+  return (
+    <>
+      <button onClick={() => setCount(count + 1)}>Clicks: {count}</button>
+      <BigList items={items} />
+    </>
+  );
+}
+```
+
+### Bina memo ke: state neeche le jao
+
+Yahan `BigList` aur `Item` upar wale example se hi hain.
+
+```tsx
+import { useState } from "react";
+
+function Counter() {
+  const [count, setCount] = useState(0);
+  return <button onClick={() => setCount(count + 1)}>Clicks: {count}</button>;
+}
+
+export function Page({ items }: { items: Item[] }) {
+  return (
+    <>
+      <Counter />
+      <BigList items={items} />
+    </>
+  );
+}
+```
+
+Doosre example mein `count` state `Counter` ke andar chali gayi, ab `Page` re-render hi nahi hota. Aksar yeh `memo` se behtar fix hai.
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `memo(function BigList ...)` | Props same hon to render skip |
+| `items` prop | Parent se same array reference, is liye skip |
+| `Counter` alag component | State sirf wahan, baqi tree untouched |
+| Profiler | Batata hai kaunsa component kitni dafa aur kitni der render hua |
+
+## 6. Common mistakes
+
+<Mistake
+  title="memo child ko har render par naya object ya function dena"
+  why="style object ya arrow function har render par naya reference hai, is liye memo ka comparison hamesha fail hota hai."
+  better="Values ko useMemo ya useCallback se stable karein, ya React Compiler on karein jo yeh khud karta hai."
+/>
+
+<Mistake
+  title="Bina measure kiye har component ko memo karna"
+  why="Har memo props compare karne ki cost laata hai aur code ko mushkil banata hai."
+  better="Pehle Profiler se slow hissa dhoondein, phir sirf wahan optimize karein."
+/>
+
+<Mistake
+  title="memo se bug fix karne ki koshish"
+  why="memo sirf performance hint hai, React kabhi bhi re-render kar sakta hai, correctness is par depend nahi karni chahiye."
+  better="Logic aisi likhein jo kitni dafa bhi render ho, sahi result de."
+/>
+
+### Interview tip
+
+Performance ke sawal par pehle **measure** ka zikr karein, phir **state colocation** (state ko neeche le jana), phir `memo`. Aur batayein ke React Compiler 1.0 ab yeh memoization khud kar deta hai, is liye naye projects mein manual `memo` kam likhna parta hai.
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [How React Renders](/courses/react/how-react-renders), [Props](/courses/react/props), [Lifting State Up](/courses/react/lifting-state-up) |
+| **Saath** | [useMemo & useCallback](/courses/react/use-memo-and-use-callback), [useTransition & useDeferredValue](/courses/react/use-transition) |
+| **Baad mein** | [React Compiler](/courses/react/react-compiler), [Suspense & lazy()](/courses/react/suspense-and-lazy) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `memo` kya karta hai | Props same hon to re-render skip |
+| Comparison | Har prop `Object.is` se, shallow |
+| Kab faida | Bhari component, props kam badlein |
+| Pehla qadam | Profiler se measure |
+| Aksar behtar fix | State ko neeche le jana |
+| Compiler ke saath | Manual `memo` ki zaroorat kam |
+
+<Callout variant="important" title="Yaad rakhein">
+
+**Measure first.** Pehle structure theek karein, phir zaroorat ho to `memo`. Aur props ko stable rakhein, warna `memo` kuch nahi karta.
+
+</Callout>

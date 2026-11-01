@@ -1,0 +1,194 @@
+---
+title: Loops
+description: JavaScript loops for while, do while, for...of aur for...in ka farq, break aur continue ke saath. Roman Urdu mein kab kaunsa loop use karein.
+keywords:
+  - javascript loops for while
+  - for of vs for in
+  - javascript break continue
+  - do while loop javascript
+---
+
+## 1. Loops kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Loop ek hi code ko bar bar chalata hai jab tak koi condition true rahe ya list ke saare items khatam na hon.**
+
+</Callout>
+
+| Loop | Kab use karein |
+| --- | --- |
+| `for` | Pata ho kitni dafa chalana hai, ya index chahiye |
+| `while` | Pata na ho kitni dafa, condition par depend |
+| `do...while` | Kam az kam ek dafa zaroor chalana ho |
+| `for...of` | Array, string, `Map`, `Set` ki **values** par |
+| `for...in` | Object ki **keys** par |
+
+## 2. Kyun zaroori hai?
+
+Sochein 100 products ki price print karni hai. Har ek ke liye alag line likhna na mumkin hai. Loop ek dafa likha jata hai aur har item par chal jata hai.
+
+<CompareTable leftTitle="Bina loop" rightTitle="Loop ke saath">
+
+Har item ke liye alag line | Ek block, saare items
+Items barhe to code barhe | Code wahi, data chahe kitna ho
+Ghalti ka chance har line mein | Logic ek jagah, fix bhi ek jagah
+Total nikalna mushkil | Har round mein total update
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Real use | Loop |
+| --- | --- |
+| **Cart ka total** | `for...of` |
+| **1 se 10 tak table** | `for` |
+| **Retry jab tak success na ho** | `while` |
+| **Menu dikhao, phir poocho dobara?** | `do...while` |
+| **Object ki har setting print** | `for...of` + `Object.entries()` |
+| **Pehla match milte hi rukna** | `break` |
+
+## 4. Kaise kaam karta hai?
+
+Classic `for` loop ke teen hisse hote hain: **start**, **condition**, **update**.
+
+<Flow title="for loop ka cycle">
+
+Start: let i = 0
+     ↓
+Condition check: i chhota hai 3 se?
+     ↓
+True ho to body chalao
+     ↓
+Update: i++
+     ↓
+Wapas condition check, false ho to loop khatam
+
+</Flow>
+
+`break` loop ko foran khatam kar deta hai. `continue` sirf mojooda round skip karke agle round par chala jata hai.
+
+<Callout variant="important" title="Mental model">
+
+**`for...of` = har value ("of" the list). `for...in` = har key ("in" the object). Arrays ke liye hamesha `for...of`.**
+
+</Callout>
+
+## 5. Code example
+
+`for` aur `while`:
+
+```js
+for (let i = 1; i <= 3; i++) {
+  console.log(`5 x ${i} = ${5 * i}`);
+}
+
+let attempts = 0;
+while (attempts < 3) {
+  attempts++;
+  console.log(`Attempt ${attempts}`);
+}
+```
+
+`for...of` arrays aur objects ke saath:
+
+```js
+const cart = [
+  { name: "Book", price: 800 },
+  { name: "Pen", price: 50 },
+  { name: "Bag", price: 2500 },
+];
+
+let total = 0;
+for (const item of cart) {
+  total += item.price;
+}
+console.log(total);
+
+const settings = { theme: "dark", lang: "ur" };
+for (const [key, value] of Object.entries(settings)) {
+  console.log(`${key}: ${value}`);
+}
+```
+
+Output: `3350`, `theme: dark`, `lang: ur`.
+
+`break` aur `continue`:
+
+```js
+const numbers = [4, 7, -1, 9, 12];
+
+for (const n of numbers) {
+  if (n < 0) continue;
+  if (n > 10) break;
+  console.log(n);
+}
+```
+
+Output: `4`, `7`, `9`. `-1` skip hua, `12` par loop ruk gaya.
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `let i = 1; i <= 3; i++` | Start, condition, update |
+| `while (attempts < 3)` | Condition true rehne tak chalo |
+| `for (const item of cart)` | Har round mein agla item, index ki zaroorat nahi |
+| `Object.entries()` | Object ko `[key, value]` pairs ki array banata hai |
+| `continue` | Yeh round skip, agla round |
+| `break` | Poora loop khatam |
+
+### Interview tip
+
+"`for...in` array par kyun na chalayein?" Kyun ke yeh **keys** (string indexes) deta hai, values nahi, aur prototype se aayi extra properties bhi utha sakta hai. Arrays ke liye `for...of` ya array methods behtar hain.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Infinite loop banana"
+  why="while ki condition kabhi false nahi hoti kyun ke counter update karna bhool gaye, page freeze ho jata hai."
+  better="Har while loop mein dekhein ke condition ko false karne wala update mojood hai."
+/>
+
+<Mistake
+  title="Array par for...in chalana"
+  why="Values ki jagah string indexes milte hain aur kabhi extra properties bhi aa jati hain."
+  better="Arrays ke liye for...of ya map, filter jaise array methods use karein."
+/>
+
+<Mistake
+  title="Off by one error"
+  why="i <= arr.length likhne se aakhri round mein index bahar chala jata hai aur undefined milta hai."
+  better="Index wale loop mein i < arr.length likhein, ya seedha for...of use karein."
+/>
+
+<Mistake
+  title="forEach mein break ki koshish"
+  why="forEach ke callback mein break kaam nahi karta, SyntaxError aata hai."
+  better="Beech mein rukna ho to for...of + break, ya find aur some jaise methods use karein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Conditionals](/courses/javascript/conditionals), [Operators](/courses/javascript/operators) |
+| **Is ke baad** | [Truthy, Falsy & Equality](/courses/javascript/truthy-falsy-and-equality), [Functions](/courses/javascript/functions) |
+| **Aage** | [Arrays](/courses/javascript/arrays), [Array Methods](/courses/javascript/array-methods), [Iterators & Generators](/courses/javascript/iterators-and-generators) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `for` | Count ya index ke saath |
+| `while` | Condition par, count maloom nahi |
+| `do...while` | Kam az kam ek dafa |
+| `for...of` | Values, arrays ke liye best |
+| `for...in` | Object keys |
+| `break` / `continue` | Loop khatam / round skip |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Arrays par **`for...of`**, objects par `Object.entries()` + `for...of`. Har `while` mein condition ko false karne wala **update** zaroor ho.
+
+</Callout>

@@ -1,0 +1,204 @@
+---
+title: Forms & Validation
+description: Next.js forms Zod validation ke saath, Server Actions aur useActionState se errors, pending state aur safe data handling Roman Urdu mein seekhein.
+keywords:
+  - next.js forms zod validation
+  - useactionstate next.js
+  - zod safeparse server action
+  - next.js form errors
+---
+
+## 1. Forms & Validation kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**Next.js mein form ek Server Action ko submit hota hai, server par Zod schema se data validate hota hai, aur `useActionState` errors aur pending state wapas UI tak lata hai.**
+
+</Callout>
+
+Validation ka matlab hai check karna ke user ne jo bheja woh sahi shape mein hai: email valid hai, password kaafi lamba hai, quantity number hai. Browser ki `required` validation sirf convenience hai. **Asal validation hamesha server par hoti hai.**
+
+## 2. Kyun zaroori hai?
+
+<CompareTable leftTitle="Bina server validation" rightTitle="Zod + Server Action">
+
+Sirf browser par check, bypass ho sakta hai | Server par schema, bypass nahi hota
+Har field ke liye if else | Ek schema, saare rules ek jagah
+Error message dikhana mushkil | fieldErrors seedha UI mein
+TypeScript types alag likhna | Schema se type khud infer
+Double submit ka khatra | isPending se button disable
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Form | Validation rules |
+| --- | --- |
+| **Signup** | Email format, password length, naam required |
+| **Contact form** | Message min length, email valid |
+| **Checkout** | Address fields, quantity positive number |
+| **Profile edit** | Username unique, bio max length |
+| **Search filters** | Price range numbers, category enum |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Form validation ka flow">
+
+User form submit karta hai
+↓
+useActionState action ko call karta hai
+↓
+Server Action FormData parhta hai
+↓
+Zod safeParse
+↓
+Fail: errors return, form par dikhte hain
++
+Pass: database save + redirect
+
+</Flow>
+
+<Callout variant="important" title="Mental model">
+
+**Client par validation user ki madad ke liye, server par validation app ki hifazat ke liye.**
+
+</Callout>
+
+## 5. Code example
+
+### Step 1: Schema aur action
+
+```ts
+"use server";
+
+import * as z from "zod";
+import { redirect } from "next/navigation";
+import { db } from "@/lib/db";
+
+const ContactSchema = z.object({
+  name: z.string().trim().min(2, { error: "Naam kam az kam 2 harf ka ho" }),
+  email: z.email({ error: "Valid email likhein" }),
+  message: z.string().trim().min(10, { error: "Message thora lamba likhein" }),
+});
+
+export type ContactState = {
+  errors?: Partial<Record<"name" | "email" | "message", string[]>>;
+  message?: string;
+};
+
+export async function sendMessage(
+  prevState: ContactState,
+  formData: FormData,
+): Promise<ContactState> {
+  const result = ContactSchema.safeParse({
+    name: formData.get("name"),
+    email: formData.get("email"),
+    message: formData.get("message"),
+  });
+
+  if (!result.success) {
+    return { errors: z.flattenError(result.error).fieldErrors };
+  }
+
+  await db.message.create({ data: result.data });
+  redirect("/contact/thanks");
+}
+```
+
+### Step 2: Client form with useActionState
+
+```tsx
+"use client";
+
+import { useActionState } from "react";
+import { sendMessage, type ContactState } from "./actions";
+
+const initialState: ContactState = {};
+
+export function ContactForm() {
+  const [state, formAction, isPending] = useActionState(sendMessage, initialState);
+
+  return (
+    <form action={formAction}>
+      <input name="name" placeholder="Naam" />
+      {state.errors?.name && <p>{state.errors.name[0]}</p>}
+
+      <input name="email" type="email" placeholder="Email" />
+      {state.errors?.email && <p>{state.errors.email[0]}</p>}
+
+      <textarea name="message" placeholder="Message" />
+      {state.errors?.message && <p>{state.errors.message[0]}</p>}
+
+      <button type="submit" disabled={isPending}>
+        {isPending ? "Bhej rahe hain..." : "Send"}
+      </button>
+    </form>
+  );
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `z.object({...})` | Form ka schema, har field ke rules |
+| `safeParse(...)` | Error throw nahi karta, `success` true ya false deta hai |
+| `z.flattenError(...).fieldErrors` | Har field ke error messages ka object |
+| `prevState` | `useActionState` ke saath action ka pehla argument pichli state hoti hai |
+| `useActionState(action, initial)` | `[state, formAction, isPending]` return karta hai |
+| `isPending` | Submit chal raha ho to button disable |
+| `result.data` | Validated aur typed data, sirf yahi save karo |
+
+### Interview tip
+
+`useActionState` use karne par Server Action ka signature badal jata hai: pehla argument `prevState` aur doosra `formData`. Yeh bhoolna sab se common interview trap hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Sirf client side validation par bharosa karna"
+  why="Koi bhi DevTools ya curl se seedha Server Action ko galat data bhej sakta hai."
+  better="Har Server Action mein Zod schema se safeParse zaroor karo."
+/>
+
+<Mistake
+  title="useActionState ke saath action ka prevState argument bhool jana"
+  why="Pehla argument state hota hai, FormData doosre number par aata hai, warna formData.get crash karta hai."
+  better="Signature hamesha prevState aur formData dono ke saath likho."
+/>
+
+<Mistake
+  title="parse use kar ke error ko unhandled chhor dena"
+  why="parse fail par error throw karta hai aur user ko generic error page dikhta hai."
+  better="safeParse use karo aur errors ko state mein return karo."
+/>
+
+<Mistake
+  title="Raw formData ko database mein dalna"
+  why="Extra ya galat fields bhi save ho sakti hain, jaise role admin."
+  better="Sirf result.data save karo jo schema se guzar chuka hai."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Server Actions](/courses/nextjs/server-actions), [Server & Client Components](/courses/nextjs/server-and-client-components) |
+| **Saath mein** | [Revalidation](/courses/nextjs/revalidation) |
+| **Baad mein** | [Authentication](/courses/nextjs/authentication), [Database Integration](/courses/nextjs/database-integration), [Testing Next.js Apps](/courses/nextjs/testing) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Validation library | Zod, `safeParse` ke saath |
+| Field errors | `z.flattenError(error).fieldErrors` |
+| Hook | `useActionState(action, initialState)` |
+| Action signature | `(prevState, formData)` |
+| Loading | `isPending` se button disable |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Form ka asli guard server hai. Zod schema se validate karo, errors state mein return karo, aur sirf validated `result.data` hi save karo.
+
+</Callout>

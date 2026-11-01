@@ -1,0 +1,184 @@
+---
+title: Actions, useActionState & useOptimistic
+description: React useActionState useOptimistic aur useFormStatus se form submit, pending state, errors aur optimistic UI handle karna seekhein, React 19 Actions ke saath.
+keywords:
+  - react useactionstate useoptimistic
+  - react 19 actions
+  - useformstatus react dom
+  - form action react
+---
+
+## 1. Actions kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Action ek function hai jo transition ke andar chalta hai, aksar async, aur React 19 mein form submit, pending state aur errors ko khud handle karta hai.**
+
+</Callout>
+
+React 19 mein aap `<form action={fn}>` likh sakte hain. Form submit hone par React `fn` ko `FormData` ke saath call karta hai, aur kaam poora hone par uncontrolled fields reset kar deta hai.
+
+Iske saath teen helper hooks aate hain:
+
+- `useActionState`: Action ka result (jaise error message) aur pending flag.
+- `useOptimistic`: server ka jawab aane se pehle UI foran update.
+- `useFormStatus` (`react-dom` se): form ke andar kisi bhi component mein pending status.
+
+## 2. Kyun zaroori hai?
+
+<CompareTable leftTitle="Purana form code" rightTitle="Actions ke saath">
+
+onSubmit mein preventDefault | form action seedha function leta hai
+isLoading, error, data teen useState | useActionState ek jagah sab deta hai
+Submit button ko pending prop pass karo | useFormStatus button khud pending parhta hai
+Server jawab tak like count purana | useOptimistic foran naya count dikhata hai
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Use case | Tool |
+| --- | --- |
+| Login ya signup form with errors | `useActionState` |
+| Like button, comment post karna | `useOptimistic` |
+| Reusable submit button jo "Saving..." dikhaye | `useFormStatus` |
+| Next.js Server Function ko form se call karna | `<form action={serverFn}>` |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Form Action ka flow">
+
+User form submit karta hai
+↓
+React action ko FormData ke saath transition mein chalata hai
+↓
+isPending true, useFormStatus pending true
+↓
+useOptimistic wali value foran screen par
+↓
+Action khatam, naya state aata hai aur optimistic value real se replace
+
+</Flow>
+
+Agar Action fail ho jaye, to optimistic value khud wapas asli state par aa jati hai.
+
+## 5. Code example
+
+### useActionState + useFormStatus
+
+```tsx
+"use client";
+
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
+import { updateName } from "./actions";
+
+type State = { error: string | null };
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return <button disabled={pending}>{pending ? "Saving..." : "Save"}</button>;
+}
+
+export function NameForm() {
+  const [state, formAction, isPending] = useActionState(
+    async (prev: State, formData: FormData): Promise<State> => {
+      const name = String(formData.get("name") ?? "");
+      if (name.length < 3) {
+        return { error: "Naam kam az kam 3 huroof ka ho" };
+      }
+      await updateName(name);
+      return { error: null };
+    },
+    { error: null }
+  );
+
+  return (
+    <form action={formAction}>
+      <input name="name" disabled={isPending} />
+      <SubmitButton />
+      {state.error && <p>{state.error}</p>}
+    </form>
+  );
+}
+```
+
+### useOptimistic: foran like
+
+```tsx
+"use client";
+
+import { useOptimistic, startTransition } from "react";
+import { likePost } from "./actions";
+
+export function LikeButton({ postId, likes }: { postId: string; likes: number }) {
+  const [optimisticLikes, addLike] = useOptimistic(likes, (current, amount: number) => current + amount);
+
+  function handleLike() {
+    startTransition(async () => {
+      addLike(1);
+      await likePost(postId);
+    });
+  }
+
+  return <button onClick={handleLike}>Like {optimisticLikes}</button>;
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `useActionState(fn, initial)` | `[state, formAction, isPending]` return karta hai |
+| `fn(prev, formData)` | Pehla argument pichla state, doosra `FormData` |
+| `<form action={formAction}>` | Submit par React Action chalata hai |
+| `useFormStatus()` | Sirf form ke **andar** wale component mein kaam karta hai |
+| `useOptimistic(likes, reducer)` | Action chalne tak temporary value |
+| `startTransition(async ...)` | Optimistic update ko Action ke andar hona zaroori hai |
+
+## 6. Common mistakes
+
+<Mistake
+  title="useFormStatus ko form wale component mein hi call karna"
+  why="useFormStatus sirf apne parent form ka status deta hai, usi component ke form ka nahi."
+  better="Submit button ko alag component banayein aur form ke andar render karein."
+/>
+
+<Mistake
+  title="useOptimistic setter ko transition ke bahar call karna"
+  why="Optimistic update ko pata hona chahiye ke kab khatam karna hai, bahar call karne par React warning deta hai."
+  better="addOptimistic ko form action ya startTransition ke andar call karein."
+/>
+
+<Mistake
+  title="Action function ke arguments ka order bhool jana"
+  why="useActionState ka action pehle previous state leta hai, phir FormData, is liye formData.get undefined deta hai."
+  better="Signature yaad rakhein: action(prevState, formData)."
+/>
+
+### Interview tip
+
+Fark yaad rakhein: `useActionState` **result** sambhalta hai, `useOptimistic` **intezar ke dauran** ki UI, aur `useFormStatus` **child component** ko pending batata hai. Purana naam `useFormState` tha, jo ab `useActionState` hai.
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Forms & Controlled Inputs](/courses/react/forms), [useTransition & useDeferredValue](/courses/react/use-transition) |
+| **Saath** | [Server Components](/courses/react/server-components), [The use() API](/courses/react/use-hook) |
+| **Baad mein** | [Data Fetching](/courses/react/data-fetching), [Error Boundaries](/courses/react/error-boundaries) |
+
+## Final quick revision
+
+| Hook ya API | Kahan se | Kaam |
+| --- | --- | --- |
+| `<form action={fn}>` | React DOM | Submit par Action, `FormData` ke saath |
+| `useActionState` | `react` | `[state, formAction, isPending]` |
+| `useOptimistic` | `react` | Jawab se pehle temporary UI |
+| `useFormStatus` | `react-dom` | Child component mein `pending`, `data` |
+
+<Callout variant="important" title="Yaad rakhein">
+
+React 19 mein forms ke liye **Actions** default tareeqa hain. Result ke liye `useActionState`, foran feedback ke liye `useOptimistic`, aur button ke liye `useFormStatus`.
+
+</Callout>

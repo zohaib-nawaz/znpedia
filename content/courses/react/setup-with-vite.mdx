@@ -1,0 +1,184 @@
+---
+title: Setup with Vite
+description: React vite setup step by step, npm create vite se naya project, folder structure, main.jsx aur createRoot ko Roman Urdu mein samjhein.
+keywords:
+  - react vite setup
+  - create react app with vite
+  - npm create vite react
+  - react project structure
+---
+
+## 1. Vite kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**Vite ek fast build tool aur dev server hai jo React project ko seconds mein bana kar browser mein chala deta hai.**
+
+</Callout>
+
+React khud sirf ek library hai. Browser JSX ko seedha nahi samajhta, is liye ek tool chahiye jo JSX ko JavaScript mein badle, files ko serve kare aur production build banaye. Aaj kal yeh kaam **Vite** karta hai.
+
+Purana tareeqa **Create React App (CRA)** tha. React team ne usay 2025 mein officially deprecate kar diya hai, is liye naye projects mein Vite (ya Next.js jaisa framework) use karein.
+
+## 2. Kyun zaroori hai?
+
+<CompareTable leftTitle="Purana setup (CRA)" rightTitle="Vite">
+
+Dev server start hone mein kaafi waqt | Lagbhag foran start
+Har change par poora bundle dobara | Sirf badli hui file update
+Config chhupa hua aur mushkil | Chhota aur saaf vite.config.js
+Ab maintain nahi hota | Actively maintained aur modern
+
+</CompareTable>
+
+Vite development mein browser ke native **ES modules** use karta hai aur sirf wohi file process karta hai jo browser maangta hai. Isi liye **HMR (Hot Module Replacement)** se save karte hi screen update ho jati hai, state bhi zyada tar qaim rehti hai.
+
+## 3. Kahan use hota hai?
+
+| Project | Vite kyun |
+| --- | --- |
+| **Seekhne ke projects** | Ek command, zero config |
+| **Single page apps (SPA)** | Dashboards, admin panels, internal tools |
+| **Component libraries** | Library mode se package build |
+| **Doosre frameworks** | Vue, Svelte aur Solid bhi Vite use karte hain |
+
+Agar aapko routing, server rendering aur SEO built-in chahiye to Next.js jaisa framework behtar hai. Seekhne aur SPA ke liye Vite perfect hai.
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Vite React app ka flow">
+
+npm run dev
+↓
+Vite dev server localhost:5173 par
+↓
+Browser index.html load karta hai
+↓
+index.html src/main.jsx ko load karta hai
+↓
+createRoot App ko div id root mein render karta hai
+
+</Flow>
+
+### Folder structure
+
+| File | Kaam |
+| --- | --- |
+| `index.html` | Entry point, is mein `div id="root"` hota hai |
+| `src/main.jsx` | React ko `#root` se jorta hai |
+| `src/App.jsx` | Aap ka pehla component |
+| `public/` | Static files jo jaisi hain waisi serve hoti hain |
+| `vite.config.js` | Vite ki settings aur React plugin |
+| `package.json` | Scripts aur dependencies |
+
+## 5. Code example
+
+### Project banana
+
+Pehle Node.js ka current LTS version install karein, phir:
+
+```bash
+npm create vite@latest my-app -- --template react
+cd my-app
+npm install
+npm run dev
+```
+
+TypeScript chahiye to template `react-ts` likhein.
+
+### src/main.jsx
+
+```jsx
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import App from "./App.jsx";
+import "./index.css";
+
+createRoot(document.getElementById("root")).render(
+  <StrictMode>
+    <App />
+  </StrictMode>
+);
+```
+
+### src/App.jsx
+
+```jsx
+export default function App() {
+  return (
+    <main>
+      <h1>Salam React</h1>
+      <p>Mera pehla Vite project</p>
+    </main>
+  );
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `npm create vite@latest` | Vite ka latest scaffolding tool chalata hai |
+| `--template react` | React + JavaScript wala starter |
+| `createRoot` | React 18+ ka root API, `#root` element ko React ke hawale karta hai |
+| `.render(...)` | `App` component ko screen par dikhata hai |
+| `StrictMode` | Development mein extra checks, production par asar nahi |
+| `npm run build` | Optimized files `dist/` folder mein |
+| `npm run preview` | `dist/` build ko locally test karna |
+
+Environment variables `.env` file mein `VITE_` prefix ke saath likhein aur `import.meta.env.VITE_API_URL` se parhein.
+
+### Interview tip
+
+"Create React App aur Vite mein kya farq hai?" CRA webpack par tha aur deprecate ho chuka hai. Vite dev mein native ES modules aur fast HMR deta hai aur production build alag optimized bundler se banata hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Naye project ke liye create-react-app use karna"
+  why="CRA deprecated hai, outdated dependencies aur warnings deta hai."
+  better="npm create vite@latest use karein ya full-stack app ke liye Next.js."
+/>
+
+<Mistake
+  title="npm install chalaye bina npm run dev chalana"
+  why="node_modules nahi hota, is liye vite command not found jaisa error aata hai."
+  better="Project banane ke baad pehle npm install, phir npm run dev."
+/>
+
+<Mistake
+  title="Env variable bina VITE_ prefix ke likhna"
+  why="Vite security ke liye sirf VITE_ wale variables browser code ko deta hai, baqi undefined aate hain."
+  better="Browser wale variables VITE_ se shuru karein aur secret keys frontend .env mein kabhi na rakhein."
+/>
+
+<Mistake
+  title="Purane tutorial se ReactDOM.render copy karna"
+  why="ReactDOM.render React 19 mein remove ho chuka hai."
+  better="react-dom/client se createRoot import karein aur root.render use karein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Introduction](/courses/react/introduction), [npm & Packages](/courses/javascript/npm-and-packages), [Modules](/courses/javascript/modules) |
+| **Saath** | [JSX](/courses/react/jsx) |
+| **Baad mein** | [Components](/courses/react/components), [Styling in React](/courses/react/styling) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Vite | Fast dev server aur build tool |
+| Command | `npm create vite@latest my-app -- --template react` |
+| Entry | `index.html` se `src/main.jsx` |
+| Root API | `createRoot(...).render(...)` |
+| Dev port | `localhost:5173` |
+| CRA | Deprecated, use na karein |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Naya React project = **Vite + createRoot**. `npm install`, phir `npm run dev`, aur `src/App.jsx` se kaam shuru.
+
+</Callout>

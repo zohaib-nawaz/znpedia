@@ -1,0 +1,188 @@
+---
+title: DOM Basics
+description: JavaScript DOM manipulation ki shuruat, querySelector se elements dhoondna, text, classes aur attributes badalna aur naye elements banana, Roman Urdu mein.
+keywords:
+  - javascript dom manipulation
+  - dom in javascript urdu
+  - queryselector
+  - createelement javascript
+---
+
+## 1. DOM kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**DOM (Document Object Model) HTML page ka ek tree hai jise JavaScript objects ki tarah padh aur badal sakti hai.**
+
+</Callout>
+
+Browser HTML file padh kar har tag ko ek **node** bana deta hai. Yeh nodes parent aur child ki shakal mein ek tree banate hain, jiski jar `document` hai.
+
+JavaScript isi tree ko badal kar page ko live update karti hai: text badalna, naye items jorna, classes lagana, sab DOM ke zariye hota hai.
+
+## 2. Kyun zaroori hai?
+
+HTML akela static hai. DOM ke bagair aap page ko user ke action par badal nahi sakte.
+
+<CompareTable leftTitle="Sirf HTML" rightTitle="HTML aur DOM JavaScript">
+
+Page jaisa likha waisa hi rehta hai | Page user ke action par badalta hai
+Naya item ke liye page reload | Item foran list mein add
+Theme badalna mumkin nahi | Class toggle se dark mode
+Data dikhane ke liye server render | API data se khud elements banao
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Use case | DOM kaam |
+| --- | --- |
+| **Todo list** | Naya `li` banana aur list mein jorna |
+| **Dark mode** | `body` par class toggle |
+| **Cart count** | Badge ka text update |
+| **Modal** | `hidden` attribute hatana ya lagana |
+| **React / Vue** | Andar se yahi DOM APIs use karte hain |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="DOM update ka flow">
+
+Browser HTML se DOM tree banata hai
+↓
+JavaScript querySelector se element dhoondti hai
+↓
+Property ya method se element badalti hai
+↓
+Browser screen dobara paint karta hai
+
+</Flow>
+
+| Kaam | Method |
+| --- | --- |
+| Ek element dhoondna | `document.querySelector(".card")` |
+| Saare elements | `document.querySelectorAll("li")` |
+| Text badalna | `el.textContent = "Salam"` |
+| Class | `el.classList.add / remove / toggle` |
+| Attribute | `el.setAttribute`, `el.dataset.id` |
+| Naya element | `document.createElement("li")` |
+| Jorna / hatana | `parent.append(child)`, `el.remove()` |
+
+<Callout variant="important" title="Mental model">
+
+**Dhoondo, phir badlo.** Har DOM kaam pehle element select karne se shuru hota hai.
+
+</Callout>
+
+## 5. Code example
+
+HTML:
+
+```html
+<h1 id="title">Meri List</h1>
+<ul class="todo-list"></ul>
+<button id="theme-btn">Theme</button>
+```
+
+JavaScript:
+
+```js
+const title = document.querySelector("#title");
+const list = document.querySelector(".todo-list");
+const themeBtn = document.querySelector("#theme-btn");
+
+title.textContent = "Aaj ke kaam";
+
+const items = ["JavaScript parhna", "Walk", "Groceries"];
+
+for (const text of items) {
+  const li = document.createElement("li");
+  li.textContent = text;
+  li.dataset.done = "false";
+  list.append(li);
+}
+
+themeBtn.addEventListener("click", () => {
+  document.body.classList.toggle("dark");
+});
+
+console.log(list.children.length);
+```
+
+### Code kaise kaam kar raha hai?
+
+| Line | Kya ho raha hai |
+| --- | --- |
+| `querySelector("#title")` | CSS selector se pehla matching element |
+| `textContent = ...` | Text safe tareeqe se set, HTML parse nahi hota |
+| `createElement("li")` | Memory mein naya element, abhi page par nahi |
+| `li.dataset.done` | `data-done="false"` attribute ban jata hai |
+| `list.append(li)` | Ab element page par nazar aata hai |
+| `classList.toggle("dark")` | Class ho to hatao, na ho to lagao |
+
+### Interview tip
+
+`textContent` vs `innerHTML`: `innerHTML` text ko HTML samajh kar parse karta hai, is liye user input ke saath XSS ka khatra hai. User data ke liye hamesha `textContent`.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Script ko DOM banne se pehle chala dena"
+  why="head mein script ho to querySelector null deta hai aur el.textContent par TypeError aata hai."
+  better="script tag par defer lagayein ya type module use karein."
+/>
+
+<Mistake
+  title="User input ko innerHTML mein dalna"
+  why="Koi script ya img onerror tag likh de to woh code chal sakta hai (XSS)."
+  better="textContent use karein, ya elements createElement se banayein."
+/>
+
+<Mistake
+  title="querySelectorAll ke result par seedha property lagana"
+  why="Yeh NodeList hai, list.style.color har element par nahi lagta."
+  better="for...of ya forEach se har element par alag kaam karein."
+/>
+
+<Mistake
+  title="Loop mein har item ke saath page update karna"
+  why="Baar baar DOM change se browser ko zyada kaam karna padta hai."
+  better="Items ek DocumentFragment ya array mein bana kar ek dafa append karein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Variables](/courses/javascript/variables), [Objects](/courses/javascript/objects), [Loops](/courses/javascript/loops) |
+| **Baad mein** | [DOM Events](/courses/javascript/dom-events), [Event Bubbling & Delegation](/courses/javascript/event-delegation), [Forms & Validation](/courses/javascript/forms-and-validation) |
+
+<Flow title="Suggested order">
+
+JavaScript basics
+↓
+DOM Basics
+↓
+DOM Events
+↓
+Event Delegation
+↓
+Forms aur Validation
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| DOM | HTML ka live object tree |
+| Select | `querySelector`, `querySelectorAll` |
+| Text | `textContent` safe, `innerHTML` sirf trusted HTML |
+| Classes | `classList.add / remove / toggle` |
+| Data | `dataset` se `data-*` attributes |
+| Naye elements | `createElement`, `append`, `remove` |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Pehle element **select** karein, phir **badlein**. User ka text hamesha `textContent` se dalein.
+
+</Callout>

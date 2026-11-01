@@ -1,0 +1,186 @@
+---
+title: call, apply & bind
+description: JavaScript call apply bind se function ka this khud set karna seekhein, teeno ka farq, partial application aur real use cases, Roman Urdu mein.
+keywords:
+  - javascript call apply bind
+  - call vs apply vs bind
+  - function bind this
+  - partial application javascript
+---
+
+## 1. call, apply & bind kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**`call`, `apply` aur `bind` har function ke built-in methods hain jin se aap khud bata sakte ho ke function ke andar `this` kya hoga.**
+
+</Callout>
+
+Normally `this` call site se tay hota hai. Yeh teen methods us rule ko override karte hain. `call` aur `apply` function ko foran chala dete hain, jabke `bind` ek naya function wapas deta hai jo baad mein chalega.
+
+## 2. Kyun zaroori hai?
+
+Kabhi method ko object se alag pass karna parta hai (callbacks, timers), aur `this` kho jata hai. Kabhi ek object ka method doosre object par chalana hota hai.
+
+<CompareTable leftTitle="Bina explicit binding" rightTitle="call, apply, bind ke saath">
+
+Callback mein this undefined | bind se this hamesha fixed
+Method doosre object par nahi chalta | call se kisi bhi object par chalao
+Array ko alag alag arguments mein todna mushkil | apply array ko arguments bana deta hai
+Same arguments baar baar pass | bind se kuch arguments pehle se fix
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Situation | Method |
+| --- | --- |
+| Method ko callback ya timer mein pass karna | `bind` |
+| Ek object ka method doosre object par chalana | `call` |
+| Arguments array mein hon | `apply` (ya modern spread) |
+| Kuch arguments pehle se fix karna | `bind` (partial application) |
+| Library ya polyfill code | `call` aur `apply` |
+
+## 4. Kaise kaam karta hai?
+
+| Method | Syntax | Kab chalta hai | Return |
+| --- | --- | --- | --- |
+| `call` | `fn.call(obj, a, b)` | Foran | Function ka result |
+| `apply` | `fn.apply(obj, [a, b])` | Foran | Function ka result |
+| `bind` | `fn.bind(obj, a)` | Baad mein | Naya bound function |
+
+Yaad rakhne ki trick: **c**all = **c**omma se arguments, **a**pply = **a**rray se arguments, **bind** = baandh kar baad ke liye rakho.
+
+<Flow title="bind ka flow">
+
+Original function
+↓
+bind(obj, pehle wale arguments)
+↓
+Naya function mila, this hamesha obj
+↓
+Baad mein call kiya, baqi arguments diye
+↓
+Original function chala, this = obj
+
+</Flow>
+
+<Callout variant="important" title="Mental model">
+
+**`call` / `apply` = abhi chalao. `bind` = tayyar karke rakho.**
+
+</Callout>
+
+## 5. Code example
+
+### Teeno ka basic farq
+
+```js
+function introduce(city, role) {
+  return `${this.name} from ${city}, ${role}`;
+}
+
+const ali = { name: "Ali" };
+const sara = { name: "Sara" };
+
+console.log(introduce.call(ali, "Lahore", "developer"));
+console.log(introduce.apply(sara, ["Karachi", "designer"]));
+
+const introduceAli = introduce.bind(ali, "Islamabad");
+console.log(introduceAli("student"));
+```
+
+### Callback mein `this` bachana
+
+```js
+const logger = {
+  prefix: "[app]",
+  log(message) {
+    console.log(`${this.prefix} ${message}`);
+  },
+};
+
+const messages = ["started", "ready"];
+messages.forEach(logger.log.bind(logger));
+
+const scores = [40, 85, 72];
+console.log(Math.max.apply(null, scores));
+console.log(Math.max(...scores));
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `introduce.call(ali, ...)` | `this` = `ali`, arguments comma se |
+| `introduce.apply(sara, [...])` | `this` = `sara`, arguments array mein |
+| `bind(ali, "Islamabad")` | `this` aur `city` fix, naya function |
+| `introduceAli("student")` | Sirf baqi argument `role` diya |
+| `logger.log.bind(logger)` | `forEach` ke andar bhi `this.prefix` kaam karta hai |
+| `Math.max(...scores)` | Spread, `apply` ka modern alternative |
+
+### Interview tip
+
+Bound function ko dobara `bind` ya `call` karke `this` nahi badal sakte, pehla bind hi rehta hai. Aur arrow functions par `call`, `apply`, `bind` ka `this` wala hissa asar nahi karta, kyunki un ka apna `this` hota hi nahi.
+
+## 6. Common mistakes
+
+<Mistake
+  title="bind ko call samajh lena"
+  why="bind function chalata nahi, sirf naya function deta hai. Result ki jagah function mil jata hai."
+  better="Foran result chahiye to call ya apply, baad mein chalana ho to bind."
+/>
+
+<Mistake
+  title="Arrow function par bind se this badalne ki koshish"
+  why="Arrow ka this lexical hai, bind ka pehla argument ignore ho jata hai."
+  better="Agar this badalna hai to normal function ya method use karo."
+/>
+
+<Mistake
+  title="Har render ya loop mein naya bind karna"
+  why="Har dafa naya function banta hai, removeEventListener kaam nahi karta kyunki reference alag hota hai."
+  better="Bound function ek dafa bana kar variable mein rakho aur wahi add aur remove mein use karo."
+/>
+
+<Mistake
+  title="Spread ki jagah apply par zor dena"
+  why="Modern code mein fn.apply(null, arr) parhna mushkil hai."
+  better="Jab this ki zaroorat na ho to fn(...arr) likho, apply sirf this ke saath array chahiye ho to."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [The this Keyword](/courses/javascript/this-keyword), [Functions](/courses/javascript/functions) |
+| **Saath mein** | [Spread & Rest](/courses/javascript/spread-and-rest), [Closures](/courses/javascript/closures) |
+| **Baad mein** | [Classes](/courses/javascript/classes), [DOM Events](/courses/javascript/dom-events) |
+
+<Flow title="Suggested order">
+
+The this Keyword
+↓
+call, apply & bind
+↓
+Higher-Order Functions
+↓
+Classes
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `call` | `this` set, comma arguments, foran chalta hai |
+| `apply` | `this` set, array arguments, foran chalta hai |
+| `bind` | Naya function, `this` permanently fix |
+| Partial application | `bind` se pehle wale arguments fix |
+| Arrow functions | `this` change nahi hota |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Jab `this` kho raha ho to `bind` ya arrow wrapper use karein. Arguments array mein hon to aaj kal spread (`...`) zyada saaf tareeqa hai.
+
+</Callout>

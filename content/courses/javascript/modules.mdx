@@ -1,0 +1,175 @@
+---
+title: "Modules: import & export"
+description: JavaScript modules import export ka tareeqa, named aur default export ka farq, aur code ko files mein todna Roman Urdu mein seekhein.
+keywords:
+  - javascript modules import export
+  - es modules in urdu
+  - named vs default export
+  - dynamic import javascript
+---
+
+## 1. Modules kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Module ek JavaScript file hai jo apna code `export` karti hai aur doosri files ka code `import` karti hai.**
+
+</Callout>
+
+Har module ka apna scope hota hai. Jo variable ya function aap `export` nahi karte, woh file ke bahar nazar nahi aata. Is system ko **ES Modules (ESM)** kehte hain aur yeh browser aur Node.js dono mein built-in hai.
+
+## 2. Kyun zaroori hain?
+
+Purane zamane mein saara code ek bari file ya kai `script` tags mein hota tha. Sab variables global hote the aur naam aapas mein takra jate the.
+
+<CompareTable leftTitle="Bina modules" rightTitle="Modules ke saath">
+
+Sab variables global scope mein | Har file ka apna scope
+Script tags ka order yaad rakhna parta | import khud dependency batata hai
+Ek hi bari file, mushkil maintenance | Chhoti files, har ek ka ek kaam
+Naam aapas mein takra jate hain | Sirf export ki hui cheez bahar jati hai
+
+</CompareTable>
+
+## 3. Kahan use hote hain?
+
+| Jagah | Example |
+| --- | --- |
+| **React / Next.js apps** | Har component alag file, `import Button from "./Button"` |
+| **Utility functions** | `utils/format.js` se `formatPrice` export |
+| **npm packages** | `import { z } from "zod"` |
+| **Node.js backend** | `"type": "module"` ke saath routes aur services |
+| **Code splitting** | `import()` se heavy code baad mein load karna |
+
+## 4. Kaise kaam karte hain?
+
+Jab browser ya bundler ek module load karta hai to woh pehle saare `import` statements parh kar ek **dependency graph** banata hai. Phir har module **sirf ek baar** chalta hai, chahe usay kitni files import karein.
+
+<Flow title="Module loading ka flow">
+
+main.js load hoti hai
+↓
+import statements parhe jate hain
+↓
+math.js aur api.js load hoti hain
+↓
+Har module ek baar execute hota hai
+↓
+Exported values main.js ko mil jati hain
+
+</Flow>
+
+Do qisam ke exports hote hain:
+
+| Type | Kitne per file | Import syntax |
+| --- | --- | --- |
+| **Named export** | Jitne chahein | `import { add } from "./math.js"` |
+| **Default export** | Sirf ek | `import anyName from "./math.js"` |
+
+## 5. Code example
+
+### Named aur default export
+
+```js
+// math.js
+export const PI = 3.14159;
+
+export function add(a, b) {
+  return a + b;
+}
+
+export default function multiply(a, b) {
+  return a * b;
+}
+```
+
+```js
+// main.js
+import multiply, { add, PI } from "./math.js";
+import * as math from "./math.js";
+
+console.log(add(2, 3));
+console.log(multiply(4, 5));
+console.log(math.PI);
+```
+
+### Rename aur dynamic import
+
+```js
+import { add as sum } from "./math.js";
+
+button.addEventListener("click", async () => {
+  const { formatReport } = await import("./report.js");
+  console.log(formatReport(sum(1, 2)));
+});
+```
+
+Browser mein module chalane ke liye script tag par `type="module"` lagana hota hai:
+
+```html
+<script type="module" src="./main.js"></script>
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `export const PI` | Named export, isi naam se import hoga |
+| `export default` | File ka main export, import par koi bhi naam de sakte hain |
+| `import * as math` | Saare named exports ek object mein |
+| `add as sum` | Import karte waqt naam badalna |
+| `await import()` | Dynamic import, file sirf zaroorat par load hoti hai aur Promise return karta hai |
+
+### Interview tip
+
+Interviewer aksar poochte hain ke ES Modules aur CommonJS mein kya farq hai. Short jawab: ESM `import` / `export` use karta hai aur static hai (build tools tree shaking kar sakte hain), jabke CommonJS `require` / `module.exports` use karta hai aur runtime par chalta hai. Naye projects mein ESM standard hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Named export ko bina curly braces ke import karna"
+  why="import add from ./math.js default export dhoondta hai, named add nahi milta aur value undefined ya error aata hai."
+  better="Named export ke liye curly braces use karein, jaise import { add } from ./math.js."
+/>
+
+<Mistake
+  title="Browser mein type module lagana bhool jana"
+  why="Normal script mein import statement syntax error deta hai."
+  better="Script tag par type=module lagayein, ya Vite jaisa bundler use karein."
+/>
+
+<Mistake
+  title="Node.js mein extension chhor dena"
+  why="Native ESM mein Node relative path ka extension khud guess nahi karta, is liye module not found error aata hai."
+  better="Node ESM mein poora path likhein, jaise ./math.js. Bundlers jaise Vite extension ke bina bhi chala lete hain."
+/>
+
+<Mistake
+  title="Har file mein sirf default export use karna"
+  why="Import karte waqt har jagah naya naam ho sakta hai aur editor ka auto import aur refactoring kamzor ho jati hai."
+  better="Utilities ke liye named exports behtar hain, default export ek main cheez ke liye rakhein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Functions](/courses/javascript/functions), [Scope & Hoisting](/courses/javascript/scope-and-hoisting), [Objects](/courses/javascript/objects) |
+| **Saath** | [Destructuring](/courses/javascript/destructuring), [Async / Await](/courses/javascript/async-await) |
+| **Baad mein** | [npm & Packages](/courses/javascript/npm-and-packages), [React Setup with Vite](/courses/react/setup-with-vite) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Module | Apne scope wali file jo export aur import karti hai |
+| Named export | Kai per file, curly braces ke saath import |
+| Default export | Ek per file, kisi bhi naam se import |
+| Dynamic import | `import()` Promise deta hai, lazy loading ke liye |
+| Browser | `type="module"` zaroori |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Har module **sirf ek baar** execute hota hai aur sirf wohi cheez bahar jati hai jo aap **export** karte hain.
+
+</Callout>

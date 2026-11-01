@@ -1,0 +1,181 @@
+---
+title: "Route Groups & Private Folders"
+description: "Next.js route groups aur private folders: (group) folders se URL badle baghair routes organize karna aur _folder se files ko routing se bahar rakhna."
+keywords:
+  - next.js route groups
+  - next.js private folders
+  - next.js multiple root layouts
+  - next.js project organization
+  - next.js colocation
+---
+
+## 1. Route groups aur private folders kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Route group `(name)` folder hai jo URL mein shamil nahi hota, aur private folder `_name` folder hai jo routing se hi bahar rehta hai.**
+
+</Callout>
+
+Dono ka maqsad **organization** hai. Route group se aap routes ko group kar ke unhein alag layout de sakte hain. Private folder se aap components, utils aur helpers ko route ke qareeb rakh sakte hain bina yeh dar ke ke woh route ban jayein.
+
+## 2. Kyun zaroori hai?
+
+<CompareTable leftTitle="Bina groups" rightTitle="Route groups ke saath">
+
+Marketing aur dashboard ka ek hi layout | Har group ka apna layout
+Group karne ke liye URL lamba | (marketing) URL mein nahi aata
+Sab routes ek dher mein | Team aur feature ke hisaab se folders
+Helpers app ke bahar alag | _components route ke saath colocated
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Situation | Structure |
+| --- | --- |
+| **Marketing pages ka alag header** | `app/(marketing)/layout.tsx` |
+| **Dashboard ka sidebar layout** | `app/(dashboard)/layout.tsx` |
+| **Auth pages bina navbar ke** | `app/(auth)/login/page.tsx` |
+| **Kuch routes par hi ek layout** | `app/(shop)/layout.tsx` sirf shop routes par |
+| **Route ke apne components** | `app/blog/_components/PostCard.tsx` |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Route group URL se gayab">
+
+app/(marketing)/about/page.tsx
+   ↓
+Next.js parentheses wala hissa ignore karta hai
+   ↓
+URL: /about
+   +
+Layout: app/(marketing)/layout.tsx
+
+</Flow>
+
+Private folder ka rule simple hai: underscore se shuru hone wala folder aur us ke saare child folders routing mein shamil nahi hote, chahe us ke andar `page.tsx` bhi ho.
+
+```bash
+app/
+  layout.tsx
+  (marketing)/
+    layout.tsx
+    page.tsx
+    about/page.tsx
+  (dashboard)/
+    layout.tsx
+    dashboard/page.tsx
+    _components/
+      Sidebar.tsx
+      StatsCard.tsx
+  (auth)/
+    login/page.tsx
+```
+
+| File | URL |
+| --- | --- |
+| `app/(marketing)/page.tsx` | `/` |
+| `app/(marketing)/about/page.tsx` | `/about` |
+| `app/(dashboard)/dashboard/page.tsx` | `/dashboard` |
+| `app/(auth)/login/page.tsx` | `/login` |
+| `app/(dashboard)/_components/StatsCard.tsx` | Koi URL nahi |
+
+## 5. Code example
+
+### Group ka layout
+
+```tsx
+import { Sidebar } from "./_components/Sidebar";
+
+export default function DashboardGroupLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid grid-cols-[240px_1fr]">
+      <Sidebar />
+      <main>{children}</main>
+    </div>
+  );
+}
+```
+
+### Private folder ka component
+
+```tsx
+import Link from "next/link";
+
+export function Sidebar() {
+  return (
+    <aside>
+      <Link href="/dashboard">Overview</Link>
+      <Link href="/dashboard/orders">Orders</Link>
+    </aside>
+  );
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `(dashboard)/layout.tsx` | Sirf is group ke routes ko wrap karta hai |
+| `(dashboard)` | URL mein nahi aata |
+| `_components/Sidebar.tsx` | Private folder, kabhi route nahi banta |
+| `./_components/Sidebar` | Relative import, route ke saath colocated |
+
+<Callout variant="important" title="Multiple root layouts">
+
+Agar top-level `app/layout.tsx` hata kar har group mein apna root layout (`html` aur `body` ke saath) banayein, to har group bilkul alag app jaisa ho jata hai. In groups ke beech navigation par **full page load** hota hai.
+
+</Callout>
+
+### Interview tip
+
+"Route group aur private folder mein farq?" Route group ke andar ke routes kaam karte hain, sirf naam URL se hat jata hai. Private folder ke andar kuch bhi route nahi banta.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Do groups mein same URL wala page banana"
+  why="(marketing)/about aur (shop)/about dono /about banate hain, is se conflict error aata hai."
+  better="Har URL sirf ek jagah define karein, groups sirf organization ke liye hain."
+/>
+
+<Mistake
+  title="Private folder ke andar page bana kar route expect karna"
+  why="Underscore wala folder aur us ke bachay routing se bahar hote hain."
+  better="Routes ko normal ya group folders mein rakhein, _folder sirf helpers ke liye."
+/>
+
+<Mistake
+  title="Multiple root layouts mein html body bhool jana"
+  why="Top-level layout hatane ke baad har group ka layout hi root hai aur use html aur body chahiye."
+  better="Har group root layout mein html aur body tags zaroor render karein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Routing & Pages](/courses/nextjs/routing-and-pages), [Layouts & Templates](/courses/nextjs/layouts-and-templates) |
+| **Saath** | [Dynamic Routes](/courses/nextjs/dynamic-routes), [JavaScript modules](/courses/javascript/modules) |
+| **Baad mein** | [Parallel & Intercepting Routes](/courses/nextjs/parallel-and-intercepting-routes), [Authentication](/courses/nextjs/authentication), [Internationalization](/courses/nextjs/internationalization) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Route group | `(name)`, URL mein nahi aata |
+| Faida | Har group ka alag layout |
+| Private folder | `_name`, routing se bahar |
+| Colocation | Components route ke saath rakhna |
+| Multiple root layouts | Groups ke beech full page load |
+
+<Callout variant="important" title="Yaad rakhein">
+
+**Parentheses URL se chhupate hain, underscore routing se chhupata hai.**
+
+</Callout>

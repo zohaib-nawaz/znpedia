@@ -1,0 +1,185 @@
+---
+title: Event Loop
+description: JavaScript event loop kya hai, call stack, microtask queue aur task queue kaise mil kar async code chalate hain, Roman Urdu mein output examples ke saath.
+keywords:
+  - javascript event loop
+  - event loop in urdu
+  - microtask vs macrotask
+  - call stack javascript
+---
+
+## 1. Event Loop kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**Event loop woh mechanism hai jo call stack khaali hone par queues se agla kaam utha kar chalata hai.**
+
+</Callout>
+
+JavaScript single threaded hai, yani ek waqt mein ek hi kaam chalata hai. Phir bhi timers, network requests aur clicks saath saath handle hote hain. Yeh kamaal event loop ka hai.
+
+Lambe kaam (jaise network call) browser ya Node.js ke paas chale jaate hain. Jab woh tayyar hote hain to unka callback queue mein aata hai, aur event loop use stack par le aata hai.
+
+## 2. Kyun zaroori hai?
+
+Agar JavaScript har network request ka intezar block karke karti, to page freeze ho jata. Event loop non-blocking code possible banata hai.
+
+<CompareTable leftTitle="Blocking soch" rightTitle="Event loop ke saath">
+
+Request ka jawab aane tak sab ruka | Request background mein, UI chalta rahe
+Button click ka response late | Click turant handle hota hai
+Output order samajh nahi aata | Stack, microtasks, tasks ka clear order
+Bugs random lagte hain | Order predict kar sakte hain
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Situation | Event loop ka role |
+| --- | --- |
+| **setTimeout** | Callback task queue mein jata hai |
+| **Promises** | `.then` aur `await` ke baad wala code microtask queue mein |
+| **Click events** | Event handler task ke roop mein chalta hai |
+| **fetch** | Network background mein, result promise ke through |
+| **Rendering** | Browser tasks ke beech screen paint karta hai |
+
+## 4. Kaise kaam karta hai?
+
+| Hissa | Kaam |
+| --- | --- |
+| **Call stack** | Abhi chalne wale functions |
+| **Web APIs** | Timers, fetch, DOM events (browser ka hissa) |
+| **Microtask queue** | Promise callbacks, `queueMicrotask`, `await` ke baad ka code |
+| **Task queue** | `setTimeout`, `setInterval`, events (macrotasks) |
+
+<Flow title="Event loop ka ek round">
+
+Sync code call stack par chalta hai
+↓
+Stack khaali
+↓
+Saari microtasks chalao, nayi bhi
+↓
+Browser zaroorat ho to render kare
+↓
+Task queue se ek task uthao
+↓
+Phir se shuru
+
+</Flow>
+
+<Callout variant="important" title="Mental model">
+
+**Sync code pehle, phir saari microtasks, phir ek macrotask.**
+
+</Callout>
+
+## 5. Code example
+
+### Output order predict karo
+
+```js
+console.log("1: start");
+
+setTimeout(() => console.log("2: timeout"), 0);
+
+Promise.resolve().then(() => console.log("3: promise"));
+
+queueMicrotask(() => console.log("4: microtask"));
+
+console.log("5: end");
+```
+
+Output:
+
+```bash
+1: start
+5: end
+3: promise
+4: microtask
+2: timeout
+```
+
+### async function ke andar order
+
+```js
+async function run() {
+  console.log("A");
+  await null;
+  console.log("C");
+}
+
+run();
+console.log("B");
+```
+
+### Code kaise kaam kar raha hai?
+
+| Step | Kya ho raha hai |
+| --- | --- |
+| `1` aur `5` | Sync code, seedha stack par |
+| `setTimeout(..., 0)` | 0ms ke baad bhi task queue mein, intezar karega |
+| `.then` aur `queueMicrotask` | Microtask queue, stack khaali hote hi chalte hain |
+| `2: timeout` | Saari microtasks ke baad, sab se aakhir mein |
+| `await null` | Baqi function microtask ban jata hai, is liye `A B C` |
+
+### Interview tip
+
+`setTimeout(fn, 0)` ka matlab "turant" nahi, balke "stack aur microtasks khatam hone ke baad". Yeh sawal output prediction ki shakal mein bohot aata hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Lamba sync loop chala kar page freeze karna"
+  why="Jab tak stack busy hai, event loop na clicks handle karta hai na render."
+  better="Bhaari kaam ko chhote hisson mein todein ya Web Worker mein bhejein."
+/>
+
+<Mistake
+  title="Samajhna ke setTimeout 0 sab se pehle chalega"
+  why="Timer callback macrotask hai, promises ki microtasks us se pehle chalti hain."
+  better="Order yaad rakhein: sync, microtasks, phir macrotask."
+/>
+
+<Mistake
+  title="Microtasks ki infinite chain banana"
+  why="Microtask queue khaali hone tak render nahi hota, page atak jata hai."
+  better="Recursive kaam ke liye setTimeout ya requestAnimationFrame jaise tasks use karein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [How JavaScript Runs](/courses/javascript/how-javascript-runs), [Functions](/courses/javascript/functions) |
+| **Baad mein** | [Timers](/courses/javascript/timers), [Callbacks](/courses/javascript/callbacks), [Promises](/courses/javascript/promises), [Async / Await](/courses/javascript/async-await) |
+
+<Flow title="Suggested order">
+
+How JavaScript Runs
+↓
+Event Loop
+↓
+Timers aur Callbacks
+↓
+Promises
+↓
+Async Await
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Single thread | Ek waqt mein ek kaam stack par |
+| Microtasks | Promises, `queueMicrotask`, `await` ke baad ka code |
+| Macrotasks | `setTimeout`, `setInterval`, events |
+| Order | Sync, saari microtasks, phir ek macrotask |
+| Rendering | Tasks ke beech, stack busy ho to nahi |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Event loop JavaScript ko **non-blocking** banata hai. Microtasks hamesha agle macrotask se pehle khatam hoti hain.
+
+</Callout>

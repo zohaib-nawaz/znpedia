@@ -1,0 +1,205 @@
+---
+title: Map & Set
+description: JavaScript Map aur Set kya hain, object aur array se farq, unique values, kisi bhi type ki keys, Map.groupBy aur naye Set methods, Roman Urdu mein.
+keywords:
+  - javascript map set
+  - map vs object javascript
+  - set unique values javascript
+  - map groupby
+  - set union intersection
+---
+
+## 1. Map & Set kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**`Map` key-value pairs rakhta hai jahan key kisi bhi type ki ho sakti hai. `Set` sirf unique values ka collection hai.**
+
+</Callout>
+
+Object ki keys sirf string ya symbol hoti hain. `Map` mein key number, object, hatta ke function bhi ho sakti hai, aur insertion order yaad rehta hai.
+
+`Set` array jaisa hai lekin duplicate values allow nahi karta. Ek value ya to set mein hai ya nahi.
+
+## 2. Kyun zaroori hai?
+
+Objects aur arrays har kaam ke liye perfect nahi. Bar bar add/remove hone wale lookups aur unique lists ke liye Map aur Set behtar aur tez hain.
+
+<CompareTable leftTitle="Object / array se kaam chalana" rightTitle="Map / Set ke saath">
+
+Object keys string ban jati hain | Map mein key apni asal type mein
+Size ke liye Object.keys().length | map.size seedha
+Duplicate hatane ke liye filter aur indexOf | new Set se ek line mein unique
+includes poori array scan karta hai | set.has fast lookup
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Situation | Kya use karein |
+| --- | --- |
+| Unique tags, categories, visited IDs | `Set` |
+| Duplicate items hatana | `[...new Set(arr)]` |
+| User ID se user data cache | `Map` |
+| DOM element se extra data jorna | `Map` ya `WeakMap` |
+| Bar bar add/delete hone wala lookup | `Map` |
+| Do lists ka common ya farq | `Set` methods |
+
+## 4. Kaise kaam karta hai?
+
+| Kaam | `Map` | `Set` |
+| --- | --- | --- |
+| Banana | `new Map()` | `new Set()` |
+| Add | `map.set(key, value)` | `set.add(value)` |
+| Parhna | `map.get(key)` | (value hi key hai) |
+| Check | `map.has(key)` | `set.has(value)` |
+| Delete | `map.delete(key)` | `set.delete(value)` |
+| Count | `map.size` | `set.size` |
+| Loop | `for (const [k, v] of map)` | `for (const v of set)` |
+
+<Flow title="Kab kya chunein">
+
+Sirf unique values chahiye?
+↓
+Haan to Set
+↓
+Key-value chahiye aur keys dynamic ya non-string?
+↓
+Haan to Map
+↓
+Fixed shape wala data, JSON mein bhejna hai?
+↓
+Plain object
+
+</Flow>
+
+Map aur Set dono **insertion order** mein iterate hote hain. Lekin yeh seedha `JSON.stringify` mein convert nahi hote, pehle `Object.fromEntries(map)` ya `[...set]` karna parta hai.
+
+<Callout variant="important" title="Mental model">
+
+**Map = smart dictionary (koi bhi key). Set = guest list (har naam sirf ek dafa).**
+
+</Callout>
+
+## 5. Code example
+
+### Set: unique values aur set operations
+
+```js
+const tags = ["js", "react", "js", "css", "react"];
+const unique = new Set(tags);
+
+console.log(unique.size);
+console.log(unique.has("css"));
+console.log([...unique]);
+
+const frontend = new Set(["js", "css", "html"]);
+const backend = new Set(["js", "sql"]);
+
+console.log([...frontend.intersection(backend)]);
+console.log([...frontend.union(backend)]);
+console.log([...frontend.difference(backend)]);
+```
+
+### Map: cache aur grouping
+
+```js
+const userCache = new Map();
+userCache.set(101, { name: "Ali" });
+userCache.set(102, { name: "Sara" });
+
+console.log(userCache.get(101).name);
+console.log(userCache.has(103), userCache.size);
+
+const orders = [
+  { id: 1, status: "paid" },
+  { id: 2, status: "pending" },
+  { id: 3, status: "paid" },
+];
+const byStatus = Map.groupBy(orders, (o) => o.status);
+console.log(byStatus.get("paid").length);
+
+console.log(Object.fromEntries(userCache));
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `new Set(tags)` | Duplicates khud hat gaye, `size` `3` |
+| `[...unique]` | Set ko wapas array banaya |
+| `intersection` | Dono mein common, `["js"]` |
+| `union` | Sab unique, `["js", "css", "html", "sql"]` |
+| `difference` | Sirf frontend wale, `["css", "html"]` |
+| `userCache.set(101, ...)` | Number key apni type mein rehti hai |
+| `Map.groupBy` | Status ke hisaab se groups wala Map (ES2024) |
+| `Object.fromEntries` | Map ko plain object banaya, JSON ke liye |
+
+### Interview tip
+
+`WeakMap` aur `WeakSet` sirf objects ko key/value bana sakte hain aur garbage collection ko nahi rokte. DOM elements ya objects ke saath private data jorne ke liye inhein use kiya jata hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Map par bracket notation use karna"
+  why="map['key'] = value Map entry nahi banata, sirf object property lagata hai, get aur size mein nazar nahi aata."
+  better="Hamesha map.set(key, value) aur map.get(key) use karo."
+/>
+
+<Mistake
+  title="Set mein objects ko content se unique samajhna"
+  why="Do alag objects same data ke saath bhi alag references hain, Set dono rakh leta hai."
+  better="Objects ke liye unique key (jaise id) ka Set ya Map banao."
+/>
+
+<Mistake
+  title="Map ko seedha JSON.stringify karna"
+  why="JSON.stringify(map) ka result khaali object aata hai, data gum ho jata hai."
+  better="Pehle Object.fromEntries(map) ya [...map] karo, phir stringify."
+/>
+
+<Mistake
+  title="Har jagah Map zabardasti"
+  why="Fixed shape ka data jaise user profile plain object mein zyada saaf aur JSON friendly hai."
+  better="Dynamic lookups ke liye Map, fixed record ke liye object."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Arrays](/courses/javascript/arrays), [Objects](/courses/javascript/objects), [Spread & Rest](/courses/javascript/spread-and-rest) |
+| **Saath mein** | [Array Methods: map, filter, reduce](/courses/javascript/array-methods), [JSON](/courses/javascript/json) |
+| **Baad mein** | [Iterators & Generators](/courses/javascript/iterators-and-generators), [Classes](/courses/javascript/classes) |
+
+<Flow title="Suggested order">
+
+Objects
+↓
+Spread & Rest
+↓
+Map & Set
+↓
+JSON
+↓
+Iterators & Generators
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `Map` | Koi bhi type ki key, `get` / `set` / `has` |
+| `Set` | Sirf unique values, `add` / `has` |
+| Unique array | `[...new Set(arr)]` |
+| Order | Dono insertion order rakhte hain |
+| JSON | Pehle object ya array mein convert |
+| Grouping | `Map.groupBy` |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Unique values ke liye `Set`, dynamic key-value lookup ke liye `Map`. Fixed shape aur JSON wale data ke liye plain object hi behtar hai.
+
+</Callout>

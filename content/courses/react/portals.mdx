@@ -1,0 +1,177 @@
+---
+title: Portals
+description: React createPortal se modal, tooltip aur toast ko DOM ke kisi doosre node mein render karna seekhein, Roman Urdu mein simple examples ke saath.
+keywords:
+  - react createportal
+  - react portals
+  - react modal portal
+  - render outside root react
+---
+
+## 1. Portals kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**Portal ek tareeqa hai jis se component apne children ko DOM ke kisi aur node mein render karta hai, lekin React tree mein woh apni jagah par hi rehte hain.**
+
+</Callout>
+
+Portal `createPortal` function se banta hai jo `react-dom` package se aata hai. Aap usay JSX aur ek DOM node dete hain, aur React woh JSX us node ke andar paint karta hai.
+
+Khaas baat yeh hai ke sirf **DOM position** badalti hai. Props, state, context aur events sab waise hi chalte hain jaise component apne parent ke andar ho.
+
+## 2. Kyun zaroori hai?
+
+Modal ya tooltip agar kisi card ke andar render ho, to parent ka `overflow: hidden`, `z-index` ya `transform` usay kaat sakta hai ya neeche chhupa sakta hai.
+
+<CompareTable leftTitle="Bina Portal" rightTitle="Portal ke saath">
+
+Modal parent ke overflow mein kat jata hai | Modal body ke seedha neeche, poora dikhta hai
+z-index ki larai har jagah | Ek top level layer, saaf stacking
+Tooltip scroll container mein chhup jata hai | Tooltip container se bahar render
+Layout CSS ke hacks | Simple, predictable placement
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Use case | Kyun Portal |
+| --- | --- |
+| **Modals aur dialogs** | Poori screen ke upar overlay chahiye |
+| **Tooltips aur popovers** | Parent ke overflow se bahar nikalna |
+| **Toast notifications** | Ek fixed corner container mein |
+| **Dropdown menus** | Table ya scroll area ke andar se bahar |
+| **Non React page parts** | Purane server rendered HTML ke kisi div mein React UI |
+
+## 4. Kaise kaam karta hai?
+
+React do trees ko alag samajhta hai: **React tree** (components ka hierarchy) aur **DOM tree** (browser ke actual elements). Portal sirf DOM tree mein jagah badalta hai.
+
+<Flow title="Portal ka mental model">
+
+Parent component render
+↓
+createPortal(jsx, document.body)
+↓
+DOM: jsx body ke andar paint hota hai
++
+React tree: jsx Parent ka child hi rehta hai
+↓
+Context, state aur event bubbling Parent tak
+
+</Flow>
+
+Is liye agar portal ke andar button click ho, to `onClick` event React tree mein upar Parent tak bubble karta hai, chahe DOM mein woh body ke andar ho.
+
+## 5. Code example
+
+### Example 1: Simple modal
+
+```jsx
+import { useState } from "react";
+import { createPortal } from "react-dom";
+
+function Modal({ onClose, children }) {
+  return createPortal(
+    <div className="overlay" role="dialog" aria-modal="true">
+      <div className="box">
+        {children}
+        <button onClick={onClose}>Band karo</button>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+export default function ProductCard() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div style={{ overflow: "hidden" }}>
+      <button onClick={() => setOpen(true)}>Details dekho</button>
+      {open && (
+        <Modal onClose={() => setOpen(false)}>
+          <p>Product ki poori details</p>
+        </Modal>
+      )}
+    </div>
+  );
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `createPortal(jsx, document.body)` | Modal ka DOM body ke andar banta hai |
+| `overflow: "hidden"` | Card ka CSS modal ko ab nahi kaatta |
+| `onClose` prop | Normal props ki tarah kaam karta hai |
+| `open && ...` | Modal sirf zaroorat par mount hota hai |
+
+### Example 2: Dedicated container
+
+```html
+<body>
+  <div id="root"></div>
+  <div id="toast-root"></div>
+</body>
+```
+
+```jsx
+import { createPortal } from "react-dom";
+
+export function Toast({ message }) {
+  const container = document.getElementById("toast-root");
+  return createPortal(<div className="toast">{message}</div>, container);
+}
+```
+
+Alag container rakhne se saare toasts ek jagah stack hote hain aur CSS manage karna aasan rehta hai.
+
+### Interview tip
+
+Aksar poocha jata hai: "Portal ke andar click ka event kahan tak jata hai?" Jawab: React tree ke hisaab se, yani portal banane wale parent tak. DOM position event propagation ko React mein nahi badalti.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Yeh sochna ke portal ke events parent tak nahi pohnchte"
+  why="React events React tree mein bubble karte hain, is liye parent ka onClick bhi chal sakta hai aur surprise deta hai."
+  better="Agar parent tak event nahi bhejna to portal ke andar event.stopPropagation() use karo."
+/>
+
+<Mistake
+  title="Server render ke dauran document.body access karna"
+  why="Server par document exist nahi karta, is liye SSR mein crash hota hai."
+  better="Portal sirf client par render karo, jaise mount hone ke baad ya Client Component ke andar."
+/>
+
+<Mistake
+  title="Modal mein accessibility bhool jana"
+  why="Screen reader users ko pata nahi chalta ke dialog khula hai, aur focus peeche reh jata hai."
+  better="role=dialog, aria-modal, focus management aur Escape se close karna add karo, ya native dialog element use karo."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Components](/courses/react/components), [Children & Composition](/courses/react/children-and-composition), [Conditional Rendering](/courses/react/conditional-rendering) |
+| **Saath mein** | [Handling Events](/courses/react/events), [useRef](/courses/react/use-ref), [useContext](/courses/react/use-context) |
+| **Baad mein** | [Suspense & lazy()](/courses/react/suspense-and-lazy), [Activity Component](/courses/react/activity) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Function | `createPortal(children, domNode)` from `react-dom` |
+| DOM | Children doosre node mein render hote hain |
+| React tree | Component apni jagah par hi rehta hai |
+| Events | React tree mein parent tak bubble karte hain |
+| Use cases | Modal, tooltip, toast, dropdown |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Portal **DOM mein jagah** badalta hai, **React mein rishta** nahi. Context, state aur events bilkul normal child ki tarah kaam karte hain.
+
+</Callout>

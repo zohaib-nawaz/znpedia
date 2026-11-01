@@ -1,0 +1,170 @@
+---
+title: Strings & Template Literals
+description: JavaScript strings template literals ke saath, backticks, interpolation aur zaroori string methods jaise slice, includes, trim. Roman Urdu mein.
+keywords:
+  - javascript strings template literals
+  - javascript string methods
+  - template literals interpolation
+  - javascript slice split trim
+---
+
+## 1. Strings kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**String text ki value hai, aur template literal backticks wali string hai jis mein variables aur expressions seedha likhe ja sakte hain.**
+
+</Callout>
+
+JavaScript mein string likhne ke teen tareeqe hain:
+
+| Syntax | Example | Note |
+| --- | --- | --- |
+| Single quotes | `'Hello'` | Simple text |
+| Double quotes | `"Hello"` | Simple text, same behavior |
+| Backticks | `` `Hello ${name}` `` | Template literal, interpolation aur multi line |
+
+## 2. Kyun zaroori hai?
+
+Purane code mein text aur variables ko `+` se jodna padta tha. Lambi strings mein quotes aur spaces sambhalna mushkil tha. Template literals ne yeh kaam saaf kar diya.
+
+<CompareTable leftTitle="Purana concatenation" rightTitle="Template literal">
+
+Har variable ke liye plus aur quotes | Dollar sign aur braces se seedha variable
+Spaces bhool jana aam baat | Text waisa hi likha jata hai jaisa dikhega
+Multi line ke liye backslash n | Backticks mein seedha nayi line
+Lambi string parhna mushkil | HTML snippet ya message saaf nazar aata hai
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Real use | String feature |
+| --- | --- |
+| **Welcome message** | Template literal: `` `Welcome, ${user.name}` `` |
+| **Search filter** | `includes()`, `toLowerCase()` |
+| **Form input saaf karna** | `trim()` |
+| **CSV ya tags todna** | `split(",")` |
+| **Order ID format** | `padStart(6, "0")` |
+| **URL slug banana** | `toLowerCase()`, `replaceAll(" ", "-")` |
+
+## 4. Kaise kaam karta hai?
+
+String characters ki ek sequence hai. Har character ka **index** hota hai jo `0` se shuru hota hai.
+
+<Flow title="Index ka model">
+
+String: "Lahore"
+     ↓
+L=0, a=1, h=2, o=3, r=4, e=5
+     ↓
+length = 6, aakhri index = 5
+     ↓
+at(-1) se aakhri character "e"
+
+</Flow>
+
+Strings **immutable** hain. Har method ek **nayi string** return karta hai, original wahi rehti hai.
+
+<Callout variant="important" title="Mental model">
+
+**String methods original ko kabhi nahi badalte. Result chahiye to usay variable mein save karein.**
+
+</Callout>
+
+## 5. Code example
+
+Template literals:
+
+```js
+const name = "Usman";
+const items = 3;
+const price = 450;
+
+const message = `Salam ${name}! Aap ke cart mein ${items} items hain.
+Total: Rs ${items * price}`;
+
+console.log(message);
+```
+
+`${...}` ke andar koi bhi expression chal sakta hai, jaise calculation ya function call.
+
+Common methods:
+
+```js
+const raw = "  JavaScript Seekhna Asaan Hai  ";
+const text = raw.trim();
+
+console.log(text.length);
+console.log(text.toLowerCase());
+console.log(text.includes("Seekhna"));
+console.log(text.startsWith("Java"));
+console.log(text.slice(0, 10));
+console.log(text.split(" "));
+console.log(text.replaceAll(" ", "-"));
+console.log(text.at(-1));
+console.log("7".padStart(4, "0"));
+```
+
+Output: `28`, `"javascript seekhna asaan hai"`, `true`, `true`, `"JavaScript"`, `["JavaScript", "Seekhna", "Asaan", "Hai"]`, `"JavaScript-Seekhna-Asaan-Hai"`, `"i"`, `"0007"`.
+
+### Code kaise kaam kar raha hai?
+
+| Method | Kaam |
+| --- | --- |
+| `trim()` | Shuru aur aakhir ke spaces hatata hai |
+| `length` | Characters ki ginti (property hai, method nahi) |
+| `includes()` | Text andar hai ya nahi, `true` / `false` |
+| `slice(0, 10)` | Index 0 se 9 tak ka hissa, end shamil nahi |
+| `split(" ")` | String ko array mein todta hai |
+| `replaceAll()` | Har match ko badalta hai |
+| `at(-1)` | Negative index se peeche se character |
+| `padStart(4, "0")` | Shuru mein `"0"` laga kar length 4 karta hai |
+
+### Interview tip
+
+"String ko reverse kaise karein?" Common jawab: `[...str].reverse().join("")`. Spread `split("")` se behtar hai kyun ke emoji jaise characters sahi tarah alag hote hain.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Method chala kar original ke badalne ki umeed rakhna"
+  why="Strings immutable hain. name.toUpperCase() likhne se name khud nahi badalta."
+  better="Result ko save karein: const upper = name.toUpperCase()."
+/>
+
+<Mistake
+  title="Template literal mein normal quotes use karna"
+  why="Single ya double quotes mein dollar sign aur braces sirf text ki tarah print hote hain, value nahi aati."
+  better="Interpolation ke liye hamesha backticks use karein."
+/>
+
+<Mistake
+  title="Case ka khayal kiye bina search karna"
+  why="includes() case sensitive hai, is liye 'Lahore' search mein 'lahore' match nahi hota."
+  better="Dono taraf toLowerCase() laga kar compare karein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Data Types](/courses/javascript/data-types), [Operators](/courses/javascript/operators) |
+| **Is ke baad** | [Numbers & Math](/courses/javascript/numbers-and-math), [Conditionals](/courses/javascript/conditionals) |
+| **Aage** | [Array Methods](/courses/javascript/array-methods), [Regular Expressions](/courses/javascript/regular-expressions) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Teen syntax | Single, double quotes aur backticks |
+| Template literal | Backticks + `${expression}` |
+| Index | `0` se shuru, `at(-1)` aakhri |
+| Immutable | Methods nayi string dete hain |
+| Zaroori methods | `trim`, `includes`, `slice`, `split`, `replaceAll` |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Variable ko text mein jodna ho to **template literal** use karein. Aur yaad rakhein, string methods hamesha **nayi string** return karte hain.
+
+</Callout>

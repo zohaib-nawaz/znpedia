@@ -1,0 +1,200 @@
+---
+title: Testing Next.js Apps
+description: Next.js testing playwright vitest ke saath, unit tests Vitest aur React Testing Library se, end-to-end tests Playwright se, Roman Urdu mein setup.
+keywords:
+  - next.js testing playwright vitest
+  - vitest next.js
+  - playwright next.js
+  - react testing library
+---
+
+## 1. Testing Next.js Apps kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**Testing ka matlab hai code likh kar check karna ke aap ki app sahi chal rahi hai: Vitest se chhote units (functions, components) aur Playwright se poore user flows asli browser mein.**
+
+</Callout>
+
+| Test type | Kya check hota hai | Tool |
+| --- | --- | --- |
+| **Unit** | Ek function ya component akela | Vitest + React Testing Library |
+| **End-to-end (E2E)** | User ka poora safar, routing, server, database | Playwright |
+
+## 2. Kyun zaroori hai?
+
+Har deploy se pehle haath se login, checkout aur forms check karna thaka dene wala aur unreliable hai. Tests yeh kaam seconds mein har push par karte hain.
+
+<CompareTable leftTitle="Sirf manual testing" rightTitle="Automated tests">
+
+Har release par haath se click | CI mein har push par khud chalte hain
+Purane features toot jate hain pata nahi chalta | Regression foran pakri jati hai
+Refactor karne se dar | Tests pass to refactor safe
+Bug production mein milta hai | Bug pull request mein hi milta hai
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Cheez | Behtar test |
+| --- | --- |
+| `formatPrice()` jaisa utility function | Vitest unit test |
+| Button, Card jaisa sync component | Vitest + Testing Library |
+| `async` Server Component jo data fetch kare | Playwright E2E |
+| Login, checkout, form submit flow | Playwright E2E |
+| Server Action validation logic | Logic ko alag function bana kar Vitest |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Testing pyramid">
+
+Bohot saare unit tests (tez, sasta)
+↓
+Kuch integration tests
+↓
+Thode E2E tests (slow, lekin asli browser)
+↓
+CI har push par sab chalata hai
+
+</Flow>
+
+Vitest `jsdom` mein components render karta hai, browser ke bina. Playwright pehle `next build` aur `next start` se app chalata hai, phir Chromium, Firefox ya WebKit mein asli clicks karta hai.
+
+## 5. Code example
+
+### Vitest setup
+
+```bash
+npm install -D vitest @vitejs/plugin-react jsdom @testing-library/react @testing-library/dom vite-tsconfig-paths
+```
+
+```ts
+import { defineConfig } from "vitest/config";
+import react from "@vitejs/plugin-react";
+import tsconfigPaths from "vite-tsconfig-paths";
+
+export default defineConfig({
+  plugins: [tsconfigPaths(), react()],
+  test: {
+    environment: "jsdom",
+  },
+});
+```
+
+Upar wali file `vitest.config.mts` hai. Ab ek unit test:
+
+```tsx
+import { expect, test } from "vitest";
+import { render, screen } from "@testing-library/react";
+import Page from "../app/page";
+
+test("home page heading dikhata hai", () => {
+  render(<Page />);
+  expect(screen.getByRole("heading", { level: 1, name: "Home" })).toBeDefined();
+});
+```
+
+### Playwright setup
+
+```bash
+npm init playwright@latest
+```
+
+```ts
+import { defineConfig } from "@playwright/test";
+
+export default defineConfig({
+  testDir: "./e2e",
+  use: { baseURL: "http://localhost:3000" },
+  webServer: {
+    command: "npm run build && npm run start",
+    url: "http://localhost:3000",
+    reuseExistingServer: !process.env.CI,
+  },
+});
+```
+
+```ts
+import { test, expect } from "@playwright/test";
+
+test("user about page par ja sakta hai", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("link", { name: "About" }).click();
+  await expect(page).toHaveURL("/about");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("About");
+});
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `environment: "jsdom"` | Node mein nakli DOM, taake components render hon |
+| `tsconfigPaths()` | `@/components` jaise path aliases tests mein bhi chalein |
+| `render` aur `screen` | Component render kar ke user ki tarah elements dhoondo |
+| `webServer` | Playwright tests se pehle production server khud chalata hai |
+| `getByRole` | Accessible role se element, CSS selector se zyada mazboot |
+| `toHaveURL` | Navigation ke baad URL check |
+
+```json
+{
+  "scripts": {
+    "test": "vitest",
+    "test:e2e": "playwright test"
+  }
+}
+```
+
+## 6. Common mistakes
+
+<Mistake
+  title="async Server Component ko Vitest mein test karna"
+  why="Vitest abhi async Server Components ko render support nahi karta, test fail hota hai ya galat result deta hai."
+  better="Async components ke liye Playwright E2E test likho, aur un ki logic alag function mein nikal kar unit test karo."
+/>
+
+<Mistake
+  title="E2E tests next dev par chalana"
+  why="Dev mode slow hai aur production se alag behave karta hai, is liye tests flaky aur gumrah karne wale hote hain."
+  better="Playwright webServer mein build aur start command do, taake asli production build test ho."
+/>
+
+<Mistake
+  title="CSS class ya DOM structure se elements pakarna"
+  why="Design badalte hi selectors toot jate hain halanke feature theek chal raha hota hai."
+  better="getByRole, getByLabel aur getByText use karo, jaise user screen dekhta hai."
+/>
+
+<Mistake
+  title="Sirf E2E tests likhna"
+  why="E2E slow hain, CI lamba ho jata hai aur failure ki asal wajah dhoondna mushkil hota hai."
+  better="Zyada unit tests, aur sirf important flows jaise login aur checkout ke liye E2E."
+/>
+
+### Interview tip
+
+"Unit aur E2E test mein kab kya?" Pure logic aur chhote components ke liye unit test, kyunke tez aur saste hain. Jahan routing, server, database aur browser sab saath kaam karte hon, wahan E2E.
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Chapters |
+| --- | --- |
+| Pehle | [Server & Client Components](/courses/nextjs/server-and-client-components), [Server Actions](/courses/nextjs/server-actions), [Forms & Validation](/courses/nextjs/forms-and-validation) |
+| Saath mein | [Environment Variables](/courses/nextjs/environment-variables) |
+| Baad mein | [Deployment](/courses/nextjs/deployment) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Unit tests | Vitest + React Testing Library, `jsdom` |
+| E2E tests | Playwright, asli browser |
+| Async Server Components | E2E se test karo |
+| Playwright server | `webServer` mein build aur start |
+| Selectors | `getByRole`, `getByLabel` |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Logic aur sync components ko Vitest se, poore user flows aur async Server Components ko Playwright se test karo, aur dono ko CI mein har push par chalao.
+
+</Callout>

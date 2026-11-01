@@ -1,0 +1,198 @@
+---
+title: DOM Events
+description: JavaScript addEventListener se click, input aur keydown events sunna, event object, preventDefault, once aur AbortSignal se listener hatana, Roman Urdu mein.
+keywords:
+  - javascript addeventlistener events
+  - dom events in urdu
+  - event object javascript
+  - preventdefault
+  - removeeventlistener
+---
+
+## 1. DOM Events kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Event browser ka signal hai ke kuch hua, aur event listener woh function hai jo us signal par chalta hai.**
+
+</Callout>
+
+User click kare, type kare, scroll kare ya page load ho, browser har dafa ek **event** fire karta hai. Aap `addEventListener` se kisi element par "sunne wala" function laga dete hain.
+
+Jab event hota hai, browser aapke function ko ek **event object** deta hai jis mein poori detail hoti hai: kis element par hua, kaunsi key dabi, mouse kahan tha.
+
+## 2. Kyun zaroori hai?
+
+Interactive page ka matlab hai user ke action par jawab dena. Events ke bina JavaScript ko pata hi nahi chalta ke user ne kya kiya.
+
+<CompareTable leftTitle="Purana inline onclick" rightTitle="addEventListener">
+
+HTML aur JavaScript mix | JavaScript alag file mein saaf
+Ek element par ek hi handler | Ek event par kai listeners
+Options ka control nahi | once, passive, signal options
+Hatana mushkil | removeEventListener ya abort
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Event | Use case |
+| --- | --- |
+| `click` | Buttons, menus, cards |
+| `input` | Live search, character counter |
+| `change` | Select, checkbox, file input |
+| `submit` | Form bhejna |
+| `keydown` | Shortcuts, Escape se modal band |
+| `DOMContentLoaded` | DOM tayyar hone par setup |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Click se handler tak">
+
+addEventListener se listener register
+↓
+User button click karta hai
+↓
+Browser event object banata hai
+↓
+Listener task queue se chalta hai
+↓
+Handler event object ke saath kaam karta hai
+
+</Flow>
+
+| Event object property | Matlab |
+| --- | --- |
+| `event.target` | Jis element par asal mein event hua |
+| `event.currentTarget` | Jis element par listener laga hai |
+| `event.key` | Kaunsi key dabi, jaise `"Enter"` |
+| `event.preventDefault()` | Browser ka default kaam roko |
+| `event.stopPropagation()` | Event ko upar parents tak jaane se roko |
+
+<Callout variant="important" title="Mental model">
+
+**Element + event type + function.** "Is button par click ho to yeh function chalao."
+
+</Callout>
+
+## 5. Code example
+
+### Click aur input
+
+```js
+const counterBtn = document.querySelector("#counter");
+const search = document.querySelector("#search");
+let count = 0;
+
+counterBtn.addEventListener("click", () => {
+  count++;
+  counterBtn.textContent = `Clicked ${count}`;
+});
+
+search.addEventListener("input", (event) => {
+  console.log("Search:", event.target.value);
+});
+```
+
+### Keyboard, preventDefault aur once
+
+```js
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeModal();
+  if (event.ctrlKey && event.key === "s") {
+    event.preventDefault();
+    saveDraft();
+  }
+});
+
+welcomeBtn.addEventListener("click", showTour, { once: true });
+```
+
+### AbortController se saare listeners hatana
+
+```js
+const controller = new AbortController();
+const { signal } = controller;
+
+window.addEventListener("resize", onResize, { signal });
+window.addEventListener("scroll", onScroll, { signal, passive: true });
+
+controller.abort();
+```
+
+### Code kaise kaam kar raha hai?
+
+| Line | Kya ho raha hai |
+| --- | --- |
+| `"click"` listener | Har click par count barhta hai |
+| `event.target.value` | Input ka current text |
+| `event.preventDefault()` | Browser ka "Save page" dialog nahi khulta |
+| `{ once: true }` | Listener pehli dafa ke baad khud hat jata hai |
+| `{ signal }` | `controller.abort()` par listeners remove |
+| `passive: true` | Browser ko batata hai ke scroll block nahi hoga |
+
+### Interview tip
+
+`event.target` vs `event.currentTarget` common sawal hai. Button ke andar `span` par click ho to `target` `span` hoga, lekin `currentTarget` woh element jis par listener laga hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Handler pass karne ki jagah call kar dena"
+  why="addEventListener('click', save()) mein save foran chal jata hai, click par nahi."
+  better="Reference dein: addEventListener('click', save)."
+/>
+
+<Mistake
+  title="Anonymous function ko removeEventListener se hatana"
+  why="Har arrow function naya function hai, reference match nahi hota aur listener nahi hatta."
+  better="Named function ka reference rakhein ya signal option ke saath AbortController use karein."
+/>
+
+<Mistake
+  title="Har item par alag listener lagana"
+  why="Sau items par sau listeners, aur naye items par listener hota hi nahi."
+  better="Parent par ek listener lagayein, yani event delegation."
+/>
+
+<Mistake
+  title="Har jagah stopPropagation lagana"
+  why="Doosre features jaise analytics ya dropdown close karne wale listeners tak event pohanchta hi nahi."
+  better="Sirf zaroorat par use karein, aksar event.target check kaafi hota hai."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [DOM Basics](/courses/javascript/dom-basics), [Callbacks](/courses/javascript/callbacks), [Arrow Functions](/courses/javascript/arrow-functions) |
+| **Baad mein** | [Event Bubbling & Delegation](/courses/javascript/event-delegation), [Forms & Validation](/courses/javascript/forms-and-validation), [Debounce & Throttle](/courses/javascript/debounce-and-throttle) |
+
+<Flow title="Suggested order">
+
+DOM Basics
+↓
+DOM Events
+↓
+Event Delegation
+↓
+Forms aur Validation
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `addEventListener(type, fn, options)` | Listener lagana |
+| Event object | `target`, `currentTarget`, `key` |
+| `preventDefault()` | Default browser behaviour roko |
+| `once` | Ek dafa chal kar khud hat jaye |
+| `signal` | AbortController se listeners hatana |
+| `passive` | Scroll aur touch ke liye smooth performance |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Function ka **reference** dein, call nahi. Listener hatane ke liye named function ya `signal` rakhein.
+
+</Callout>

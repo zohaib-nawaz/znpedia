@@ -1,0 +1,176 @@
+---
+title: Custom Hooks
+description: React custom hooks se repeat hone wali stateful logic ko reusable functions mein nikalna seekhein, naming rules aur real examples ke saath, Roman Urdu mein.
+keywords:
+  - react custom hooks
+  - create custom hook react
+  - reusable logic react urdu
+  - react hooks pattern
+---
+
+## 1. Custom Hooks kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Custom hook ek normal JavaScript function hai jiska naam `use` se shuru hota hai aur jo andar dusre hooks use karta hai.**
+
+</Callout>
+
+Jab do ya zyada components mein same logic ho, jaise online status check karna ya window size track karna, to woh logic ek custom hook mein nikal di jati hai.
+
+Har component jo hook call karta hai, usay **apni alag state** milti hai. Hook logic share karta hai, state nahi.
+
+## 2. Kyun zaroori hain?
+
+<CompareTable leftTitle="Bina custom hook" rightTitle="Custom hook ke saath">
+
+Har component mein same useState aur useEffect | Logic ek hook mein, sab jagah ek line
+Bug fix teen jagah karna parta hai | Fix ek jagah, sab components theek
+Component lamba aur confusing | Component sirf UI par focus
+Logic test karna mushkil | Hook ko alag se test kar sakte hain
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Hook ka naam | Kaam |
+| --- | --- |
+| `useOnlineStatus` | User online hai ya offline |
+| `useLocalStorage` | State ko localStorage ke saath sync |
+| `useDebounce` | Typing rukne ke baad value update |
+| `useWindowSize` | Screen ki width aur height |
+| `useAuth` | Context se current user nikalna |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Logic nikalne ka process">
+
+Do components mein same hooks wali logic dekho
+↓
+Usay use se shuru hone wale function mein move karo
+↓
+Zaroori values return karo
+↓
+Components mein hook call karo
+↓
+Har call ko apni alag state milti hai
+
+</Flow>
+
+Custom hook par bhi [Rules of Hooks](/courses/react/rules-of-hooks) lagte hain: top level par call karein, loop ya condition ke andar nahi.
+
+## 5. Code example
+
+### useOnlineStatus
+
+```tsx
+import { useEffect, useState } from "react";
+
+export function useOnlineStatus() {
+  const [isOnline, setIsOnline] = useState(true);
+
+  useEffect(() => {
+    const update = () => setIsOnline(navigator.onLine);
+    update();
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    return () => {
+      window.removeEventListener("online", update);
+      window.removeEventListener("offline", update);
+    };
+  }, []);
+
+  return isOnline;
+}
+```
+
+### Do components mein use
+
+```tsx
+import { useOnlineStatus } from "./use-online-status";
+
+export function StatusBar() {
+  const isOnline = useOnlineStatus();
+  return <p>{isOnline ? "Online" : "Offline"}</p>;
+}
+
+export function SaveButton() {
+  const isOnline = useOnlineStatus();
+  return <button disabled={!isOnline}>Save</button>;
+}
+```
+
+### useDebounce
+
+```tsx
+import { useEffect, useState } from "react";
+
+export function useDebounce<T>(value: T, delay = 400) {
+  const [debounced, setDebounced] = useState(value);
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(id);
+  }, [value, delay]);
+
+  return debounced;
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `useOnlineStatus` | `use` prefix se React aur linter ko pata chalta hai yeh hook hai |
+| `useEffect` cleanup | Component hatne par listeners remove |
+| `return isOnline` | Hook sirf zaroori value deta hai |
+| Do components | Dono ki apni alag `isOnline` state |
+| `useDebounce<T>` | Generic hook, kisi bhi type ki value ke saath |
+
+## 6. Common mistakes
+
+<Mistake
+  title="Function ka naam use se shuru na karna"
+  why="Linter Rules of Hooks check nahi kar pata aur andar hooks use karna galat lagta hai."
+  better="Hooks call karne wale har function ka naam useSomething rakhein."
+/>
+
+<Mistake
+  title="Har function ko hook bana dena"
+  why="Agar andar koi hook use nahi ho raha to yeh sirf normal helper function hai."
+  better="Bina hooks wali logic ke liye simple function likhein, jaise formatPrice."
+/>
+
+<Mistake
+  title="Samajhna ke custom hook state share karta hai"
+  why="Har call ki apni state hoti hai, ek component ka change dusre ko nahi dikhta."
+  better="State share karni ho to lifting state up ya Context use karein."
+/>
+
+### Interview tip
+
+Achha custom hook **ek kaam** karta hai aur naam se pata chal jata hai ke kya karta hai. `useMount` jaise generic lifecycle hooks se bachein, kyunke yeh React ke model ke khilaf hain.
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Rules of Hooks](/courses/react/rules-of-hooks), [useEffect](/courses/react/use-effect), [useRef](/courses/react/use-ref) |
+| **Saath** | [useContext](/courses/react/use-context), [useReducer](/courses/react/use-reducer) |
+| **Baad mein** | [useEffectEvent](/courses/react/use-effect-event), [Data Fetching](/courses/react/data-fetching), [Testing React Apps](/courses/react/testing) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Kya hai | `use` se shuru hone wala function jo hooks use kare |
+| Kya share hota hai | Logic, state nahi |
+| Rules | Rules of Hooks yahan bhi lagu |
+| Return | Jo bhi zaroori ho: value, array ya object |
+| Faida | Reusable, testable, saaf components |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Jab bhi do components mein same hooks wali logic dikhe, usay ek **custom hook** mein nikal dein. Naam `use` se shuru karein aur hook ko ek hi kaam karne dein.
+
+</Callout>

@@ -1,0 +1,205 @@
+---
+title: "Rendering Strategies: SSR, SSG, ISR"
+description: "Next.js SSR SSG ISR: static, dynamic aur incremental rendering ka farq, aur Next.js 16 Cache Components mein use cache aur cacheLife se inhein kaise likhein."
+keywords:
+  - next.js ssr ssg isr
+  - next.js static rendering
+  - next.js dynamic rendering
+  - incremental static regeneration
+  - partial prerendering
+---
+
+## 1. Rendering strategies kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Rendering strategy batati hai ke page ka HTML kab banta hai: build par (SSG), har request par (SSR), ya build par ban kar waqtan fawaqtan refresh hota hai (ISR).**
+
+</Callout>
+
+| Strategy | Pura naam | HTML kab banta hai |
+| --- | --- | --- |
+| **SSG** | Static Site Generation | Build time par, ek baar |
+| **SSR** | Server-Side Rendering | Har request par |
+| **ISR** | Incremental Static Regeneration | Build par, phir time ya event par dobara |
+| **PPR** | Partial Prerendering | Static shell build par, dynamic hissay request par |
+
+Next.js 16 mein yeh alag "modes" kam aur **ek hi page ke andar choices** zyada hain. Cache Components on ho to har component khud batata hai ke woh cached hai ya dynamic.
+
+## 2. Kyun zaroori hai?
+
+Har page ki zaroorat alag hai. "About us" roz nahi badalta, cart har user ka alag hai, aur product price ghante mein ek dafa badalti hai.
+
+<CompareTable leftTitle="Ghalat strategy" rightTitle="Sahi strategy">
+
+About page har request par render, server par bojh | SSG, CDN se instant
+Cart ko static bana diya, sab ko ek hi cart | SSR, har user ka apna
+Product price build par fix, purani dikhti rahe | ISR, har ghante fresh
+Poora page dynamic sirf ek widget ki wajah se | PPR, sirf widget dynamic
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Page | Strategy |
+| --- | --- |
+| Landing page, docs, blog post | SSG |
+| Dashboard, cart, profile | SSR (request time) |
+| Product listing, news feed | ISR (`cacheLife("hours")`) |
+| Product page jis mein "aap ke liye" section | PPR (static shell + dynamic widget) |
+
+## 4. Kaise kaam karta hai?
+
+Next.js 16 mein do models hain:
+
+<CompareTable leftTitle="cacheComponents off (classic)" rightTitle="cacheComponents: true (naya)">
+
+Route static by default agar dynamic API na ho | Data dynamic by default
+cookies ya searchParams se poora route dynamic | Sirf Suspense wala hissa dynamic
+export const revalidate = 60 se ISR | use cache + cacheLife se ISR
+export const dynamic force-dynamic | Config ki zaroorat nahi
+fetch ka next.revalidate option | Function mein use cache
+
+</CompareTable>
+
+<Flow title="Cache Components ke saath ek page">
+
+Build par page render
+   ↓
+use cache wala hissa static shell mein
+   +
+Suspense ke andar dynamic hissa fallback ke saath
+   ↓
+Request aayi, static shell foran bheja
+   ↓
+Dynamic hissa server par render ho kar stream
+
+</Flow>
+
+Is model mein `dynamic`, `revalidate` aur `fetchCache` route segment configs **error** dete hain. Unki jagah `"use cache"` aur `cacheLife` use hote hain.
+
+## 5. Code example
+
+Neeche teeno examples `cacheComponents: true` ke saath hain.
+
+### SSG: poora page cached
+
+```tsx
+import { cacheLife } from "next/cache";
+
+export default async function AboutPage() {
+  "use cache";
+  cacheLife("max");
+  const team = await fetch("https://api.example.com/team").then((r) => r.json());
+  return <h1>Hamari team: {team.length} log</h1>;
+}
+```
+
+### ISR: har ghante refresh
+
+```tsx
+import { cacheLife, cacheTag } from "next/cache";
+
+async function getProducts() {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("products");
+  const res = await fetch("https://api.example.com/products");
+  return res.json();
+}
+
+export default async function ProductsPage() {
+  const products = await getProducts();
+  return <p>{products.length} products</p>;
+}
+```
+
+### SSR / PPR: user specific hissa request par
+
+```tsx
+import { Suspense } from "react";
+import { cookies } from "next/headers";
+
+async function CartCount() {
+  const cartId = (await cookies()).get("cart")?.value;
+  const res = await fetch(`https://api.example.com/cart/${cartId}`);
+  const cart = await res.json();
+  return <span>{cart.items.length} items</span>;
+}
+
+export default function ShopHeader() {
+  return (
+    <header>
+      <h1>ZnShop</h1>
+      <Suspense fallback={<span>...</span>}>
+        <CartCount />
+      </Suspense>
+    </header>
+  );
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `"use cache"` page par | Poora page cached, build par prerender (SSG) |
+| `cacheLife("max")` | Bohat lambi zindagi, background mein revalidate |
+| `cacheLife("hours")` | Har ghante fresh (ISR jaisa) |
+| `cacheTag("products")` | Baad mein `revalidateTag` ya `updateTag` se on-demand refresh |
+| `cookies()` Suspense ke andar | Sirf yeh hissa request time par (SSR) |
+| Baqi header | Static shell mein (PPR) |
+
+<Callout variant="tip" title="Classic model mein ISR">
+
+Agar `cacheComponents` off hai to purana tareeqa chalta hai: page mein `export const revalidate = 3600` ya `fetch(url, { next: { revalidate: 3600 } })`.
+
+</Callout>
+
+### Interview tip
+
+"SSR aur SSG mein kab kya?" Jo data har user ya har request par badle woh SSR, jo sab ke liye same aur kam badle woh SSG, aur beech wala ISR. Next.js 16 mein yeh faisla page level ki bajaye component level par hota hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="cacheComponents on kar ke export const revalidate rakhna"
+  why="Cache Components ke saath dynamic, revalidate aur fetchCache configs error dete hain."
+  better="use cache aur cacheLife use karein, revalidate 0 ho to config bas hata dein."
+/>
+
+<Mistake
+  title="Ek cookie ki wajah se poora page dynamic bana dena"
+  why="Static shell ka faida khatam, har request par poora page render hota hai."
+  better="Cookie parhne wala chhota component alag karein aur Suspense mein wrap karein."
+/>
+
+<Mistake
+  title="use cache ke andar cookies ya headers parhna"
+  why="Cached result sab users mein share hota hai, is liye request data andar allowed nahi."
+  better="Request data bahar parhein aur zaroori value argument ke taur par cached function ko dein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Server & Client Components](/courses/nextjs/server-and-client-components), [Dynamic Routes](/courses/nextjs/dynamic-routes) |
+| **Saath** | [Streaming & Suspense](/courses/nextjs/streaming-and-suspense), [Data Fetching](/courses/nextjs/data-fetching) |
+| **Baad mein** | [Cache Components](/courses/nextjs/cache-components), [Revalidation](/courses/nextjs/revalidation), [Performance](/courses/nextjs/performance) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| SSG | Build par HTML, `"use cache"` + `cacheLife("max")` |
+| SSR | Request par, Suspense ke andar dynamic data |
+| ISR | `cacheLife("hours")` ya classic `revalidate` |
+| PPR | Static shell + streamed dynamic hissay |
+| Next.js 16 | Faisla component level par, `cacheComponents: true` |
+
+<Callout variant="important" title="Yaad rakhein">
+
+**Cache Components mein sab kuch dynamic by default hai.** Jo cache karna hai us par `"use cache"` lagao, jo request par chahiye use Suspense mein rakho.
+
+</Callout>

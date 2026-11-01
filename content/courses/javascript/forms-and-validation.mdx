@@ -1,0 +1,196 @@
+---
+title: Forms & Validation
+description: JavaScript form validation ka modern tareeqa, submit event, FormData, required aur pattern attributes, Constraint Validation API aur custom messages, Roman Urdu mein.
+keywords:
+  - javascript form validation
+  - form validation in urdu
+  - formdata javascript
+  - constraint validation api
+  - setcustomvalidity
+---
+
+## 1. Forms aur Validation kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**Form validation ka matlab hai user ka data bhejne se pehle check karna ke woh sahi aur poora hai.**
+
+</Callout>
+
+Form user se data lene ka tareeqa hai: login, signup, checkout, contact. JavaScript `submit` event sunti hai, `FormData` se values nikalti hai aur unhein check karti hai.
+
+Validation do jagah hoti hai. **Client side** (browser mein) user ko foran feedback deti hai. **Server side** asli security hai, kyunki browser wala check koi bhi bypass kar sakta hai.
+
+## 2. Kyun zaroori hai?
+
+Bina validation ke ghalat email, khaali fields aur kamzor passwords server tak pohanchte hain. User ko bhi tab pata chalta hai jab sab kuch fail ho chuka hota hai.
+
+<CompareTable leftTitle="Bina validation" rightTitle="Validation ke saath">
+
+Khaali form server tak chala gaya | Submit se pehle error dikhta hai
+User ko pata nahi kya ghalat hai | Har field ke paas saaf message
+Server par faltu requests | Sirf sahi data jata hai
+Har value khud padho | FormData se saari values ek saath
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Form | Validation |
+| --- | --- |
+| **Signup** | Email format, password length, password match |
+| **Checkout** | Phone number, address, required fields |
+| **Contact** | Message khaali na ho, length limit |
+| **Search** | Minimum characters |
+| **Profile** | Age range, file size aur type |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Submit se server tak">
+
+User submit dabata hai
+↓
+Browser built-in checks chalata hai
+↓
+submit event par preventDefault
+↓
+FormData se values nikalo
+↓
+Custom checks, ghalat ho to message dikhao
+↓
+Sab sahi, fetch se server ko bhejo
+
+</Flow>
+
+| Built-in tool | Kaam |
+| --- | --- |
+| `required`, `minlength`, `pattern`, `type="email"` | HTML attributes se basic rules |
+| `input.validity` | Kaunsa rule toota, jaise `valueMissing` |
+| `input.setCustomValidity(msg)` | Apna error message set karna |
+| `form.checkValidity()` | Poora form valid hai ya nahi |
+| `form.reportValidity()` | Check bhi aur browser ka message bhi dikhao |
+
+<Callout variant="important" title="Mental model">
+
+**Pehle HTML ke rules, phir JavaScript ke custom rules, aur aakhir mein server ka check.**
+
+</Callout>
+
+## 5. Code example
+
+HTML:
+
+```html
+<form id="signup" novalidate>
+  <input name="email" type="email" required />
+  <input name="password" type="password" minlength="8" required />
+  <input name="confirm" type="password" required />
+  <p id="error" role="alert"></p>
+  <button>Signup</button>
+</form>
+```
+
+JavaScript:
+
+```js
+const form = document.querySelector("#signup");
+const errorBox = document.querySelector("#error");
+
+form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const data = Object.fromEntries(new FormData(form));
+  form.elements.confirm.setCustomValidity(
+    data.password === data.confirm ? "" : "Passwords match nahi karte"
+  );
+
+  if (!form.checkValidity()) {
+    const firstInvalid = form.querySelector(":invalid");
+    errorBox.textContent = firstInvalid.validationMessage;
+    firstInvalid.focus();
+    return;
+  }
+
+  errorBox.textContent = "";
+  const res = await fetch("/api/signup", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: data.email, password: data.password }),
+  });
+  errorBox.textContent = res.ok ? "Account ban gaya" : "Signup fail hua";
+});
+```
+
+### Code kaise kaam kar raha hai?
+
+| Line | Kya ho raha hai |
+| --- | --- |
+| `novalidate` | Browser ke default popups band, messages hum khud dikhate hain |
+| `event.preventDefault()` | Page reload nahi hota |
+| `new FormData(form)` | Har `name` wale input ki value |
+| `Object.fromEntries(...)` | FormData ko simple object banaya |
+| `setCustomValidity(...)` | Khaali string matlab valid, warna error |
+| `:invalid` aur `validationMessage` | Pehla ghalat field aur uska message |
+
+## 6. Common mistakes
+
+<Mistake
+  title="Sirf client side validation par bharosa"
+  why="DevTools ya seedhi API request se koi bhi browser checks bypass kar sakta hai."
+  better="Client side UX ke liye, server par wahi rules dobara check karein."
+/>
+
+<Mistake
+  title="Button ke click event par validation"
+  why="Enter key se submit hone par click handler chalta hi nahi."
+  better="Hamesha form ke submit event par listener lagayein."
+/>
+
+<Mistake
+  title="setCustomValidity ko reset na karna"
+  why="Ek dafa message set ho to field hamesha invalid rehta hai, chahe user theek kar de."
+  better="Value sahi hone par setCustomValidity('') call karein."
+/>
+
+<Mistake
+  title="Inputs par name attribute bhool jana"
+  why="FormData sirf name wale fields uthata hai, values gum ho jati hain."
+  better="Har input ko unique name dein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [DOM Events](/courses/javascript/dom-events), [Event Bubbling & Delegation](/courses/javascript/event-delegation), [Fetch API](/courses/javascript/fetch-api) |
+| **Saath mein** | [Regular Expressions](/courses/javascript/regular-expressions), [Error Handling](/courses/javascript/error-handling) |
+| **Baad mein** | [localStorage, sessionStorage & Cookies](/courses/javascript/web-storage), [Debounce & Throttle](/courses/javascript/debounce-and-throttle) |
+
+<Flow title="Suggested order">
+
+DOM Events
+↓
+Forms aur Validation
+↓
+Fetch API se submit
+↓
+Web Storage mein draft save
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `submit` event | Form ka asli event, click nahi |
+| `preventDefault()` | Reload roko, JavaScript se bhejo |
+| `FormData` | `name` wale fields ki values |
+| HTML rules | `required`, `minlength`, `pattern`, `type` |
+| Custom rules | `setCustomValidity`, `checkValidity` |
+| Security | Server par validation hamesha |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Client validation **user ki madad** ke liye hai, security ke liye nahi. Asli check hamesha server par.
+
+</Callout>
