@@ -10,15 +10,18 @@
       "chapters": [
         {
           "slug": "introduction",
-          "title": "Introduction"
+          "title": "Introduction",
+          "level": "Beginner"
         },
         {
           "slug": "how-javascript-runs",
-          "title": "How JavaScript Runs"
+          "title": "How JavaScript Runs",
+          "level": "Beginner"
         },
         {
           "slug": "setup-and-first-program",
-          "title": "Setup & First Program"
+          "title": "Setup & First Program",
+          "level": "Beginner"
         }
       ]
     },
@@ -27,39 +30,48 @@
       "chapters": [
         {
           "slug": "variables",
-          "title": "Variables: let, const, var"
+          "title": "Variables: let, const, var",
+          "level": "Beginner"
         },
         {
           "slug": "data-types",
-          "title": "Data Types"
+          "title": "Data Types",
+          "level": "Beginner"
         },
         {
           "slug": "type-conversion",
-          "title": "Type Conversion"
+          "title": "Type Conversion",
+          "level": "Beginner"
         },
         {
           "slug": "operators",
-          "title": "Operators"
+          "title": "Operators",
+          "level": "Beginner"
         },
         {
           "slug": "strings",
-          "title": "Strings & Template Literals"
+          "title": "Strings & Template Literals",
+          "level": "Beginner"
         },
         {
           "slug": "numbers-and-math",
-          "title": "Numbers & Math"
+          "title": "Numbers & Math",
+          "level": "Beginner"
         },
         {
           "slug": "conditionals",
-          "title": "Conditionals: if, switch, ternary"
+          "title": "Conditionals: if, switch, ternary",
+          "level": "Beginner"
         },
         {
           "slug": "loops",
-          "title": "Loops"
+          "title": "Loops",
+          "level": "Beginner"
         },
         {
           "slug": "truthy-falsy-and-equality",
-          "title": "Truthy, Falsy & Equality"
+          "title": "Truthy, Falsy & Equality",
+          "level": "Beginner"
         }
       ]
     },
@@ -68,31 +80,38 @@
       "chapters": [
         {
           "slug": "functions",
-          "title": "Functions"
+          "title": "Functions",
+          "level": "Beginner"
         },
         {
           "slug": "arrow-functions",
-          "title": "Arrow Functions"
+          "title": "Arrow Functions",
+          "level": "Beginner"
         },
         {
           "slug": "scope-and-hoisting",
-          "title": "Scope & Hoisting"
+          "title": "Scope & Hoisting",
+          "level": "Intermediate"
         },
         {
           "slug": "closures",
-          "title": "Closures"
+          "title": "Closures",
+          "level": "Intermediate"
         },
         {
           "slug": "this-keyword",
-          "title": "The this Keyword"
+          "title": "The this Keyword",
+          "level": "Intermediate"
         },
         {
           "slug": "call-apply-bind",
-          "title": "call, apply & bind"
+          "title": "call, apply & bind",
+          "level": "Intermediate"
         },
         {
           "slug": "higher-order-functions",
-          "title": "Higher-Order Functions"
+          "title": "Higher-Order Functions",
+          "level": "Intermediate"
         }
       ]
     },
@@ -101,35 +120,43 @@
       "chapters": [
         {
           "slug": "arrays",
-          "title": "Arrays"
+          "title": "Arrays",
+          "level": "Beginner"
         },
         {
           "slug": "array-methods",
-          "title": "Array Methods: map, filter, reduce"
+          "title": "Array Methods: map, filter, reduce",
+          "level": "Beginner"
         },
         {
           "slug": "objects",
-          "title": "Objects"
+          "title": "Objects",
+          "level": "Beginner"
         },
         {
           "slug": "destructuring",
-          "title": "Destructuring"
+          "title": "Destructuring",
+          "level": "Beginner"
         },
         {
           "slug": "spread-and-rest",
-          "title": "Spread & Rest"
+          "title": "Spread & Rest",
+          "level": "Beginner"
         },
         {
           "slug": "optional-chaining-and-nullish",
-          "title": "Optional Chaining & Nullish Coalescing"
+          "title": "Optional Chaining & Nullish Coalescing",
+          "level": "Intermediate"
         },
         {
           "slug": "map-and-set",
-          "title": "Map & Set"
+          "title": "Map & Set",
+          "level": "Intermediate"
         },
         {
           "slug": "json",
-          "title": "JSON"
+          "title": "JSON",
+          "level": "Beginner"
         }
       ]
     },
@@ -138,11 +165,13 @@
       "chapters": [
         {
           "slug": "prototypes",
-          "title": "Prototypes & Inheritance"
+          "title": "Prototypes & Inheritance",
+          "level": "Advanced"
         },
         {
           "slug": "classes",
-          "title": "Classes"
+          "title": "Classes",
+          "level": "Intermediate"
         }
       ]
     },
@@ -151,31 +180,38 @@
       "chapters": [
         {
           "slug": "event-loop",
-          "title": "Event Loop"
+          "title": "Event Loop",
+          "level": "Advanced"
         },
         {
           "slug": "timers",
-          "title": "Timers: setTimeout & setInterval"
+          "title": "Timers: setTimeout & setInterval",
+          "level": "Beginner"
         },
         {
           "slug": "callbacks",
-          "title": "Callbacks"
+          "title": "Callbacks",
+          "level": "Intermediate"
         },
         {
           "slug": "promises",
-          "title": "Promises"
+          "title": "Promises",
+          "level": "Intermediate"
         },
         {
           "slug": "async-await",
-          "title": "Async / Await"
+          "title": "Async / Await",
+          "level": "Intermediate"
         },
         {
           "slug": "fetch-api",
-          "title": "Fetch API"
+          "title": "Fetch API",
+          "level": "Intermediate"
         },
         {
           "slug": "error-handling",
-          "title": "Error Handling"
+          "title": "Error Handling",
+          "level": "Intermediate"
         }
       ]
     },
@@ -184,23 +220,28 @@
       "chapters": [
         {
           "slug": "dom-basics",
-          "title": "DOM Basics"
+          "title": "DOM Basics",
+          "level": "Beginner"
         },
         {
           "slug": "dom-events",
-          "title": "DOM Events"
+          "title": "DOM Events",
+          "level": "Beginner"
         },
         {
           "slug": "event-delegation",
-          "title": "Event Bubbling & Delegation"
+          "title": "Event Bubbling & Delegation",
+          "level": "Intermediate"
         },
         {
           "slug": "forms-and-validation",
-          "title": "Forms & Validation"
+          "title": "Forms & Validation",
+          "level": "Intermediate"
         },
         {
           "slug": "web-storage",
-          "title": "localStorage, sessionStorage & Cookies"
+          "title": "localStorage, sessionStorage & Cookies",
+          "level": "Beginner"
         }
       ]
     },
@@ -209,15 +250,18 @@
       "chapters": [
         {
           "slug": "modules",
-          "title": "Modules: import & export"
+          "title": "Modules: import & export",
+          "level": "Intermediate"
         },
         {
           "slug": "iterators-and-generators",
-          "title": "Iterators & Generators"
+          "title": "Iterators & Generators",
+          "level": "Advanced"
         },
         {
           "slug": "regular-expressions",
-          "title": "Regular Expressions"
+          "title": "Regular Expressions",
+          "level": "Intermediate"
         }
       ]
     },
@@ -226,15 +270,18 @@
       "chapters": [
         {
           "slug": "debounce-and-throttle",
-          "title": "Debounce & Throttle"
+          "title": "Debounce & Throttle",
+          "level": "Advanced"
         },
         {
           "slug": "npm-and-packages",
-          "title": "npm & Packages"
+          "title": "npm & Packages",
+          "level": "Beginner"
         },
         {
           "slug": "debugging",
-          "title": "Debugging JavaScript"
+          "title": "Debugging JavaScript",
+          "level": "Beginner"
         }
       ]
     }

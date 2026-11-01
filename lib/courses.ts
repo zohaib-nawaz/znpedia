@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 
+import { estimateReadingMinutes } from "@/lib/catalog";
 import type { CourseChapter, CourseMeta, CourseMetaFile } from "@/types/course";
 
 const CONTENT_DIR = path.join(process.cwd(), "content/courses");
@@ -67,4 +68,11 @@ export function getChapterLastModified(
 ): Date | undefined {
   const filePath = getChapterPath(courseSlug, chapterSlug);
   return fs.existsSync(filePath) ? fs.statSync(filePath).mtime : undefined;
+}
+
+export function getCourseReadingMinutes(course: CourseMeta): number {
+  return course.chapters
+    .map((chapter) => getChapterPath(course.slug, chapter.slug))
+    .filter((filePath) => fs.existsSync(filePath))
+    .reduce((sum, filePath) => sum + estimateReadingMinutes(fs.readFileSync(filePath, "utf8")), 0);
 }

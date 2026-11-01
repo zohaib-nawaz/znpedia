@@ -1,24 +1,59 @@
-import { redirect, notFound } from "next/navigation";
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 
-import { courseExists, getCourseMeta } from "@/lib/courses";
-import { getDefaultChapterSlug } from "@/lib/docs";
+import { CourseOverview } from "@/components/course-overview";
+import { JsonLd } from "@/components/json-ld";
+import { countChaptersByLevel, numberSections, toHours } from "@/lib/catalog";
+import { getCourseMeta, getCourseReadingMinutes } from "@/lib/courses";
+import { getChapterHref, getDefaultChapterSlug } from "@/lib/docs";
+import { buildBreadcrumbJsonLd, buildCourseListJsonLd } from "@/lib/seo";
 
 type CourseIndexPageProps = {
   params: Promise<{ course: string }>;
 };
 
-export default async function CourseIndexPage({ params }: CourseIndexPageProps) {
+export async function generateMetadata({ params }: CourseIndexPageProps): Promise<Metadata> {
   const { course: courseSlug } = await params;
-
-  if (!courseExists(courseSlug)) {
-    notFound();
+  const course = getCourseMeta(courseSlug);
+  if (!course) {
+    return { title: "Not found" };
   }
 
+  const title = `${course.title} Course Roman Urdu mein`;
+
+  return {
+    title,
+    description: course.description,
+    alternates: { canonical: `/courses/${course.slug}` },
+    openGraph: { title, description: course.description, url: `/courses/${course.slug}` },
+  };
+}
+
+export default async function CourseIndexPage({ params }: CourseIndexPageProps) {
+  const { course: courseSlug } = await params;
   const course = getCourseMeta(courseSlug);
   if (!course) {
     notFound();
   }
 
-  const firstChapter = getDefaultChapterSlug(course);
-  redirect(`/courses/${courseSlug}/${firstChapter}`);
+  return (
+    <>
+      <JsonLd
+        data={[
+          buildCourseListJsonLd([course]),
+          buildBreadcrumbJsonLd([
+            { name: "Courses", path: "/courses" },
+            { name: course.title, path: `/courses/${course.slug}` },
+          ]),
+        ]}
+      />
+      <CourseOverview
+        course={course}
+        sections={numberSections(course)}
+        levels={countChaptersByLevel(course)}
+        hours={toHours(getCourseReadingMinutes(course))}
+        startHref={getChapterHref(course.slug, getDefaultChapterSlug(course))}
+      />
+    </>
+  );
 }

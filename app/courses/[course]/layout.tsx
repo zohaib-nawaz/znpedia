@@ -2,7 +2,9 @@ import { notFound } from "next/navigation";
 
 import { DocsHeader } from "@/components/docs-header";
 import { DocsSidebar } from "@/components/docs-sidebar";
-import { courseExists, getAllCourseSlugs, getCourseMeta } from "@/lib/courses";
+import { SiteFooter } from "@/components/site-footer";
+import { getCatalogStats } from "@/lib/catalog";
+import { courseExists, getAllCourseSlugs, getAllCourses, getCourseMeta } from "@/lib/courses";
 
 type CourseLayoutProps = {
   children: React.ReactNode;
@@ -37,7 +39,10 @@ export default async function CourseLayout({
             <DocsSidebar course={course} />
           </div>
         </aside>
-        <div className="flex min-w-0 flex-1 flex-col">{children}</div>
+        <div id="main-content" className="flex min-w-0 flex-1 flex-col">
+          <main className="flex-1">{children}</main>
+          <SiteFooter chapterCount={getCatalogStats(getAllCourses()).chapterCount} />
+        </div>
       </div>
     </div>
   );

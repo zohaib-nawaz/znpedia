@@ -10,23 +10,28 @@
       "chapters": [
         {
           "slug": "introduction",
-          "title": "Introduction"
+          "title": "Introduction",
+          "level": "Beginner"
         },
         {
           "slug": "setup-with-vite",
-          "title": "Setup with Vite"
+          "title": "Setup with Vite",
+          "level": "Beginner"
         },
         {
           "slug": "jsx",
-          "title": "JSX"
+          "title": "JSX",
+          "level": "Beginner"
         },
         {
           "slug": "components",
-          "title": "Components"
+          "title": "Components",
+          "level": "Beginner"
         },
         {
           "slug": "how-react-renders",
-          "title": "How React Renders"
+          "title": "How React Renders",
+          "level": "Intermediate"
         }
       ]
     },
@@ -35,39 +40,48 @@
       "chapters": [
         {
           "slug": "props",
-          "title": "Props"
+          "title": "Props",
+          "level": "Beginner"
         },
         {
           "slug": "children-and-composition",
-          "title": "Children & Composition"
+          "title": "Children & Composition",
+          "level": "Intermediate"
         },
         {
           "slug": "state",
-          "title": "State with useState"
+          "title": "State with useState",
+          "level": "Beginner"
         },
         {
           "slug": "events",
-          "title": "Handling Events"
+          "title": "Handling Events",
+          "level": "Beginner"
         },
         {
           "slug": "conditional-rendering",
-          "title": "Conditional Rendering"
+          "title": "Conditional Rendering",
+          "level": "Beginner"
         },
         {
           "slug": "lists-and-keys",
-          "title": "Lists & Keys"
+          "title": "Lists & Keys",
+          "level": "Beginner"
         },
         {
           "slug": "forms",
-          "title": "Forms & Controlled Inputs"
+          "title": "Forms & Controlled Inputs",
+          "level": "Beginner"
         },
         {
           "slug": "styling",
-          "title": "Styling in React"
+          "title": "Styling in React",
+          "level": "Beginner"
         },
         {
           "slug": "lifting-state-up",
-          "title": "Lifting State Up"
+          "title": "Lifting State Up",
+          "level": "Intermediate"
         }
       ]
     },
@@ -76,47 +90,58 @@
       "chapters": [
         {
           "slug": "rules-of-hooks",
-          "title": "Rules of Hooks"
+          "title": "Rules of Hooks",
+          "level": "Beginner"
         },
         {
           "slug": "use-effect",
-          "title": "useEffect"
+          "title": "useEffect",
+          "level": "Intermediate"
         },
         {
           "slug": "use-ref",
-          "title": "useRef"
+          "title": "useRef",
+          "level": "Intermediate"
         },
         {
           "slug": "use-context",
-          "title": "useContext"
+          "title": "useContext",
+          "level": "Intermediate"
         },
         {
           "slug": "use-reducer",
-          "title": "useReducer"
+          "title": "useReducer",
+          "level": "Intermediate"
         },
         {
           "slug": "use-memo-and-use-callback",
-          "title": "useMemo & useCallback"
+          "title": "useMemo & useCallback",
+          "level": "Advanced"
         },
         {
           "slug": "custom-hooks",
-          "title": "Custom Hooks"
+          "title": "Custom Hooks",
+          "level": "Intermediate"
         },
         {
           "slug": "use-effect-event",
-          "title": "useEffectEvent"
+          "title": "useEffectEvent",
+          "level": "Advanced"
         },
         {
           "slug": "use-transition",
-          "title": "useTransition & useDeferredValue"
+          "title": "useTransition & useDeferredValue",
+          "level": "Advanced"
         },
         {
           "slug": "use-hook",
-          "title": "The use() API"
+          "title": "The use() API",
+          "level": "Advanced"
         },
         {
           "slug": "actions-and-form-hooks",
-          "title": "Actions, useActionState & useOptimistic"
+          "title": "Actions, useActionState & useOptimistic",
+          "level": "Advanced"
         }
       ]
     },
@@ -125,31 +150,38 @@
       "chapters": [
         {
           "slug": "memo-and-performance",
-          "title": "React.memo & Performance"
+          "title": "React.memo & Performance",
+          "level": "Advanced"
         },
         {
           "slug": "react-compiler",
-          "title": "React Compiler"
+          "title": "React Compiler",
+          "level": "Advanced"
         },
         {
           "slug": "error-boundaries",
-          "title": "Error Boundaries"
+          "title": "Error Boundaries",
+          "level": "Intermediate"
         },
         {
           "slug": "suspense-and-lazy",
-          "title": "Suspense & lazy()"
+          "title": "Suspense & lazy()",
+          "level": "Intermediate"
         },
         {
           "slug": "portals",
-          "title": "Portals"
+          "title": "Portals",
+          "level": "Intermediate"
         },
         {
           "slug": "activity",
-          "title": "Activity Component"
+          "title": "Activity Component",
+          "level": "Advanced"
         },
         {
           "slug": "server-components",
-          "title": "Server Components"
+          "title": "Server Components",
+          "level": "Advanced"
         }
       ]
     },
@@ -158,23 +190,28 @@
       "chapters": [
         {
           "slug": "data-fetching",
-          "title": "Data Fetching"
+          "title": "Data Fetching",
+          "level": "Intermediate"
         },
         {
           "slug": "react-router",
-          "title": "Routing with React Router"
+          "title": "Routing with React Router",
+          "level": "Intermediate"
         },
         {
           "slug": "state-management",
-          "title": "State Management Libraries"
+          "title": "State Management Libraries",
+          "level": "Advanced"
         },
         {
           "slug": "typescript-with-react",
-          "title": "TypeScript with React"
+          "title": "TypeScript with React",
+          "level": "Intermediate"
         },
         {
           "slug": "testing",
-          "title": "Testing React Apps"
+          "title": "Testing React Apps",
+          "level": "Advanced"
         }
       ]
     }

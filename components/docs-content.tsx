@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 
 type DocsContentProps = {
   title: string;
+  meta?: React.ReactNode;
   description?: string;
   children: React.ReactNode;
   toc: TocHeading[];
@@ -11,6 +12,7 @@ type DocsContentProps = {
 
 export function DocsContent({
   title,
+  meta,
   description,
   children,
   toc,
@@ -20,6 +22,7 @@ export function DocsContent({
       <div className="flex w-full flex-col gap-7 xl:w-fit xl:max-w-full xl:flex-row xl:items-stretch xl:gap-10">
       <article className="min-w-0 w-full max-w-4xl">
         <header className="mb-6 pb-2">
+          {meta}
           <h1 className="text-[1.75rem] font-bold leading-tight tracking-tight text-foreground sm:text-3xl">
             {title}
           </h1>

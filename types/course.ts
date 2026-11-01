@@ -1,6 +1,9 @@
+export type ChapterLevel = "Beginner" | "Intermediate" | "Advanced";
+
 export type CourseChapter = {
   slug: string;
   title: string;
+  level?: ChapterLevel;
 };
 
 export type CourseSection = {
@@ -19,6 +22,12 @@ export type CourseMeta = {
 };
 
 export type CourseMetaFile = Omit<CourseMeta, "chapters">;
+
+export type ChapterPosition = {
+  number: number;
+  total: number;
+  sectionTitle: string;
+};
 
 export type ChapterFrontmatter = {
   title?: string;

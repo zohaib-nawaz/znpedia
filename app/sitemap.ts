@@ -10,7 +10,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const staticEntries: MetadataRoute.Sitemap = [
     { url: absoluteUrl("/"), changeFrequency: "weekly", priority: 1 },
     { url: absoluteUrl("/courses"), changeFrequency: "weekly", priority: 0.9 },
+    { url: absoluteUrl("/about"), changeFrequency: "yearly", priority: 0.4 },
   ];
+
+  const courseEntries: MetadataRoute.Sitemap = courses.map((course) => ({
+    url: absoluteUrl(`/courses/${course.slug}`),
+    changeFrequency: "weekly" as const,
+    priority: 0.85,
+  }));
 
   const chapterEntries: MetadataRoute.Sitemap = courses.flatMap((course) =>
     course.chapters
@@ -23,5 +30,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
       }))
   );
 
-  return [...staticEntries, ...chapterEntries];
+  return [...staticEntries, ...courseEntries, ...chapterEntries];
 }

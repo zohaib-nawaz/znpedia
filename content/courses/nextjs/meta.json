@@ -10,15 +10,18 @@
       "chapters": [
         {
           "slug": "introduction",
-          "title": "Introduction"
+          "title": "Introduction",
+          "level": "Beginner"
         },
         {
           "slug": "installation-and-project-structure",
-          "title": "Installation & Project Structure"
+          "title": "Installation & Project Structure",
+          "level": "Beginner"
         },
         {
           "slug": "nextjs-16-whats-new",
-          "title": "What's New in Next.js 16"
+          "title": "What's New in Next.js 16",
+          "level": "Intermediate"
         }
       ]
     },
@@ -27,31 +30,38 @@
       "chapters": [
         {
           "slug": "routing-and-pages",
-          "title": "Routing & Pages"
+          "title": "Routing & Pages",
+          "level": "Beginner"
         },
         {
           "slug": "layouts-and-templates",
-          "title": "Layouts & Templates"
+          "title": "Layouts & Templates",
+          "level": "Beginner"
         },
         {
           "slug": "linking-and-navigation",
-          "title": "Linking & Navigation"
+          "title": "Linking & Navigation",
+          "level": "Beginner"
         },
         {
           "slug": "dynamic-routes",
-          "title": "Dynamic Routes"
+          "title": "Dynamic Routes",
+          "level": "Beginner"
         },
         {
           "slug": "route-groups-and-private-folders",
-          "title": "Route Groups & Private Folders"
+          "title": "Route Groups & Private Folders",
+          "level": "Intermediate"
         },
         {
           "slug": "parallel-and-intercepting-routes",
-          "title": "Parallel & Intercepting Routes"
+          "title": "Parallel & Intercepting Routes",
+          "level": "Advanced"
         },
         {
           "slug": "loading-and-error-ui",
-          "title": "Loading, Error & Not Found UI"
+          "title": "Loading, Error & Not Found UI",
+          "level": "Intermediate"
         }
       ]
     },
@@ -60,15 +70,18 @@
       "chapters": [
         {
           "slug": "server-and-client-components",
-          "title": "Server & Client Components"
+          "title": "Server & Client Components",
+          "level": "Intermediate"
         },
         {
           "slug": "rendering-strategies",
-          "title": "Rendering Strategies: SSR, SSG, ISR"
+          "title": "Rendering Strategies: SSR, SSG, ISR",
+          "level": "Intermediate"
         },
         {
           "slug": "streaming-and-suspense",
-          "title": "Streaming & Suspense"
+          "title": "Streaming & Suspense",
+          "level": "Intermediate"
         }
       ]
     },
@@ -77,23 +90,28 @@
       "chapters": [
         {
           "slug": "data-fetching",
-          "title": "Data Fetching"
+          "title": "Data Fetching",
+          "level": "Intermediate"
         },
         {
           "slug": "cache-components",
-          "title": "Cache Components & use cache"
+          "title": "Cache Components & use cache",
+          "level": "Advanced"
         },
         {
           "slug": "revalidation",
-          "title": "Revalidation: revalidateTag, updateTag, refresh"
+          "title": "Revalidation: revalidateTag, updateTag, refresh",
+          "level": "Advanced"
         },
         {
           "slug": "server-actions",
-          "title": "Server Actions"
+          "title": "Server Actions",
+          "level": "Intermediate"
         },
         {
           "slug": "forms-and-validation",
-          "title": "Forms & Validation"
+          "title": "Forms & Validation",
+          "level": "Intermediate"
         }
       ]
     },
@@ -102,27 +120,33 @@
       "chapters": [
         {
           "slug": "route-handlers",
-          "title": "Route Handlers (API)"
+          "title": "Route Handlers (API)",
+          "level": "Intermediate"
         },
         {
           "slug": "proxy",
-          "title": "Proxy (formerly Middleware)"
+          "title": "Proxy (formerly Middleware)",
+          "level": "Intermediate"
         },
         {
           "slug": "cookies-and-headers",
-          "title": "Cookies & Headers"
+          "title": "Cookies & Headers",
+          "level": "Intermediate"
         },
         {
           "slug": "environment-variables",
-          "title": "Environment Variables"
+          "title": "Environment Variables",
+          "level": "Beginner"
         },
         {
           "slug": "authentication",
-          "title": "Authentication"
+          "title": "Authentication",
+          "level": "Advanced"
         },
         {
           "slug": "database-integration",
-          "title": "Database Integration"
+          "title": "Database Integration",
+          "level": "Advanced"
         }
       ]
     },
@@ -131,27 +155,33 @@
       "chapters": [
         {
           "slug": "styling",
-          "title": "Styling: CSS Modules & Tailwind"
+          "title": "Styling: CSS Modules & Tailwind",
+          "level": "Beginner"
         },
         {
           "slug": "image-optimization",
-          "title": "Image Optimization"
+          "title": "Image Optimization",
+          "level": "Beginner"
         },
         {
           "slug": "font-optimization",
-          "title": "Font Optimization"
+          "title": "Font Optimization",
+          "level": "Beginner"
         },
         {
           "slug": "metadata-and-seo",
-          "title": "Metadata & SEO"
+          "title": "Metadata & SEO",
+          "level": "Intermediate"
         },
         {
           "slug": "sitemap-and-robots",
-          "title": "Sitemap, Robots & OG Images"
+          "title": "Sitemap, Robots & OG Images",
+          "level": "Intermediate"
         },
         {
           "slug": "performance",
-          "title": "Performance & Core Web Vitals"
+          "title": "Performance & Core Web Vitals",
+          "level": "Advanced"
         }
       ]
     },
@@ -160,19 +190,23 @@
       "chapters": [
         {
           "slug": "next-config-and-turbopack",
-          "title": "next.config & Turbopack"
+          "title": "next.config & Turbopack",
+          "level": "Intermediate"
         },
         {
           "slug": "internationalization",
-          "title": "Internationalization (i18n)"
+          "title": "Internationalization (i18n)",
+          "level": "Advanced"
         },
         {
           "slug": "testing",
-          "title": "Testing Next.js Apps"
+          "title": "Testing Next.js Apps",
+          "level": "Advanced"
         },
         {
           "slug": "deployment",
-          "title": "Deployment"
+          "title": "Deployment",
+          "level": "Intermediate"
         }
       ]
     }
