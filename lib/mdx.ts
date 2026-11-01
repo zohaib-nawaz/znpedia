@@ -1,5 +1,4 @@
 import fs from "fs";
-import path from "path";
 
 import GithubSlugger from "github-slugger";
 import { compileMDX } from "next-mdx-remote/rsc";
@@ -54,26 +53,12 @@ export async function getChapterMDX(courseSlug: string, chapterSlug: string) {
     },
   });
 
-  const title =
-    frontmatter.title ?? slugToTitle(chapterSlug);
-  const description =
-    frontmatter.description ??
-    `Placeholder chapter: ${title} in the ${courseSlug} course.`;
+  const title = frontmatter.title ?? slugToTitle(chapterSlug);
+  const description = frontmatter.description ?? `${title} ko Roman Urdu mein seekhein.`;
 
   return {
     content,
     frontmatter: { ...frontmatter, title, description },
     toc: filterTocHeadings(headings),
   };
-}
-
-export function getSiteUrl(): string {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-}
-
-export function getChapterCanonicalUrl(
-  courseSlug: string,
-  chapterSlug: string
-): string {
-  return `${getSiteUrl()}/courses/${courseSlug}/${chapterSlug}`;
 }

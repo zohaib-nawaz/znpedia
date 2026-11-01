@@ -3,93 +3,126 @@ import { notFound } from "next/navigation";
 
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { DocsContent } from "@/components/docs-content";
+import { JsonLd } from "@/components/json-ld";
 import { Pagination } from "@/components/pagination";
 import {
   chapterExists,
-  courseExists,
+  findChapter,
   getAllCourses,
+  getChapterLastModified,
   getCourseMeta,
 } from "@/lib/courses";
-import { getAdjacentChapters } from "@/lib/docs";
+import { getAdjacentChapters, getChapterHref } from "@/lib/docs";
+import { getChapterMDX } from "@/lib/mdx";
 import {
-  getChapterCanonicalUrl,
-  getChapterMDX,
-} from "@/lib/mdx";
+  buildBreadcrumbJsonLd,
+  buildChapterArticleJsonLd,
+  buildChapterKeywords,
+  getChapterOgImagePath,
+} from "@/lib/seo";
+import { siteConfig } from "@/lib/site";
 
 type ChapterPageProps = {
   params: Promise<{ course: string; slug: string[] }>;
 };
 
+export const dynamicParams = false;
+
 export async function generateStaticParams() {
-  const courses = getAllCourses();
-  return courses.flatMap((course) =>
-    course.chapters.map((chapter) => ({
-      course: course.slug,
-      slug: [chapter],
-    }))
+  return getAllCourses().flatMap((course) =>
+    course.chapters
+      .filter((chapter) => chapterExists(course.slug, chapter.slug))
+      .map((chapter) => ({ course: course.slug, slug: [chapter.slug] }))
   );
+}
+
+async function loadChapter(courseSlug: string, slug: string[] | undefined) {
+  if (!slug || slug.length !== 1) {
+    return null;
+  }
+  const course = getCourseMeta(courseSlug);
+  const chapter = course ? findChapter(course, slug[0]) : null;
+  if (!course || !chapter) {
+    return null;
+  }
+  const mdx = await getChapterMDX(course.slug, chapter.slug);
+  return mdx ? { course, chapter, mdx } : null;
 }
 
 export async function generateMetadata({
   params,
 }: ChapterPageProps): Promise<Metadata> {
   const { course: courseSlug, slug } = await params;
-  const chapterSlug = slug?.[0];
-
-  if (!courseSlug || !chapterSlug || slug.length > 1) {
+  const loaded = await loadChapter(courseSlug, slug);
+  if (!loaded) {
     return { title: "Not found" };
   }
 
-  const mdx = await getChapterMDX(courseSlug, chapterSlug);
-  if (!mdx) {
-    return { title: "Not found" };
-  }
-
-  const title = mdx.frontmatter.title ?? chapterSlug;
+  const { course, chapter, mdx } = loaded;
+  const title = `${mdx.frontmatter.title} | ${course.title}`;
   const description = mdx.frontmatter.description;
+  const path = getChapterHref(course.slug, chapter.slug);
+  const image = {
+    url: getChapterOgImagePath(course.slug, chapter.slug),
+    width: 1200,
+    height: 630,
+    alt: title,
+  };
 
   return {
     title,
     description,
-    alternates: {
-      canonical: getChapterCanonicalUrl(courseSlug, chapterSlug),
-    },
+    keywords: buildChapterKeywords(course, chapter, mdx.frontmatter.keywords),
+    alternates: { canonical: path },
     openGraph: {
+      type: "article",
+      siteName: siteConfig.name,
       title,
       description,
-      url: getChapterCanonicalUrl(courseSlug, chapterSlug),
+      url: path,
+      section: course.title,
+      modifiedTime: getChapterLastModified(course.slug, chapter.slug)?.toISOString(),
+      images: [image],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [image.url],
     },
   };
 }
 
 export default async function ChapterPage({ params }: ChapterPageProps) {
   const { course: courseSlug, slug } = await params;
-
-  if (!courseExists(courseSlug) || !slug?.length || slug.length > 1) {
+  const loaded = await loadChapter(courseSlug, slug);
+  if (!loaded) {
     notFound();
   }
 
-  const chapterSlug = slug[0];
-  const course = getCourseMeta(courseSlug);
-
-  if (!course || !chapterExists(courseSlug, chapterSlug)) {
-    notFound();
-  }
-
-  if (!course.chapters.includes(chapterSlug)) {
-    notFound();
-  }
-
-  const mdx = await getChapterMDX(courseSlug, chapterSlug);
-  if (!mdx) {
-    notFound();
-  }
-
-  const { previous, next } = getAdjacentChapters(course, chapterSlug);
-  const title = mdx.frontmatter.title ?? chapterSlug;
+  const { course, chapter, mdx } = loaded;
+  const { previous, next } = getAdjacentChapters(course, chapter.slug);
+  const title = mdx.frontmatter.title;
+  const description = mdx.frontmatter.description;
 
   return (
     <>
+      <JsonLd
+        data={[
+          buildChapterArticleJsonLd({
+            course,
+            chapter,
+            description,
+            keywords: buildChapterKeywords(course, chapter, mdx.frontmatter.keywords),
+            dateModified: getChapterLastModified(course.slug, chapter.slug),
+          }),
+          buildBreadcrumbJsonLd([
+            { name: "Courses", path: "/courses" },
+            { name: course.title, path: `/courses/${course.slug}` },
+            { name: chapter.title, path: getChapterHref(course.slug, chapter.slug) },
+          ]),
+        ]}
+      />
       <div className="px-3 py-2 sm:px-5 lg:px-6">
         <Breadcrumbs
           items={[
@@ -99,11 +132,7 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
           ]}
         />
       </div>
-      <DocsContent
-        title={title}
-        description={mdx.frontmatter.description}
-        toc={mdx.toc}
-      >
+      <DocsContent title={title} description={description} toc={mdx.toc}>
         {mdx.content}
       </DocsContent>
       <div className="mx-auto max-w-4xl px-3 pb-8 sm:px-5 lg:pl-8">

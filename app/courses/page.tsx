@@ -3,12 +3,16 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
 import { CourseCard } from "@/components/course-card";
+import { JsonLd } from "@/components/json-ld";
 import { SiteHeader } from "@/components/site-header";
 import { getAllCourses } from "@/lib/courses";
+import { buildBreadcrumbJsonLd, buildCourseListJsonLd } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "Courses",
-  description: "Browse all available documentation-style courses on ZnPedia.",
+  title: "Courses: JavaScript, React aur Next.js",
+  description:
+    "ZnPedia ke tamam free courses: JavaScript, React aur Next.js, Roman Urdu mein chhote structured chapters ke saath.",
+  alternates: { canonical: "/courses" },
 };
 
 export default function CoursesPage() {
@@ -16,6 +20,12 @@ export default function CoursesPage() {
 
   return (
     <>
+      <JsonLd
+        data={[
+          buildCourseListJsonLd(courses),
+          buildBreadcrumbJsonLd([{ name: "Courses", path: "/courses" }]),
+        ]}
+      />
       <SiteHeader />
       <main className="mx-auto max-w-6xl flex-1 px-4 py-12 sm:px-6">
         <Link
