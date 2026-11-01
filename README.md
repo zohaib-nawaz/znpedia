@@ -17,6 +17,7 @@ npm run dev
 | `content/courses/<course>/<slug>.mdx` | Ek chapter |
 | `docs/topics.csv` | Tamam topics, level aur primary SEO keyword |
 | `docs/content-plan.md` | Wahi list readable form mein |
+| `docs/best-practices.csv` | Best Practices course ki har practice: rule, kyun, kab (learning, production, senior) |
 | `docs/content-style-guide.md` | Chapter likhne ke rules |
 | `docs/feature-ideas.md` | Aage ke features ki list |
 

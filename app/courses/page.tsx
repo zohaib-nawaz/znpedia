@@ -9,9 +9,9 @@ import { getAllCourses } from "@/lib/courses";
 import { buildBreadcrumbJsonLd, buildCourseListJsonLd } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "Courses: JavaScript, React aur Next.js",
+  title: "Courses: JavaScript, React, Next.js aur Best Practices",
   description:
-    "ZnPedia ke tamam free courses: JavaScript, React aur Next.js, Roman Urdu mein chhote structured chapters ke saath.",
+    "ZnPedia ke tamam free courses: JavaScript, React, Next.js aur Best Practices, Roman Urdu mein chhote structured chapters ke saath.",
   alternates: { canonical: "/courses" },
 };
 

@@ -15,6 +15,7 @@ export type CourseMeta = {
   sections: CourseSection[];
   chapters: CourseChapter[];
   badge?: string;
+  order?: number;
 };
 
 export type CourseMetaFile = Omit<CourseMeta, "chapters">;

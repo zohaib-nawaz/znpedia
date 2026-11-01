@@ -30,7 +30,8 @@ export default function HomePage() {
             <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
               Har topic ek chhota, focused chapter: definition, kyun zaroori
               hai, code example, common mistakes aur quick revision. Basics se
-              advanced tak, apni speed par.
+              advanced tak, aur phir production-grade best practices, apni
+              speed par.
             </p>
             <Link
               href="/courses"

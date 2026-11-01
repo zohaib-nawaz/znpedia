@@ -33,10 +33,13 @@ export function getCourseMeta(slug: string): CourseMeta | null {
   };
 }
 
+const UNORDERED = Number.MAX_SAFE_INTEGER;
+
 export function getAllCourses(): CourseMeta[] {
   return getAllCourseSlugs()
     .map((slug) => getCourseMeta(slug))
-    .filter((course): course is CourseMeta => course !== null);
+    .filter((course): course is CourseMeta => course !== null)
+    .sort((a, b) => (a.order ?? UNORDERED) - (b.order ?? UNORDERED));
 }
 
 export function courseExists(slug: string): boolean {

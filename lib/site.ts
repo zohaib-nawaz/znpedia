@@ -2,7 +2,7 @@ export const siteConfig = {
   name: "ZnPedia",
   title: "ZnPedia: JavaScript, React aur Next.js Roman Urdu mein",
   description:
-    "JavaScript, React aur Next.js ko Roman Urdu mein seekhein. Har topic ek chhota, structured chapter: definition, examples, common mistakes aur quick revision.",
+    "JavaScript, React, Next.js aur production-grade best practices Roman Urdu mein seekhein. Har topic ek chhota, structured chapter: definition, examples, mistakes aur revision.",
   locale: "en_US",
   keywords: [
     "JavaScript in Urdu",
@@ -13,6 +13,8 @@ export const siteConfig = {
     "JavaScript tutorial",
     "React tutorial",
     "Next.js tutorial",
+    "coding best practices in Urdu",
+    "clean code",
   ],
 } as const;
 

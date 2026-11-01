@@ -20,9 +20,20 @@ function extractHeadingsFromSource(source: string): TocHeading[] {
   const headings: TocHeading[] = [];
   const slugger = new GithubSlugger();
 
+  let insideFence = false;
+
   for (const line of body.split("\n")) {
+    if (/^\s*(```|~~~)/.test(line)) {
+      insideFence = !insideFence;
+      continue;
+    }
+    if (insideFence) {
+      continue;
+    }
     const match = line.match(/^(#{2,3})\s+(.+?)\s*$/);
-    if (!match) continue;
+    if (!match) {
+      continue;
+    }
     const level = match[1].length;
     const text = match[2].replace(/\{#.+?\}$/, "").trim();
     const id = normalizeHeadingId(slugger.slug(text));
