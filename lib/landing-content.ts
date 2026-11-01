@@ -1,10 +1,15 @@
+import type { Tone } from "@/lib/tones";
+
 export type ValueProp = {
   icon: "languages" | "layers" | "code" | "shield" | "route" | "sparkles";
+  tone: Tone;
   title: string;
   body: string;
 };
 
 export type AnatomyStep = {
+  icon: "book" | "help" | "map" | "workflow" | "code" | "alert" | "route" | "check";
+  tone: Tone;
   title: string;
   body: string;
 };
@@ -23,45 +28,51 @@ export type FaqItem = {
 export const valueProps: ValueProp[] = [
   {
     icon: "languages",
+    tone: "emerald",
     title: "Roman Urdu mein, seedhi baat",
     body: "Concept apni zabaan mein, technical terms English mein. Wahi words jo job aur docs mein milenge.",
   },
   {
     icon: "layers",
+    tone: "sky",
     title: "Ek topic, ek chhota chapter",
     body: "Har chapter sirf ek cheez samjhata hai, 5 se 10 minute mein. Lambi videos ya bikhre notes nahi.",
   },
   {
     icon: "code",
+    tone: "violet",
     title: "Modern aur current",
     body: "React 19.2, Next.js 16 App Router, Cache Components aur aaj ka JavaScript. Purana tareeqa sirf comparison ke liye.",
   },
   {
     icon: "shield",
+    tone: "amber",
     title: "Production-grade habits",
     body: "Best Practices course batata hai team mein code kaise likha, review aur ship kiya jata hai, aur kyun.",
   },
   {
     icon: "route",
+    tone: "indigo",
     title: "Saaf learning path",
     body: "JavaScript se Next.js tak ek tarteeb. Har chapter batata hai pehle kya parhna hai aur baad mein kya.",
   },
   {
     icon: "sparkles",
+    tone: "rose",
     title: "Free, bina signup",
     body: "Koi account, paywall ya ads nahi. Page kholo aur parhna shuru karo.",
   },
 ];
 
 export const chapterAnatomy: AnatomyStep[] = [
-  { title: "Kya hai?", body: "Ek line ki definition, phir simple explanation." },
-  { title: "Kyun zaroori hai?", body: "Kaunsa asli problem solve hota hai, before aur after." },
-  { title: "Kahan use hota hai?", body: "Real projects ke examples." },
-  { title: "Kaise kaam karta hai?", body: "Mental model, step by step flow." },
-  { title: "Code example", body: "Chhota, runnable code aur har line ka matlab." },
-  { title: "Common mistakes", body: "Galati, kyun, aur behtar tareeqa." },
-  { title: "Aage kya?", body: "Pehle aur baad ke chapters ke links." },
-  { title: "Quick revision", body: "Key points ek nazar mein." },
+  { icon: "book", tone: "emerald", title: "Kya hai?", body: "Ek line ki definition, phir simple explanation." },
+  { icon: "help", tone: "sky", title: "Kyun zaroori hai?", body: "Kaunsa asli problem solve hota hai, before aur after." },
+  { icon: "map", tone: "violet", title: "Kahan use hota hai?", body: "Real projects ke examples." },
+  { icon: "workflow", tone: "amber", title: "Kaise kaam karta hai?", body: "Mental model, step by step flow." },
+  { icon: "code", tone: "indigo", title: "Code example", body: "Chhota, runnable code aur har line ka matlab." },
+  { icon: "alert", tone: "rose", title: "Common mistakes", body: "Galati, kyun, aur behtar tareeqa." },
+  { icon: "route", tone: "teal", title: "Aage kya?", body: "Pehle aur baad ke chapters ke links." },
+  { icon: "check", tone: "orange", title: "Quick revision", body: "Key points ek nazar mein." },
 ];
 
 export const learningPath: PathStep[] = [

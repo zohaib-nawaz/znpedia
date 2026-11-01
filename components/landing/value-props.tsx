@@ -10,6 +10,8 @@ import {
 
 import { SectionHeading } from "@/components/landing/section-heading";
 import type { ValueProp } from "@/lib/landing-content";
+import { TONES } from "@/lib/tones";
+import { cn } from "@/lib/utils";
 
 const ICONS: Record<ValueProp["icon"], LucideIcon> = {
   languages: Languages,
@@ -34,6 +36,14 @@ export function ValueProps({ items }: ValuePropsProps) {
         className="bg-grid pointer-events-none absolute inset-0 [mask-image:radial-gradient(ellipse_60%_70%_at_100%_0%,black,transparent)]"
         aria-hidden
       />
+      <div
+        className="pointer-events-none absolute -left-40 bottom-0 h-80 w-80 rounded-full bg-violet-500/15 blur-[100px]"
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute -right-20 top-10 h-72 w-72 rounded-full bg-accent/20 blur-[100px]"
+        aria-hidden
+      />
       <div className="relative mx-auto max-w-6xl px-4 py-20 sm:px-6">
         <SectionHeading
           id="why-heading"
@@ -44,16 +54,25 @@ export function ValueProps({ items }: ValuePropsProps) {
         <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => {
             const Icon = ICONS[item.icon];
+            const tone = TONES[item.tone];
 
             return (
               <div
                 key={item.title}
-                className="rounded-xl border border-border bg-card/60 p-6 backdrop-blur transition-colors duration-200 hover:border-accent/40"
+                className={cn(
+                  "group rounded-2xl border border-border bg-gradient-to-b from-card to-card/40 p-6 backdrop-blur transition-all duration-300 hover:-translate-y-1",
+                  tone.hoverBorder,
+                )}
               >
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-soft text-accent">
+                <span
+                  className={cn(
+                    "flex h-11 w-11 items-center justify-center rounded-xl ring-1 ring-inset transition-transform duration-300 group-hover:scale-110",
+                    tone.tile,
+                  )}
+                >
                   <Icon className="h-5 w-5" aria-hidden />
                 </span>
-                <h3 className="mt-4 text-base font-semibold text-foreground">{item.title}</h3>
+                <h3 className="mt-5 text-base font-semibold text-foreground">{item.title}</h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{item.body}</p>
               </div>
             );

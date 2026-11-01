@@ -62,7 +62,7 @@ export function toHours(minutes: number): number {
 
 export type CourseCardData = {
   course: CourseMeta;
-  levels: LevelCount[];
+  shares: LevelShare[];
   hours: number;
 };
 
@@ -72,7 +72,7 @@ export function buildCourseCards(
 ): CourseCardData[] {
   return courses.map((course) => ({
     course,
-    levels: countChaptersByLevel(course),
+    shares: shareLevels(countChaptersByLevel(course)),
     hours: toHours(readingMinutes(course)),
   }));
 }
@@ -110,4 +110,17 @@ export function numberSections(course: CourseMeta): NumberedSection[] {
       return [{ ...chapter, number }];
     }),
   }));
+}
+
+export type LevelShare = LevelCount & {
+  percent: number;
+};
+
+export function shareLevels(levels: LevelCount[]): LevelShare[] {
+  const total = levels.reduce((sum, entry) => sum + entry.count, 0);
+  if (total === 0) {
+    return [];
+  }
+
+  return levels.map((entry) => ({ ...entry, percent: (entry.count / total) * 100 }));
 }

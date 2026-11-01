@@ -12,6 +12,7 @@ import { ValueProps } from "@/components/landing/value-props";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { buildCourseCards, getCatalogStats, withChapterCounts } from "@/lib/catalog";
+import { getCourseTheme } from "@/lib/course-themes";
 import { getAllCourses, getCourseReadingMinutes } from "@/lib/courses";
 import { chapterAnatomy, faqItems, learningPath, valueProps } from "@/lib/landing-content";
 import { buildCourseListJsonLd, buildFaqJsonLd, buildWebsiteJsonLd } from "@/lib/seo";
@@ -53,8 +54,9 @@ export default function HomePage() {
               <CourseCard
                 key={card.course.slug}
                 course={card.course}
-                levels={card.levels}
+                shares={card.shares}
                 hours={card.hours}
+                theme={getCourseTheme(card.course.slug)}
               />
             ))}
           </div>

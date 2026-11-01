@@ -8,6 +8,7 @@ import { LearningPath } from "@/components/landing/learning-path";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { buildCourseCards, getCatalogStats, withChapterCounts } from "@/lib/catalog";
+import { getCourseTheme } from "@/lib/course-themes";
 import { getAllCourses, getCourseReadingMinutes } from "@/lib/courses";
 import { learningPath } from "@/lib/landing-content";
 import { buildBreadcrumbJsonLd, buildCourseListJsonLd } from "@/lib/seo";
@@ -52,8 +53,9 @@ export default function CoursesPage() {
               <CourseCard
                 key={card.course.slug}
                 course={card.course}
-                levels={card.levels}
+                shares={card.shares}
                 hours={card.hours}
+                theme={getCourseTheme(card.course.slug)}
               />
             ))}
           </div>

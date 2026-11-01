@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 
 import { CourseOverview } from "@/components/course-overview";
 import { JsonLd } from "@/components/json-ld";
-import { countChaptersByLevel, numberSections, toHours } from "@/lib/catalog";
+import { countChaptersByLevel, numberSections, shareLevels, toHours } from "@/lib/catalog";
+import { getCourseTheme } from "@/lib/course-themes";
 import { getCourseMeta, getCourseReadingMinutes } from "@/lib/courses";
 import { getChapterHref, getDefaultChapterSlug } from "@/lib/docs";
 import { buildBreadcrumbJsonLd, buildCourseListJsonLd } from "@/lib/seo";
@@ -50,7 +51,8 @@ export default async function CourseIndexPage({ params }: CourseIndexPageProps) 
       <CourseOverview
         course={course}
         sections={numberSections(course)}
-        levels={countChaptersByLevel(course)}
+        shares={shareLevels(countChaptersByLevel(course))}
+        theme={getCourseTheme(course.slug)}
         hours={toHours(getCourseReadingMinutes(course))}
         startHref={getChapterHref(course.slug, getDefaultChapterSlug(course))}
       />
