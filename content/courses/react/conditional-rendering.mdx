@@ -1,0 +1,155 @@
+---
+title: Conditional Rendering
+description: React conditional rendering mein if, ternary aur && operator se UI kaise dikhayein ya chhupayein, 0 wala bug aur null return Roman Urdu mein.
+keywords:
+  - react conditional rendering
+  - react ternary operator jsx
+  - react && operator
+  - show hide component react
+---
+
+## 1. Conditional Rendering kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**Conditional rendering ka matlab hai kisi condition ke mutabiq alag JSX dikhana, ya kuch bhi na dikhana.**
+
+</Callout>
+
+React mein iske liye koi special syntax nahi. Aap normal JavaScript use karte hain: `if`, ternary `? :` aur logical `&&`.
+
+## 2. Kyun zaroori hai?
+
+Real UI hamesha ek jaisi nahi hoti. Login ho to profile dikhao, warna login button. Data load ho raha ho to spinner.
+
+<CompareTable leftTitle="Bina condition" rightTitle="Conditional rendering ke saath">
+
+Har cheez hamesha screen par | Sirf relevant UI dikhti hai
+CSS se hide karna parta hai | Element DOM mein aata hi nahi
+Loading aur error state ignore | Har state ka apna UI
+User confuse hota hai | Clear aur sahi feedback
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Situation | Kya dikhana hai |
+| --- | --- |
+| **Auth** | Logged in: avatar, warna Login button |
+| **Data fetch** | Loading spinner, error message ya data |
+| **Empty list** | "Koi item nahi" message |
+| **Badges** | Unread count sirf jab 0 se zyada ho |
+| **Permissions** | Admin ko hi Delete button |
+
+## 4. Kaise kaam karta hai?
+
+JSX bhi ek JavaScript value hai. Aap usay variable mein rakh sakte hain, function se return kar sakte hain, aur conditions ke saath choose kar sakte hain.
+
+<Flow title="Render ke dauran faisla">
+
+Component render hota hai
+↓
+State ya props check hote hain
+↓
+Condition ke mutabiq JSX choose hota hai
+↓
+null ya false ho to kuch render nahi hota
+↓
+Chuna hua UI screen par
+
+</Flow>
+
+| Tareeqa | Kab use karein |
+| --- | --- |
+| `if` / early `return` | Poora component alag UI dikhaye |
+| `cond ? a : b` | Do options mein se ek |
+| `cond && a` | Dikhao ya kuch nahi |
+| `return null` | Component kuch render na kare |
+
+## 5. Code example
+
+### Early return
+
+```jsx
+function Profile({ user, isLoading }) {
+  if (isLoading) {
+    return <p>Loading...</p>;
+  }
+
+  if (!user) {
+    return <button>Login</button>;
+  }
+
+  return <h2>Welcome, {user.name}</h2>;
+}
+```
+
+### Ternary aur &&
+
+```jsx
+function Inbox({ messages, isOnline }) {
+  return (
+    <div>
+      <span>{isOnline ? "Online" : "Offline"}</span>
+      {messages.length > 0 && <p>{messages.length} naye messages</p>}
+    </div>
+  );
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `if (isLoading) return` | Pehle special cases handle karo, baqi code saaf rehta hai |
+| `isOnline ? "Online" : "Offline"` | Do mein se ek value |
+| `messages.length > 0 && ...` | Condition true ho to hi paragraph render |
+| `null`, `false`, `undefined` | React inhein render nahi karta |
+
+## 6. Common mistakes
+
+<Mistake
+  title="Number ko seedha && ke left mein rakhna, jaise messages.length && ..."
+  why="Agar length 0 ho to React 0 ko text ki tarah screen par dikha deta hai, kyunke 0 ek valid render value hai."
+  better="Hamesha boolean banao: messages.length > 0 && ... ya ternary use karo."
+/>
+
+<Mistake
+  title="JSX ke andar if statement likhna"
+  why="JSX ke curly braces mein sirf expression chalta hai, if statement syntax error deta hai."
+  better="if ko return se pehle likho, ya JSX ke andar ternary ya && use karo."
+/>
+
+<Mistake
+  title="Bohot zyada nested ternaries"
+  why="a ? b : c ? d : e jaisa code parhna aur debug karna mushkil hai."
+  better="Logic ko variable ya chhote components mein nikal do, ya early return use karo."
+/>
+
+### Interview tip
+
+Agar poocha jaye ke component kuch render na kare to kya return karein: jawab `null`. Component ka function phir bhi chalta hai, bas output khali hota hai.
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Chapters |
+| --- | --- |
+| **Pehle** | [JSX](/courses/react/jsx), [State with useState](/courses/react/state) |
+| **Baad mein** | [Lists & Keys](/courses/react/lists-and-keys), [Suspense & lazy()](/courses/react/suspense-and-lazy) |
+| **Related** | [Error Boundaries](/courses/react/error-boundaries) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Special syntax | Nahi, plain JavaScript |
+| Do options | Ternary `? :` |
+| Dikhao ya nahi | `&&` (left side boolean ho) |
+| Poora alag UI | Early `return` |
+| Kuch nahi | `return null` |
+
+<Callout variant="important" title="Yaad rakhein">
+
+`&&` ke left mein **boolean** rakho, number nahi. Warna screen par ek akela `0` nazar aayega.
+
+</Callout>

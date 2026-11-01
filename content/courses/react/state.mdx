@@ -1,0 +1,169 @@
+---
+title: State with useState
+description: React useState hook se component ki state kaise banayein aur update karein, re-render, functional updates aur immutable objects Roman Urdu mein.
+keywords:
+  - react usestate
+  - react state urdu
+  - usestate hook example
+  - react re-render
+  - update state object react
+---
+
+## 1. State with useState kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**State component ki apni memory hai. `useState` hook yeh memory banata hai aur usay update karne ka function deta hai.**
+
+</Callout>
+
+Normal variable har render par dobara ban jata hai aur usay badalne se screen update nahi hoti. **State** render ke beech yaad rehti hai, aur jab aap usay set karte hain to React component ko **dobara render** karta hai.
+
+## 2. Kyun zaroori hai?
+
+<CompareTable leftTitle="Normal variable" rightTitle="useState">
+
+Har render par value reset | Value renders ke beech yaad rehti hai
+Value badlo, screen same rehti hai | Set karo, React re-render karta hai
+React ko change ka pata nahi | React change track karta hai
+Interactive UI nahi ban sakta | Counter, toggle, form sab possible
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Use case | State mein kya rakhein |
+| --- | --- |
+| **Counter / likes** | Number |
+| **Modal open/close** | Boolean |
+| **Form input** | String |
+| **Todo list** | Array of objects |
+| **Selected tab** | String ya id |
+
+## 4. Kaise kaam karta hai?
+
+`useState(initialValue)` ek array return karta hai: current value aur ek **setter function**.
+
+<Flow title="State update ka cycle">
+
+User button click karta hai
+↓
+Setter function nayi value ke saath call hota hai
+↓
+React re-render schedule karta hai
+↓
+Component dobara chalta hai, nayi state milti hai
+↓
+Naya JSX screen par update
+
+</Flow>
+
+<Callout variant="important" title="State ek snapshot hai">
+
+Ek render ke andar state ki value **fixed** hoti hai. Setter call karne ke baad bhi usi render mein purani value hi nazar aati hai. Nayi value agle render mein milti hai.
+
+</Callout>
+
+## 5. Code example
+
+### Counter
+
+```jsx
+import { useState } from "react";
+
+export default function Counter() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <button onClick={() => setCount(count + 1)}>
+      Clicked {count} times
+    </button>
+  );
+}
+```
+
+### Functional update
+
+Jab nayi value pichli value par depend kare, updater function do:
+
+```jsx
+function handleTripleClick() {
+  setCount((c) => c + 1);
+  setCount((c) => c + 1);
+  setCount((c) => c + 1);
+}
+```
+
+### Object state ko update karna
+
+```jsx
+const [user, setUser] = useState({ name: "Ali", city: "Lahore" });
+
+function moveToKarachi() {
+  setUser({ ...user, city: "Karachi" });
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `useState(0)` | Initial value 0, sirf pehle render par use hoti hai |
+| `[count, setCount]` | Array destructuring: value aur setter |
+| `setCount(count + 1)` | Nayi value set, re-render trigger |
+| `setCount((c) => c + 1)` | Pichli queued value se calculate, teen dafa chale to +3 |
+| `{ ...user, city }` | Naya object banao, purane ko mutate na karo |
+
+## 6. Common mistakes
+
+<Mistake
+  title="State ko seedha mutate karna, jaise user.city ko assign kar dena"
+  why="Object wahi rehta hai, React ko change nazar nahi aata aur re-render nahi hota."
+  better="Hamesha naya object ya array banao: spread, map, filter jaise immutable tareeqe use karo."
+/>
+
+<Mistake
+  title="Setter ke foran baad state log karna aur nayi value expect karna"
+  why="State snapshot hai, current render mein purani value hi rehti hai."
+  better="Nayi value chahiye to usay pehle variable mein calculate karo, ya agle render mein use karo."
+/>
+
+<Mistake
+  title="Pichli value par depend update mein seedha count + 1 likhna"
+  why="Ek hi event mein kai updates hon to sab ek hi purani value use karte hain aur result galat aata hai."
+  better="Updater function likho: setCount(c => c + 1)."
+/>
+
+<Mistake
+  title="Jo value calculate ho sakti hai usay bhi state bana dena"
+  why="Do states ko sync rakhna parta hai aur bugs aate hain."
+  better="Derived value render ke dauran calculate karo, jaise fullName = first + last."
+/>
+
+### Interview tip
+
+"State update async kyun lagta hai?" Jawab: React updates ko **batch** karta hai aur render ke baad nayi value deta hai. Har render state ka ek snapshot dekhta hai.
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Chapters |
+| --- | --- |
+| **Pehle** | [Props](/courses/react/props), [How React Renders](/courses/react/how-react-renders) |
+| **Saath mein** | [Handling Events](/courses/react/events), [Forms & Controlled Inputs](/courses/react/forms) |
+| **Baad mein** | [Lifting State Up](/courses/react/lifting-state-up), [useReducer](/courses/react/use-reducer), [Rules of Hooks](/courses/react/rules-of-hooks) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `useState` | Component ki memory banata hai |
+| Return | `[value, setValue]` |
+| Setter | Nayi value set karke re-render |
+| Snapshot | Current render mein value nahi badalti |
+| Objects/arrays | Hamesha naya copy banao |
+
+<Callout variant="important" title="Yaad rakhein">
+
+State set karo, mutate nahi. Pichli value par depend ho to **updater function** use karo.
+
+</Callout>

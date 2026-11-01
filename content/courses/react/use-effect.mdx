@@ -1,0 +1,182 @@
+---
+title: useEffect
+description: React useEffect hook se component ko external systems ke saath sync karna, dependency array, cleanup aur kab effect ki zaroorat nahi, Roman Urdu mein.
+keywords:
+  - react useeffect
+  - useeffect dependency array
+  - useeffect cleanup function
+  - you might not need an effect
+  - react side effects urdu
+---
+
+## 1. useEffect kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**`useEffect` component ko React se bahar ke kisi system (timer, browser API, network, third-party widget) ke saath sync rakhne ka hook hai.**
+
+</Callout>
+
+Render ka kaam sirf JSX calculate karna hai. Jo kaam render ke **baad** hona chahiye, jaise subscription lagana ya `document.title` badalna, woh effect mein jata hai.
+
+## 2. Kyun zaroori hai?
+
+<CompareTable leftTitle="Render ke andar side effect" rightTitle="useEffect ke andar">
+
+Har render par baar baar chalta hai | Sirf jab dependencies badlein
+Render slow aur impure | Render pure, effect commit ke baad
+Subscription band karna bhool jao | Cleanup function khud chalta hai
+Memory leaks | Unmount par saaf safai
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Use case | Effect kya karta hai |
+| --- | --- |
+| **Timers** | `setInterval` lagana aur cleanup mein hatana |
+| **Browser events** | `window` resize ya online/offline listener |
+| **WebSocket / chat** | Connection kholna aur band karna |
+| **Third-party widget** | Map ya chart library ko DOM node se jorna |
+| **Document title** | State ke mutabiq tab ka title |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Effect ka lifecycle">
+
+Component render hota hai
+↓
+React screen update karta hai (commit)
+↓
+Effect chalta hai
+↓
+Dependency badli: pehle cleanup, phir naya effect
+↓
+Unmount par aakhri cleanup
+
+</Flow>
+
+| Dependency array | Effect kab chalega |
+| --- | --- |
+| `[a, b]` | Pehli dafa, phir jab `a` ya `b` badle |
+| `[]` | Sirf mount par (aur cleanup unmount par) |
+| Array hi nahi | Har render ke baad (aam taur par galat) |
+
+<Callout variant="note" title="StrictMode mein double run">
+
+Development mein `StrictMode` effect ko mount, cleanup, mount karta hai. Yeh jaan boojh kar hai taake missing cleanup ka bug foran nazar aaye. Production mein ek hi dafa chalta hai.
+
+</Callout>
+
+## 5. Code example
+
+### Timer with cleanup
+
+```jsx
+import { useEffect, useState } from "react";
+
+export default function Clock() {
+  const [time, setTime] = useState(() => new Date());
+
+  useEffect(() => {
+    const id = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  return <p>{time.toLocaleTimeString()}</p>;
+}
+```
+
+### Prop se sync
+
+```jsx
+function ChatRoom({ roomId }) {
+  useEffect(() => {
+    const connection = createConnection(roomId);
+    connection.connect();
+    return () => connection.disconnect();
+  }, [roomId]);
+
+  return <h2>Room: {roomId}</h2>;
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `useEffect(() => ..., [])` | Mount par interval shuru |
+| `return () => clearInterval(id)` | Cleanup, unmount par interval band |
+| `[roomId]` | Room badla to purana disconnect, naya connect |
+| `createConnection` | Bahar ka system, isi liye effect chahiye |
+
+### Shayad aapko effect ki zaroorat nahi
+
+Bohot sa code jo effect mein likha jata hai, asal mein effect ka kaam nahi. Effect sirf **bahar ke systems** ke liye hai.
+
+| Situation | Effect ki jagah |
+| --- | --- |
+| Props/state se value calculate karni hai | Render ke dauran seedha calculate karo |
+| Mehnga calculation | `useMemo` (ya React Compiler) |
+| User click par kuch karna | Event handler mein karo |
+| Prop badle to state reset | Component ko `key` do |
+| Data fetching | Framework, TanStack Query ya `use()` |
+
+```jsx
+function Cart({ items }) {
+  const total = items.reduce((sum, item) => sum + item.price, 0);
+  return <p>Total: Rs. {total}</p>;
+}
+```
+
+Yahan `total` ke liye state + effect banana faltu re-render aur bugs laata. Seedha calculate karna kaafi hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Dependency array se values chhupa dena taake effect kam chale"
+  why="Effect purani props ya state dekhta rehta hai (stale closure) aur ghalat data use karta hai."
+  better="Effect mein use hone wali har reactive value dependency mein do. Jo value react nahi karni usay useEffectEvent mein nikalo."
+/>
+
+<Mistake
+  title="Effect mein state set karna jis ki dependency wahi state ho"
+  why="Set se re-render, re-render se effect, effect se phir set: infinite loop."
+  better="Derived value render mein calculate karo, ya updater function use karke dependency hatao."
+/>
+
+<Mistake
+  title="Cleanup function na likhna"
+  why="Interval, listener ya connection unmount ke baad bhi chalte rehte hain, memory leak aur duplicate events."
+  better="Jo effect kuch shuru kare, woh return mein usay band bhi kare."
+/>
+
+<Mistake
+  title="Button click ka logic effect mein daal dena"
+  why="Effect render se chalta hai, user action se nahi. Logic ghalat waqt ya do dafa chal sakta hai."
+  better="User action ka kaam event handler mein karo."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Chapters |
+| --- | --- |
+| **Pehle** | [Rules of Hooks](/courses/react/rules-of-hooks), [State with useState](/courses/react/state) |
+| **Baad mein** | [useEffectEvent](/courses/react/use-effect-event), [Custom Hooks](/courses/react/custom-hooks), [Data Fetching](/courses/react/data-fetching) |
+| **Related** | [useRef](/courses/react/use-ref), [useMemo & useCallback](/courses/react/use-memo-and-use-callback) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Kaam | External system ke saath sync |
+| Kab chalta hai | Commit ke baad |
+| Dependencies | Har reactive value jo effect use kare |
+| Cleanup | Return function, re-run aur unmount par |
+| Pehla sawal | Kya effect ki zaroorat hai bhi? |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Effect **bahar ki duniya** ke liye hai. Calculation render mein, user action handler mein, aur effect sirf sync ke liye.
+
+</Callout>

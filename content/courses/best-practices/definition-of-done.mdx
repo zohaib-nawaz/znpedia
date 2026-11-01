@@ -1,0 +1,167 @@
+---
+title: Definition of Done
+description: Definition of done checklist jo batati hai ke kaam kab sach mein khatam hai, typecheck, tests, migrations, env, docs, screenshot aur review tak.
+keywords:
+  - definition of done checklist
+  - pull request checklist
+  - when is a task done
+  - software quality checklist
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Kaam tab done hai jab ek likhi hui checklist ka har item sach ho, sirf tab nahi jab "mere machine par chal raha hai".**
+
+</Callout>
+
+Definition of Done (DoD) ek choti si list hai jo poori team ke liye ek hi hoti hai. Har pull request isi ke against check hoti hai. Is se "done" ka matlab har insaan ke liye barabar ho jata hai.
+
+## 2. Kyun zaroori hai?
+
+Bina likhi list ke har developer ka "done" alag hota hai. Ek ke liye feature ka screen par aana done hai, doosre ke liye tests ke saath merge hona. Farq baad mein bug, broken deploy aur "yeh kis ne kiya?" ban kar nikalta hai.
+
+<Callout variant="note" title="Real pattern">
+
+Ek feature "done" mark hua. Deploy par app crash hui kyunki naya env variable kisi ko pata hi nahi tha, `.env.example` mein tha hi nahi. Agle din pata chala ke migration doosri dafa chalne par fail hoti hai, aur generated types purani thin. Teeno cheezein ek checklist se pakri ja sakti thin.
+
+</Callout>
+
+<CompareTable leftTitle="Mere machine par chal gaya" rightTitle="Definition of done ke saath">
+
+Typecheck sirf editor ne dekha | Typecheck, lint, format CI mein green
+Success path haath se test kiya | Success, validation aur auth failure ke tests
+Naya env variable yaad mein | .env.example mein naam aur note
+Migration ek dafa chali | Migration do dafa chal kar bhi theek
+Reviewer screen khud chala kar dekhe | Screenshot ya recording PR mein
+Khud hi approve kar diya | Kisi aur ne approve kiya
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Chhoti list: typecheck, lint, ek test, README | "Khatam" ki aadat yahin banti hai |
+| **Production code** | Poori list, PR template mein checkboxes | Har missing item production bug ban sakta hai |
+| **Senior level** | List ko CI mein automate karna | Jo machine check kar sake, us par insaan ka waqt na lage |
+
+## 4. Bura vs acha code
+
+### Bura: PR description
+
+```bash
+added the export feature. done, pls review
+```
+
+Reviewer ko nahi pata kya test hua, kya env chahiye, kya migration hai.
+
+### Acha: PR description
+
+```bash
+add csv export for invoices
+
+why: accountants export invoices by hand every month
+
+how tested:
+  npm run typecheck, lint and tests pass
+  endpoint tests: success, invalid date range (422), invoice of another org (404)
+  migration applied twice locally, second run is a no-op
+  screenshot of the export button attached
+
+new env: EXPORT_BUCKET (exports fail with 503 without it)
+docs: docs/knowledge/exports.md updated
+```
+
+### Farq kya hai?
+
+| Cheez | Bura | Acha |
+| --- | --- | --- |
+| Tests | Pata nahi | Kaun se cases, saaf likha |
+| Env | Chhupa hua | Naam aur us ke bina kya tootega |
+| Migration | Shayad | Idempotent, do dafa chali |
+| Review | Reviewer khud dhoondhe | Sab saamne |
+
+## 5. Kaise apply karein?
+
+Yeh checklist PR template mein checkboxes ki shakal mein rakhein:
+
+| # | Item | Kyun |
+| --- | --- | --- |
+| 1 | Typecheck, lint aur format locally aur CI mein pass | Basic bugs aur style behas khatam |
+| 2 | Har naye ya badle endpoint ke success, validation aur auth failure tests | Contract aur security sabit |
+| 3 | Har badli hui branching wali pure function ka unit test | Logic ke edge cases |
+| 4 | Migration us database par do dafa chali jahan pehle se lagi thi | Re-run par crash nahi |
+| 5 | Generated database types regenerate aur commit | Code aur schema ek jaise |
+| 6 | Naya env variable `.env.example` mein, note ke saath | Agla deploy na toote |
+| 7 | Behaviour badla to docs update | Docs jhoot na bolein |
+| 8 | UI change ho to screenshot ya short recording | Reviewer ko dikhe kya bana |
+| 9 | Author ke ilawa kisi aur ka approval | Doosri nazar |
+
+<Flow title="Done tak ka rasta">
+
+Code likha
+↓
+Local par typecheck, lint, tests
+↓
+Migration, types, env, docs check
+↓
+PR template ki checklist bhari
+↓
+CI green
+↓
+Kisi aur ka approval
+↓
+Done
+
+</Flow>
+
+## 6. Exceptions aur common mistakes
+
+**Kab rule nahi lagta:** jo item lagu nahi hota woh skip hota hai, lekin likh kar: "no migration", "no UI change". Spike ya prototype jo merge nahi hoga, us par poori list zaroori nahi. Lekin agar woh code baad mein main mein jaye to list wahin se lagti hai.
+
+<Mistake
+  title="Checkbox tick karna bina chalaye"
+  why="Checklist ka faida sirf tab hai jab woh sach ho, jhoota tick koi safety nahi deta."
+  better="Jo item check nahi kiya, usay khaali chhorein aur wajah likhein."
+/>
+
+<Mistake
+  title="Tests sirf happy path ke"
+  why="Zyada tar bugs aur security holes failure paths mein hote hain."
+  better="Har endpoint ke liye validation aur auth failure ke tests bhi likhein."
+/>
+
+<Mistake
+  title="Docs ko alag ticket bana dena"
+  why="Woh ticket kabhi nahi hota aur docs purane ho jate hain."
+  better="Behaviour badalne wale PR mein hi docs update karein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Introduction](/courses/best-practices/introduction), [When to Learn What](/courses/best-practices/learning-path-and-levels) |
+| **Saath mein** | [Testing Pyramid](/courses/best-practices/testing-pyramid), [Pull Requests & Code Review](/courses/best-practices/pull-requests-and-code-review) |
+| **Baad mein** | [Safe Migrations](/courses/best-practices/migrations), [Production Readiness Checklist](/courses/best-practices/production-readiness-checklist) |
+
+## Final quick revision
+
+| Check | Haan? |
+| --- | --- |
+| Typecheck, lint, format green | |
+| Endpoint tests teeno paths | |
+| Migration idempotent | |
+| Types regenerated | |
+| `.env.example` updated | |
+| Docs updated | |
+| Screenshot attached | |
+| Doosre ka approval | |
+
+<Callout variant="important" title="Yaad rakhein">
+
+"Chal raha hai" aur "done hai" alag cheezein hain. Done woh hai jo list kehti hai, aur list sab ke liye ek hai.
+
+</Callout>

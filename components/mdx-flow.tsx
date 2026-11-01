@@ -41,10 +41,7 @@ function childrenToLines(children: React.ReactNode): string[] {
         })
         .join("");
 
-      const line = text.replace(/\s+$/, "").trim();
-      if (line) {
-        lines.push(line);
-      }
+      pushRaw(text);
       return;
     }
 

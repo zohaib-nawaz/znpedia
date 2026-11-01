@@ -1,0 +1,203 @@
+---
+title: Conditionals Without Ternaries
+description: Avoid nested ternary readability ke liye. Ternary aur && ki jagah if, early return aur render functions se JSX conditions saaf rakhein.
+keywords:
+  - avoid nested ternary readability
+  - ternary operator best practice
+  - conditional rendering react clean
+  - render function pattern
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**`cond ? a : b` ki jagah `if` / `else` ya early return likho. JSX mein na ternary, na `cond && <X />`. Har conditional UI ek chhota render function hai jise `{renderX()}` se call karte hain.**
+
+</Callout>
+
+Yeh is course ke sab se sakht house rules mein se ek hai. Pehle samjhein yeh kya maangta hai:
+
+| Jagah | Rule |
+| --- | --- |
+| Normal code | `if` / `else` ya early return |
+| Value chunna | Lookup object ya chhota function |
+| JSX | `renderBanner()` jaisa function jis mein braced guard ho |
+
+## 2. Kyun zaroori hai?
+
+Ek ternary aksar theek lagti hai. Masla tab hota hai jab woh barhti hai: nested ternary, JSX ke andar lambi condition, aur `&&` ka chhupa bug.
+
+<CompareTable leftTitle="Ternary aur && in JSX" rightTitle="if aur render functions">
+
+Nested ternary ko parhne ke liye dimaag mein table banana parta hai | Har case apni line aur apne guard mein
+count && Badge, count 0 ho to screen par 0 likha aata hai | Guard mein saaf boolean, koi chhupa 0 nahi
+JSX ka return block 80 lines, beech mein conditions | Return block chhota, har hissa ek naam
+Naya case add karna, ternary aur gehri | Naya case, ek aur if
+Debugger se ternary ki ek branch par rukna mushkil | Har branch ki apni line, breakpoint aasaan
+
+</CompareTable>
+
+`&&` wala bug asli hai:
+
+```tsx
+<div>{cart.items.length && <CartBadge />}</div>
+```
+
+Jab cart khaali ho, `0 && ...` ka jawab `0` hai, aur React `0` ko screen par likh deta hai.
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Nested ternary se bilkul bacho, simple ternary chal sakti hai | Pehle `if` aur early return ki aadat pakki karo |
+| **Production code** | Team ka rule follow karo, `&&` ke saath number kabhi nahi | `0` render bug aur nested ternary sab se aam readability masle hain |
+| **Senior level** | Decide karo team kitni sakht hogi | Saaf rule review ki behas khatam karta hai |
+
+## 4. Bura vs acha code
+
+```tsx
+export function OrderStatus({ order }: { order: Order }) {
+  return (
+    <div>
+      {order.refunds.length && <RefundNote />}
+      {order.status === "paid"
+        ? order.shippedAt
+          ? <Shipped at={order.shippedAt} />
+          : <Preparing />
+        : order.status === "failed"
+          ? <PaymentFailed />
+          : <Pending />}
+    </div>
+  );
+}
+```
+
+```tsx
+export function OrderStatus({ order }: { order: Order }) {
+  const renderRefundNote = () => {
+    if (order.refunds.length === 0) {
+      return null;
+    }
+
+    return <RefundNote />;
+  };
+
+  const renderState = () => {
+    if (order.status === "failed") {
+      return <PaymentFailed />;
+    }
+
+    if (order.status !== "paid") {
+      return <Pending />;
+    }
+
+    if (!order.shippedAt) {
+      return <Preparing />;
+    }
+
+    return <Shipped at={order.shippedAt} />;
+  };
+
+  return (
+    <div>
+      {renderRefundNote()}
+      {renderState()}
+    </div>
+  );
+}
+```
+
+| Farq kya hai? | Bura | Acha |
+| --- | --- | --- |
+| `0` bug | Refund na ho to `0` dikhta hai | Saaf `=== 0` guard |
+| Parhna | 3 level nested ternary | Upar se neeche seedhe guards |
+| Return block | Logic aur UI mix | Sirf do named calls |
+| Naya status | Ternary aur gehri | Ek naya `if` |
+
+### Value chunne ke liye lookup
+
+```ts
+const STATUS_LABEL: Record<OrderStatus, string> = {
+  pending: "Pending",
+  paid: "Paid",
+  failed: "Payment failed",
+};
+
+const label = STATUS_LABEL[order.status];
+```
+
+`Record` ki wajah se naya status add karo to TypeScript khud batata hai ke label missing hai.
+
+## 5. Kaise apply karein?
+
+<Flow title="Ternary hatane ke steps">
+
+Ternary ya && dhoondo
+↓
+Normal code hai? if/else ya early return mein badlo
+↓
+Value mapping hai? Lookup object banao
+↓
+JSX hai? renderX function banao
+↓
+Function mein guard braces ke saath, null return karo
+↓
+Return block mein sirf renderX() call karo
+
+</Flow>
+
+## 6. Exceptions aur common mistakes
+
+**Honest baat:** zyada tar teams simple ternary aur `&&` allow karti hain. React docs khud `isLoggedIn ? <A /> : <B />` dikhate hain. Jo baat taqreeban sab maante hain: **nested ternary mat likho** aur `&&` ke left side par number mat rakho. "Ternary bilkul nahi" ek sakht house opinion hai. Faida: har condition ek jaisi shape mein, koi `0` bug nahi, aur JSX hamesha chhota. Nuqsaan: chhoti si condition ke liye bhi 5 lines. Jo team yeh rule rakhti hai woh consistency ko chhoti files par tarjeeh deti hai.
+
+Agar render function bohat bare ho jayein to unhe alag component bana do. Render functions chhoti conditions ke liye hain, poore sub-screens ke liye nahi.
+
+<Mistake
+  title="Number ke saath && in JSX"
+  why="0 falsy hai lekin React use text ki tarah render kar deta hai, screen par 0 aa jata hai."
+  better="Saaf boolean banao, jaise length === 0 ka guard, ya render function use karo."
+/>
+
+<Mistake
+  title="Nested ternary"
+  why="Parhne wale ko har level ki condition dimaag mein yaad rakhni parti hai, galti ka chance barhta hai."
+  better="if aur early return ki seedhi list likho."
+/>
+
+<Mistake
+  title="Render function mein bara JSX aur state"
+  why="Render function chhupa hua component ban jata hai, re-render aur testing mushkil."
+  better="Bara hissa apne component file mein nikalo aur props do."
+/>
+
+<Mistake
+  title="Ternary ki jagah lamba if/else chain jab mapping ho"
+  why="Paanch if sirf ek string chunne ke liye shor hai."
+  better="Lookup object use karo jis par Record type ho."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Early Returns & Braces](/courses/best-practices/early-returns-and-braces), [Conditional Rendering](/courses/react/conditional-rendering) |
+| **Saath mein** | [Small Functions](/courses/best-practices/small-functions) |
+| **Baad mein** | [File Size & Organization](/courses/best-practices/file-size-and-organization), [React Component Practices](/courses/best-practices/react-component-practices) |
+
+## Final quick revision
+
+| Check | Sawal |
+| --- | --- |
+| Nested ternary | Koi bhi? Foran hatao |
+| && in JSX | Kya left side number ho sakta hai? |
+| Render function | Kya har conditional UI ka naam hai? |
+| Guard | Kya guard braces ke saath null return karta hai? |
+| Mapping | Kya lookup object se behtar hoga? |
+| Team rule | Simple ternary allowed hai ya nahi, poore repo mein ek jaisa |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Condition ko naam do aur apni line do. Return block mein sirf woh ho jo screen ki shape batata hai, faisle nahi.
+
+</Callout>

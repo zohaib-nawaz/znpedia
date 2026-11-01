@@ -1,0 +1,178 @@
+---
+title: Styling in React
+description: React CSS Tailwind styling ke tareeqe, className, inline style object, CSS Modules aur Tailwind CSS mein farq aur sahi choice Roman Urdu mein.
+keywords:
+  - react css tailwind styling
+  - react classname
+  - react inline style
+  - css modules react
+  - tailwind css react urdu
+---
+
+## 1. Styling in React kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**React mein styling ka matlab hai components ko CSS dena, `className`, inline `style` object, CSS Modules ya Tailwind jaisi utility classes ke through.**
+
+</Callout>
+
+React khud koi styling system nahi deta. Aap wahi CSS use karte hain jo web par chalti hai, bas JSX mein `class` ki jagah `className` likhte hain.
+
+## 2. Kyun zaroori hai?
+
+Components chhote aur reusable hain, to unki styling bhi organized honi chahiye. Ek global CSS file jaldi messy ho jati hai.
+
+<CompareTable leftTitle="Ek bari global CSS" rightTitle="Component-wise styling">
+
+Class names aapas mein takrate hain | Har component ki apni scoped classes
+Kaunsa CSS kahan use hai, pata nahi | Style component ke saath rehta hai
+Unused CSS jama hota rehta hai | Component hataya to style bhi gaya
+Dynamic styling mushkil | State ke mutabiq class badalna aasaan
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Tareeqa | Kab behtar hai |
+| --- | --- |
+| **Plain CSS + className** | Chhoti app, global base styles |
+| **Inline style** | Runtime dynamic values, jaise progress width |
+| **CSS Modules** | Scoped classes, plain CSS likhna pasand ho |
+| **Tailwind CSS** | Tez development, design system, zyada tar modern projects |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Style se screen tak">
+
+CSS file ya Tailwind classes likhi jati hain
+↓
+Component className ya style prop set karta hai
+↓
+Build tool CSS bundle karta hai
+↓
+Browser classes match karke style lagata hai
+
+</Flow>
+
+Inline `style` mein CSS string nahi, ek **JavaScript object** jata hai. Property names camelCase hote hain: `backgroundColor`, `fontSize`.
+
+## 5. Code example
+
+### className aur conditional class
+
+```jsx
+import "./Button.css";
+
+function Button({ variant = "primary", children }) {
+  return <button className={`btn btn-${variant}`}>{children}</button>;
+}
+```
+
+### Inline style (dynamic value)
+
+```jsx
+function ProgressBar({ percent }) {
+  return (
+    <div className="track">
+      <div style={{ width: `${percent}%`, backgroundColor: "teal" }} />
+    </div>
+  );
+}
+```
+
+### CSS Modules
+
+```css
+/* Card.module.css */
+.card {
+  padding: 16px;
+  border-radius: 8px;
+}
+```
+
+```jsx
+import styles from "./Card.module.css";
+
+function Card({ children }) {
+  return <div className={styles.card}>{children}</div>;
+}
+```
+
+### Tailwind CSS
+
+```jsx
+function Badge({ active }) {
+  return (
+    <span
+      className={`rounded-full px-3 py-1 text-sm ${
+        active ? "bg-green-600 text-white" : "bg-gray-200 text-gray-700"
+      }`}
+    >
+      {active ? "Active" : "Inactive"}
+    </span>
+  );
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `className` | HTML ka `class`, JSX mein reserved word ki wajah se naya naam |
+| `style={{ ... }}` | Bahar wale braces JSX ke, andar wale object ke |
+| `styles.card` | CSS Module unique class name bana deta hai |
+| Template string | State ya props ke mutabiq class jorna |
+| Tailwind classes | Har class ek chhota CSS rule |
+
+Tailwind v4 mein Vite ke saath setup simple hai: `@tailwindcss/vite` plugin lagao aur CSS file mein `@import "tailwindcss";` likho.
+
+## 6. Common mistakes
+
+<Mistake
+  title="JSX mein class likhna"
+  why="JSX JavaScript hai aur class ek reserved word hai, React className expect karta hai."
+  better="Hamesha className likho."
+/>
+
+<Mistake
+  title="Inline style mein CSS string dena, jaise style='color: red'"
+  why="React style prop mein object chahta hai, string par error aata hai."
+  better="style={{ color: 'red' }} likho aur property names camelCase rakho."
+/>
+
+<Mistake
+  title="Har cheez inline style se karna"
+  why="Hover, media queries aur pseudo classes inline style mein nahi chalte aur code bhaari ho jata hai."
+  better="Static styling class se karo, inline style sirf runtime dynamic values ke liye."
+/>
+
+<Mistake
+  title="Tailwind class names ko string jor kar dynamically banana, jaise bg- plus color"
+  why="Tailwind build ke waqt poore class names dhoondta hai, adhoore toote names ki CSS generate nahi hoti."
+  better="Poore class names likho aur condition se unmein se choose karo."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Chapters |
+| --- | --- |
+| **Pehle** | [JSX](/courses/react/jsx), [Setup with Vite](/courses/react/setup-with-vite) |
+| **Saath mein** | [Conditional Rendering](/courses/react/conditional-rendering), [Props](/courses/react/props) |
+| **Baad mein** | [TypeScript with React](/courses/react/typescript-with-react) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Class | `className` |
+| Inline | Object, camelCase properties |
+| Scoped CSS | `*.module.css` |
+| Utility first | Tailwind CSS |
+| Dynamic | Condition se poori class choose karo |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Static style **class** se, runtime value **inline style** se. Tailwind mein class names hamesha poore likho.
+
+</Callout>

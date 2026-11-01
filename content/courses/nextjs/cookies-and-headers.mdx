@@ -1,0 +1,199 @@
+---
+title: Cookies & Headers
+description: Next.js cookies headers ko await cookies() aur await headers() se parhna aur Server Actions mein cookies set karna, Next.js 16 async rules ke saath.
+keywords:
+  - next.js cookies headers
+  - await cookies next.js 16
+  - next/headers
+  - next.js set cookie server action
+---
+
+## 1. Cookies & Headers kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**`cookies()` aur `headers()` `next/headers` ke async functions hain jo server par current request ki cookies aur HTTP headers dete hain.**
+
+</Callout>
+
+**Cookie** chhota sa data hai jo browser har request ke saath bhejta hai, jaise session token ya theme. **Header** request ki extra maloomat hai, jaise `user-agent`, `accept-language` ya `referer`.
+
+Next.js 16 mein dono functions **async** hain. `await cookies()` aur `await headers()` likhna zaroori hai. Purana synchronous access ab remove ho chuka hai.
+
+## 2. Kyun zaroori hai?
+
+Server ko pata hona chahiye ke request kis user ki hai aur kahan se aayi hai. Yeh sab cookies aur headers mein hota hai.
+
+<CompareTable leftTitle="Client side cookie handling" rightTitle="next/headers server side">
+
+document.cookie se token parhna | Server par await cookies
+JavaScript token chura sakta hai | httpOnly cookie JS se chhupi rehti hai
+Har jagah parsing ka code | get, set, has, delete ready methods
+Language detect browser mein | accept-language header server par
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Use case | Kya use hota hai |
+| --- | --- |
+| **Login session** | `httpOnly` session cookie |
+| **Theme preference** | `theme` cookie, Server Component mein parho |
+| **Language detection** | `accept-language` header |
+| **Analytics ya logging** | `user-agent`, `x-forwarded-for` headers |
+| **Webhook verification** | Signature header Route Handler mein |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Request se cookies tak">
+
+Browser request + cookies + headers
+↓
+Next.js server
+↓
+await cookies ya await headers
+↓
+Server Component parhta hai
++
+Server Action ya Route Handler set ya delete karta hai
+↓
+Response mein Set-Cookie header
+
+</Flow>
+
+| Kahan | Read | Set ya delete |
+| --- | --- | --- |
+| Server Component | Haan | Nahi |
+| Server Action | Haan | Haan |
+| Route Handler | Haan | Haan |
+| `proxy.ts` | `request.cookies` | `response.cookies` |
+
+`headers()` hamesha **read-only** hai. Response headers badalne hain to Route Handler mein `Response` ke saath ya `proxy.ts` mein set karein.
+
+<Callout variant="important" title="Mental model">
+
+**Server Component sirf parhta hai. Likhne ka kaam Server Action, Route Handler ya proxy karta hai, kyun ke HTML stream shuru hone ke baad cookie set nahi ho sakti.**
+
+</Callout>
+
+## 5. Code example
+
+### Example 1: Server Component mein parhna
+
+```tsx
+import { Suspense } from "react";
+import { cookies, headers } from "next/headers";
+
+async function Greeting() {
+  const cookieStore = await cookies();
+  const headerList = await headers();
+
+  const theme = cookieStore.get("theme")?.value ?? "light";
+  const language = headerList.get("accept-language")?.split(",")[0] ?? "en";
+
+  return (
+    <p>
+      Theme: {theme}, Language: {language}
+    </p>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<p>Loading...</p>}>
+      <Greeting />
+    </Suspense>
+  );
+}
+```
+
+### Example 2: Server Action mein cookie set aur delete
+
+```ts
+"use server";
+
+import { cookies } from "next/headers";
+
+export async function setTheme(theme: "light" | "dark") {
+  const cookieStore = await cookies();
+  cookieStore.set("theme", theme, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+  });
+}
+
+export async function clearTheme() {
+  const cookieStore = await cookies();
+  cookieStore.delete("theme");
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `await cookies()` | Request ki cookies ka store, Next.js 16 mein async |
+| `cookieStore.get("theme")?.value` | Cookie ki value ya `undefined` |
+| `await headers()` | Read-only request headers |
+| `<Suspense>` | Runtime data hai, Cache Components ke saath stream hota hai |
+| `httpOnly: true` | Browser JavaScript cookie nahi parh sakti |
+| `sameSite: "lax"` | Cross-site requests par CSRF se bachao |
+| `maxAge` | Seconds mein umar, yahan ek saal |
+
+### Interview tip
+
+"Server Component mein cookie set kyun nahi hoti?" Jawab: cookie ek response header hai, aur Server Component render hote waqt response streaming shuru ho chuki hoti hai. Is liye set karna Server Action ya Route Handler mein hota hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="cookies ko await kiye baghair use karna"
+  why="Next.js 16 mein cookies ek Promise deta hai, seedha get call karne par error aata hai."
+  better="Hamesha const cookieStore = await cookies() likho, phir get ya set karo."
+/>
+
+<Mistake
+  title="Server Component ke andar cookie set karna"
+  why="Render ke dauran response headers nahi badal sakte, Next.js error deta hai."
+  better="Cookie set ya delete Server Action ya Route Handler mein karo."
+/>
+
+<Mistake
+  title="Session token bina httpOnly ke rakhna"
+  why="XSS attack mein JavaScript token chura sakti hai."
+  better="Session cookies hamesha httpOnly, secure aur sameSite ke saath set karo."
+/>
+
+<Mistake
+  title="use cache wale function mein cookies parhna"
+  why="Cached result sab users ke beech share hota hai, runtime data wahan allowed nahi."
+  better="Cookie value bahar parho aur cached function ko argument ke taur par do."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Server & Client Components](/courses/nextjs/server-and-client-components), [Server Actions](/courses/nextjs/server-actions) |
+| **Saath mein** | [Route Handlers (API)](/courses/nextjs/route-handlers), [Proxy (formerly Middleware)](/courses/nextjs/proxy) |
+| **Baad mein** | [Authentication](/courses/nextjs/authentication), [Cache Components & use cache](/courses/nextjs/cache-components) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Import | `import { cookies, headers } from "next/headers"` |
+| Async | `await cookies()`, `await headers()` |
+| Read | Server Components, Actions, Route Handlers |
+| Write cookies | Sirf Server Actions aur Route Handlers |
+| Headers | Read-only |
+| Secure cookie | `httpOnly`, `secure`, `sameSite` |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Next.js 16 mein `cookies()` aur `headers()` dono async hain. Parhna kahin bhi server par, magar cookie likhna sirf Server Action ya Route Handler mein.
+
+</Callout>

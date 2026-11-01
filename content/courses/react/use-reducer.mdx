@@ -1,0 +1,172 @@
+---
+title: useReducer
+description: React useReducer hook se complex state ko ek reducer function aur actions ke zariye manage karna seekhein, Roman Urdu mein simple examples ke saath.
+keywords:
+  - react usereducer
+  - usereducer vs usestate
+  - reducer function react
+  - react dispatch action
+---
+
+## 1. useReducer kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**`useReducer` ek hook hai jo state update ki saari logic ek jagah, ek reducer function mein rakhta hai.**
+
+</Callout>
+
+`useState` mein aap seedha naya value set karte hain. `useReducer` mein aap batate hain **kya hua** (action), aur reducer decide karta hai ke state **kaise** badlegi.
+
+Isay aise samjhein: component sirf "order" bhejta hai, aur reducer kitchen hai jo order ke mutabiq naya plate (state) banata hai.
+
+## 2. Kyun zaroori hai?
+
+Jab ek state ke kai related hisse hon aur bohot saare event handlers unhein alag alag tareeqe se badlein, to `useState` wala code bikhar jata hai.
+
+<CompareTable leftTitle="Sirf useState" rightTitle="useReducer ke saath">
+
+Har handler mein alag setState logic | Saari update logic ek reducer mein
+Kai setState calls ek saath | Ek dispatch, ek clear action
+Bug dhoondhna mushkil | Har action ka result predictable
+Logic test karna mushkil | Reducer ek pure function, aasani se test
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Use case | Actions ki misaal |
+| --- | --- |
+| **Shopping cart** | `added`, `removed`, `quantity_changed` |
+| **Multi-step form** | `next_step`, `field_changed`, `reset` |
+| **Todo app** | `added`, `toggled`, `deleted` |
+| **Data loading** | `loading`, `success`, `failed` |
+
+Simple counter ya ek input ke liye `useState` hi kaafi hai. `useReducer` tab chunein jab state ki logic **complex** ho jaye.
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Dispatch se naye UI tak">
+
+User button click karta hai
+↓
+dispatch(action) call hota hai
+↓
+React reducer(currentState, action) chalata hai
+↓
+Reducer naya state return karta hai
+↓
+Component naye state ke saath re-render
+
+</Flow>
+
+Reducer ek **pure function** hona chahiye: same input par same output, koi API call nahi, koi mutation nahi. Woh hamesha **naya object** return karta hai.
+
+## 5. Code example
+
+### Todo list reducer
+
+```tsx
+import { useReducer } from "react";
+
+type Todo = { id: number; text: string; done: boolean };
+
+type Action =
+  | { type: "added"; text: string }
+  | { type: "toggled"; id: number }
+  | { type: "deleted"; id: number };
+
+function todosReducer(todos: Todo[], action: Action): Todo[] {
+  switch (action.type) {
+    case "added":
+      return [...todos, { id: Date.now(), text: action.text, done: false }];
+    case "toggled":
+      return todos.map((t) => (t.id === action.id ? { ...t, done: !t.done } : t));
+    case "deleted":
+      return todos.filter((t) => t.id !== action.id);
+  }
+}
+
+export default function TodoApp() {
+  const [todos, dispatch] = useReducer(todosReducer, []);
+
+  return (
+    <div>
+      <button onClick={() => dispatch({ type: "added", text: "React seekho" })}>
+        Add
+      </button>
+      <ul>
+        {todos.map((todo) => (
+          <li key={todo.id}>
+            <input
+              type="checkbox"
+              checked={todo.done}
+              onChange={() => dispatch({ type: "toggled", id: todo.id })}
+            />
+            {todo.text}
+            <button onClick={() => dispatch({ type: "deleted", id: todo.id })}>x</button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `Action` type | Har mumkin action aur uska data, TypeScript galti pakar leta hai |
+| `todosReducer` | Pure function: purani list + action se nayi list |
+| `useReducer(todosReducer, [])` | Reducer aur initial state `[]` diya |
+| `[todos, dispatch]` | Current state aur action bhejne ka function |
+| `dispatch({ type: "toggled", id })` | Component sirf batata hai kya hua |
+
+## 6. Common mistakes
+
+<Mistake
+  title="Reducer ke andar state ko mutate karna"
+  why="todos.push jaisi mutation se reference same rehta hai aur React re-render skip kar sakta hai."
+  better="Hamesha naya array ya object return karein, jaise spread, map ya filter se."
+/>
+
+<Mistake
+  title="Reducer mein side effects likhna"
+  why="React development mein reducer do dafa chala sakta hai, is liye fetch ya localStorage do dafa chalenge."
+  better="Reducer ko pure rakhein. Side effects event handler ya useEffect mein karein."
+/>
+
+<Mistake
+  title="Dispatch ke foran baad naya state expect karna"
+  why="dispatch ke baad usi function mein state variable abhi purani value rakhta hai, update agle render mein aata hai."
+  better="Naya state chahiye to reducer(state, action) khud call karke dekh lein, ya agle render ka intezar karein."
+/>
+
+### Interview tip
+
+`useReducer` aur Redux ka idea same hai: **state + action = naya state**. Fark yeh hai ke `useReducer` ek component ki local state ke liye hai. Isay Context ke saath mila kar chhota global store bhi banaya ja sakta hai.
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [State with useState](/courses/react/state), [Handling Events](/courses/react/events), [Lists & Keys](/courses/react/lists-and-keys) |
+| **Saath** | [useContext](/courses/react/use-context), [Custom Hooks](/courses/react/custom-hooks) |
+| **Baad mein** | [State Management Libraries](/courses/react/state-management), [TypeScript with React](/courses/react/typescript-with-react) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Kya hai | Complex state logic ek reducer function mein |
+| Signature | `useReducer(reducer, initialState)` |
+| Return | `[state, dispatch]` |
+| Reducer | Pure function, `(state, action)` se naya state |
+| Kab use karein | Kai related values, kai tarah ke updates |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Component batata hai **kya hua**, reducer decide karta hai **state kaise badlegi**. Reducer ko pure rakhein aur hamesha naya state return karein.
+
+</Callout>

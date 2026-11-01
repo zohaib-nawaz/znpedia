@@ -1,0 +1,212 @@
+---
+title: Security Baseline
+description: Web security checklist headers ke saath, hashed tokens, timing safe comparison, fail closed auth, CORS allow-list aur uploads ka minimum standard.
+keywords:
+  - web security checklist headers
+  - security headers nextjs csp
+  - timing safe compare
+  - fail closed authentication
+  - cors allow list
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Har repo ek minimum security checklist poori karta hai: secrets bahar, tokens hashed, auth fail closed, security headers on, CORS allow-list, aur har input boundary par validate.**
+
+</Callout>
+
+Baseline ka matlab "best possible security" nahi. Matlab woh **farsh** jis se neeche koi project nahi jata. Advanced cheezein baad mein, lekin yeh list pehle din se.
+
+Yeh chapter checklist hai. Har item ki gehri tafseel apne chapter mein hai, jaise [Secrets Management](/courses/best-practices/secrets-management) aur [Input Validation at the Boundary](/courses/best-practices/input-validation).
+
+## 2. Kyun zaroori hai?
+
+Security breaches aksar fancy hacks se nahi, bhooli hui basics se hote hain. Ek audit mein aksar yeh milta hai ke har item kisi na kisi repo mein toota hua hai, is liye baseline ko "aspiration" nahi, checklist samjhein.
+
+<Callout variant="note" title="Real incident">
+
+Ek cron endpoint secret check karta tha: agar `CRON_SECRET` set ho to header compare karo. Ek naye environment mein variable set karna reh gaya. Check chup chaap skip hua aur endpoint poori duniya ke liye khula raha. Isi ko **fail open** kehte hain.
+
+</Callout>
+
+<CompareTable leftTitle="Bina baseline" rightTitle="Baseline ke saath">
+
+Missing secret par request allow | Missing secret par 503, kuch allow nahi
+Session tokens plain text mein database mein | Sirf hash stored, leak ho to bhi bekaar
+Secret ko === se compare | Timing safe comparison
+Koi bhi website API ko credentials ke saath call kare | CORS mein sirf apne origins
+Error mein stack trace aur SQL | Caller ko sirf zaroori message, detail logs mein
+Upload ka naam aur type user ki marzi | Magic bytes check, size cap, random key
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Secrets, validation aur fail closed zaroor | Yahi aadatein baad mein production mein jati hain |
+| **Production code** | Poori list | Ek kamzor item poore system ka darwaza hai |
+| **Senior level** | List ko CI aur templates mein daalna | Har naye repo ko baseline khud mile, yaad rakhna na pare |
+
+## 4. Bura vs acha code
+
+### Bura: fail open aur seedha comparison
+
+```ts
+export async function GET(request: Request) {
+  const secret = process.env.CRON_SECRET;
+  if (secret && request.headers.get("authorization") !== `Bearer ${secret}`) {
+    return new Response("unauthorized", { status: 401 });
+  }
+  await sendDailyEmails();
+  return Response.json({ ok: true });
+}
+```
+
+Do masle: secret missing ho to check hi skip, aur `!==` pehle mismatch par ruk jata hai, jis se timing ke zariye secret andaza lagana mumkin hota hai.
+
+### Acha: fail closed aur timing safe
+
+```ts
+import { createHash, timingSafeEqual } from "node:crypto";
+
+function digest(value: string) {
+  return createHash("sha256").update(value).digest();
+}
+
+function safeEqual(received: string, expected: string) {
+  return timingSafeEqual(digest(received), digest(expected));
+}
+
+export async function GET(request: Request) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) {
+    return new Response("not configured", { status: 503 });
+  }
+
+  const header = request.headers.get("authorization") ?? "";
+  if (!safeEqual(header, `Bearer ${secret}`)) {
+    return new Response("unauthorized", { status: 401 });
+  }
+
+  await sendDailyEmails();
+  return Response.json({ ok: true });
+}
+```
+
+Dono values ka hash lene se length barabar ho jati hai, jo `timingSafeEqual` ki shart hai.
+
+### Security headers (Next.js)
+
+```ts
+import type { NextConfig } from "next";
+
+const securityHeaders = [
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
+  { key: "Content-Security-Policy", value: "default-src 'self'; frame-ancestors 'none'" },
+];
+
+const nextConfig: NextConfig = {
+  async headers() {
+    return [{ source: "/:path*", headers: securityHeaders }];
+  },
+};
+
+export default nextConfig;
+```
+
+### Farq kya hai?
+
+| Cheez | Bura | Acha |
+| --- | --- | --- |
+| Missing secret | Endpoint khula | 503, kuch nahi chalta |
+| Comparison | `!==`, timing leak | Hash ke baad `timingSafeEqual` |
+| Headers | Browser defaults | Clickjacking, sniffing aur referrer leak band |
+
+## 5. Kaise apply karein?
+
+Har repo ke liye yeh checklist:
+
+| Area | Minimum |
+| --- | --- |
+| **Secrets** | Kuch commit nahi, `.env.example` maujood, scanner on |
+| **Tokens** | Session tokens, login codes, magic links aur API keys hashed store, sirf hash compare |
+| **Comparisons** | Har shared secret `timingSafeEqual` se |
+| **Auth** | Fail closed: secret ya config missing to deny |
+| **Test bypass** | Production mein refuse, middleware mein check, aur us par test |
+| **Headers** | CSP, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, frame protection, HSTS |
+| **CORS** | Explicit origin allow-list, kabhi "har origin + credentials" nahi |
+| **Input** | Har boundary par schema validation, SQL, shell ya HTML mein interpolation nahi |
+| **Uploads** | Magic bytes check, size cap, random key, opaque proxy route se serve |
+| **Errors** | Caller ko kam, logs mein detail |
+| **Logging** | Secrets aur personal data scrub, production mein query string wale URLs nahi |
+
+<Flow title="Leak ya auth bypass mile to">
+
+Feature kaam rok dein
+↓
+Rotate ya fix karein
+↓
+Usi din team ko batayein: kya, kab, kya rotate hua
+
+</Flow>
+
+## 6. Exceptions aur common mistakes
+
+**Kab rule nahi lagta:** public, read-only endpoints (jaise blog posts ki list) ko auth nahi chahiye, lekin validation, rate limiting aur headers phir bhi. CSP mein shuru mein `'unsafe-inline'` rakhna parh sakta hai. Usay goal ki taraf kadam samjhein, aur nonces ki taraf barhein.
+
+<Mistake
+  title="CORS mein har origin reflect karna aur credentials allow karna"
+  why="Is se koi bhi website user ke cookies ke saath aap ki API call kar sakti hai."
+  better="Allowed origins ki explicit list rakhein aur credentials sirf unhi ke liye."
+/>
+
+<Mistake
+  title="Upload ko file extension se pehchanna"
+  why="Extension user badal sakta hai, script ko image bana kar bhej sakta hai."
+  better="File ke pehle bytes (magic bytes) check karein, size cap lagayein, random naam se store karein."
+/>
+
+<Mistake
+  title="Test bypass token jo production mein bhi chalta hai"
+  why="Yeh friendly naam wala backdoor hai."
+  better="Middleware production mein usay refuse kare, aur ek unit test yeh sabit kare."
+/>
+
+<Mistake
+  title="Raw bucket URL user ko dena"
+  why="URL share ya guess ho jaye to file permanent khuli hai, access check bypass."
+  better="Proxy route se serve karein jo har request par access check kare."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Secrets Management](/courses/best-practices/secrets-management), [Input Validation at the Boundary](/courses/best-practices/input-validation) |
+| **Saath mein** | [Authentication Patterns](/courses/best-practices/authentication), [Error Handling & Error Envelope](/courses/best-practices/error-handling-and-envelope) |
+| **Baad mein** | [Common Vulnerabilities (OWASP)](/courses/best-practices/common-vulnerabilities), [Dependencies & Supply Chain](/courses/best-practices/dependency-security) |
+
+## Final quick revision
+
+| Check | Haan? |
+| --- | --- |
+| Tokens hashed, sirf hash compare | |
+| Shared secrets `timingSafeEqual` se | |
+| Missing config par 503, allow nahi | |
+| Security headers set | |
+| CORS explicit allow-list | |
+| Uploads: magic bytes, size cap, random key | |
+| Errors mein internal detail nahi | |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Baseline farsh hai, chhat nahi. Jo cheez authenticate karti hai woh shak mein hamesha **deny** kare, allow nahi.
+
+</Callout>

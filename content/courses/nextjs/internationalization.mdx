@@ -1,0 +1,210 @@
+---
+title: Internationalization (i18n)
+description: Next.js i18n internationalization App Router mein, [locale] segment, proxy.ts se language detection, dictionaries aur next-intl, Roman Urdu mein.
+keywords:
+  - next.js i18n internationalization
+  - next.js multi language
+  - next.js locale routing
+  - next-intl
+---
+
+## 1. Internationalization (i18n) kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**Internationalization ka matlab hai app ko kai zubanon mein chalana: URL mein locale (`/en`, `/ur`), har locale ke liye translated text, aur user ki zuban ke hisaab se sahi version dikhana.**
+
+</Callout>
+
+Is ke do hisse hain:
+
+- **Routing**: `/en/about` aur `/ur/about` jaise URLs, jo App Router mein `app/[locale]` folder se bante hain.
+- **Localization**: har locale ke liye alag text (dictionaries) aur dates, numbers ki formatting.
+
+App Router mein Pages Router wala `i18n` config nahi hota. Routing aap `[locale]` segment aur `proxy.ts` se khud set karte hain, ya `next-intl` jaisi library use karte hain.
+
+## 2. Kyun zaroori hai?
+
+Agar text components mein hardcode ho to doosri zuban add karna poora code dobara likhne jaisa hai. URL mein locale na ho to Google har zuban ka page alag index nahi kar sakta.
+
+<CompareTable leftTitle="Hardcoded text" rightTitle="i18n setup">
+
+Text har component mein likha hua | Text JSON dictionaries mein
+Ek hi URL, zuban cookie se | Har zuban ka apna URL, SEO friendly
+Nayi zuban matlab code copy | Nayi zuban matlab nayi JSON file
+User ki browser language ignore | Accept-Language se sahi locale
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Project | i18n ki zaroorat |
+| --- | --- |
+| E-commerce | `/en` aur `/ur` product pages, currency formatting |
+| SaaS dashboard | User settings se zuban chunna |
+| Blog ya docs | Har article ka translated version |
+| Government ya NGO site | English, Urdu aur regional zubanein |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Locale routing ka flow">
+
+User /products kholta hai
+↓
+proxy.ts Accept-Language header parhta hai
+↓
+Best match locale, jaise ur
+↓
+Redirect to /ur/products
+↓
+app/[locale] page locale param se dictionary load karta hai
+↓
+Translated HTML server se
+
+</Flow>
+
+Dictionaries Server Components mein load hoti hain, is liye translation files client bundle mein nahi jati, sirf rendered HTML jata hai.
+
+## 5. Code example
+
+### `proxy.ts`: locale detect kar ke redirect
+
+```ts
+import { NextResponse, type NextRequest } from "next/server";
+import { match } from "@formatjs/intl-localematcher";
+import Negotiator from "negotiator";
+
+const locales = ["en", "ur"];
+const defaultLocale = "en";
+
+function getLocale(request: NextRequest) {
+  const headers = { "accept-language": request.headers.get("accept-language") ?? "" };
+  const languages = new Negotiator({ headers }).languages();
+  return match(languages, locales, defaultLocale);
+}
+
+export function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const hasLocale = locales.some(
+    (locale) => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`
+  );
+  if (hasLocale) return;
+
+  request.nextUrl.pathname = `/${getLocale(request)}${pathname}`;
+  return NextResponse.redirect(request.nextUrl);
+}
+
+export const config = {
+  matcher: ["/((?!_next|api|.*\\..*).*)"],
+};
+```
+
+### Dictionaries
+
+```ts
+import "server-only";
+
+const dictionaries = {
+  en: () => import("./dictionaries/en.json").then((m) => m.default),
+  ur: () => import("./dictionaries/ur.json").then((m) => m.default),
+};
+
+export type Locale = keyof typeof dictionaries;
+
+export const hasLocale = (locale: string): locale is Locale => locale in dictionaries;
+
+export const getDictionary = async (locale: Locale) => dictionaries[locale]();
+```
+
+### `app/[locale]/page.tsx`
+
+```tsx
+import { notFound } from "next/navigation";
+import { getDictionary, hasLocale } from "./dictionaries";
+
+export function generateStaticParams() {
+  return [{ locale: "en" }, { locale: "ur" }];
+}
+
+export default async function Page({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  if (!hasLocale(locale)) notFound();
+
+  const dict = await getDictionary(locale);
+  return <h1>{dict.home.title}</h1>;
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `Negotiator` | `Accept-Language` header se user ki pasandeeda zubanein |
+| `match()` | Supported locales mein se best match, warna default |
+| `matcher` | `_next`, `api` aur files (jin mein dot ho) par proxy nahi chalta |
+| `"server-only"` | Dictionary loader galti se client mein import na ho |
+| `hasLocale` | Type narrowing, aur ghalat locale par 404 |
+| `generateStaticParams` | Har locale ka page build time par static |
+
+<Callout variant="note" title="Library ka option: next-intl">
+
+Bare projects mein `next-intl` popular hai. Yeh routing helpers, locale wala proxy, `useTranslations` hook, pluralization aur date ya number formatting ek saath deta hai. Concept wahi rehta hai: `[locale]` segment aur messages files.
+
+</Callout>
+
+Urdu jaisi right-to-left zuban ke liye root layout mein `html` par `dir="rtl"` aur `lang={locale}` set karna na bhoolein.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Proxy matcher mein static files aur _next ko shamil rehne dena"
+  why="Images, CSS aur JS requests bhi locale redirect ho jati hain aur page toot jata hai."
+  better="Matcher se _next, api aur file extension wale paths exclude karo."
+/>
+
+<Mistake
+  title="Locale param ko bina check kiye use karna"
+  why="Koi /xyz/page khole to dictionary undefined milti hai aur runtime error aata hai."
+  better="hasLocale se check karo aur ghalat locale par notFound() call karo."
+/>
+
+<Mistake
+  title="Translations Client Component mein poori JSON import karna"
+  why="Har zuban ki poori file browser bundle mein chali jati hai."
+  better="Dictionary Server Component mein load karo aur client ko sirf zaroori strings props mein do."
+/>
+
+<Mistake
+  title="html lang aur dir set na karna"
+  why="Screen readers ghalat pronunciation karte hain aur Urdu text ulta align hota hai."
+  better="Root layout mein lang aur RTL zubanon ke liye dir rtl locale ke hisaab se set karo."
+/>
+
+### Interview tip
+
+"App Router mein `i18n` config kyun nahi?" Kyunke routing ab file system aur `proxy.ts` ke zariye flexible hai. Aap `[locale]` dynamic segment banate hain, aur detection ya redirect logic proxy mein likhte hain.
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Chapters |
+| --- | --- |
+| Pehle | [Dynamic Routes](/courses/nextjs/dynamic-routes), [Proxy (formerly Middleware)](/courses/nextjs/proxy), [Cookies & Headers](/courses/nextjs/cookies-and-headers) |
+| Saath mein | [Metadata & SEO](/courses/nextjs/metadata-and-seo), [Layouts & Templates](/courses/nextjs/layouts-and-templates) |
+| Baad mein | [Testing Next.js Apps](/courses/nextjs/testing), [Deployment](/courses/nextjs/deployment) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Routing | `app/[locale]/...` dynamic segment |
+| Detection | `proxy.ts` mein `Accept-Language` aur redirect |
+| Text | JSON dictionaries, Server Component mein load |
+| Static | `generateStaticParams` har locale ke liye |
+| Library | `next-intl` bare projects ke liye |
+| RTL | `html` par `lang` aur `dir` |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Locale URL mein rakho, `proxy.ts` se pehli visit par sahi zuban par bhejo, translations server par load karo, aur ghalat locale par 404 do.
+
+</Callout>

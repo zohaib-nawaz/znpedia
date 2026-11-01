@@ -1,0 +1,197 @@
+---
+title: Project Structure
+description: Project folder structure best practices Next.js ke liye, src/app, src/lib modules, components, hooks, tests aur env ka layout jo pehle din se predictable rahe.
+keywords:
+  - project folder structure best practices
+  - nextjs folder structure
+  - src lib components hooks layout
+  - one unit per folder
+  - env example file
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Har cheez ki ek tay shuda jagah ho: routes `src/app` mein, logic `src/lib/<module>` mein, components `src/components/<Name>` mein, hooks `src/hooks/use-<thing>` mein, aur har unit apne folder mein apni types file ke saath.**
+
+</Callout>
+
+Project structure ka maqsad yeh hai ke koi bhi developer bina pooche andaza laga sake ke cheez kahan hogi, aur naya code kahan likhna hai.
+
+Yeh pehle din tay hota hai. Jab teen modules teen alag tareeqon se ban jayein to baad mein structure theek karna poore project ka refactor ban jata hai.
+
+## 2. Kyun zaroori hai?
+
+Asli kahani: ek naye developer ko discount ka rule badalna tha. Rule `utils/helpers2.ts` mein tha, uski copy `components/Cart/calc.ts` mein, aur teesri `api/checkout.ts` mein. Usne ek badli, do reh gayin.
+
+Doosra aam masla: repo mein create-next-app ka default README tha jo galat commands batata tha, aur ek env variable jo code parhta tha `.env.example` mein tha hi nahi. Production deploy par app crash.
+
+<CompareTable leftTitle="Bina structure" rightTitle="Predictable structure">
+
+utils aur helpers folder mein sab kuch | Har module ka apna naam wala folder
+Ek folder mein PascalCase aur kebab-case mix | Har folder ka ek naming convention
+Imports mein dots ki lambi line | Alias se saaf import, jaise at-sign slash lib
+Naya developer poochta rehta hai kahan likhun | Pattern dekh kar khud samajh jata hai
+Missing env variable production mein pata chalta | Env module boot par hi error deta hai
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Framework ka default structure aur `src/` folder kaafi hai | Chhote project mein zyada folders sirf shor hain |
+| **Production code** | Poora layout pehle din, README aur `.env.example` ke saath | Team aur waqt dono barhte hain, structure ke bina code bikhar jata hai |
+| **Senior level** | Layout ko ek template ya generator mein band karna | Har naya repo aur module khud sahi shakal mein paida ho |
+
+## 4. Bura vs acha code
+
+### Bura: jo jahan rakh diya
+
+```bash
+app/page.tsx
+app/api/checkout/route.ts
+components/orderTable.tsx
+components/order-form.tsx
+components/Cart/calc.ts
+utils/helpers.ts
+utils/helpers2.ts
+types.ts
+api.ts
+```
+
+Is mein naming mix hai, logic `components` aur `utils` mein bikhri hai, aur `types.ts` sab ka sanjha dumping ground hai.
+
+### Acha: har unit apni jagah
+
+```bash
+README.md
+.env.example
+src/proxy.ts
+src/app/layout.tsx
+src/app/orders/page.tsx
+src/app/api/orders/route.ts
+src/app/api/orders/route.types.ts
+src/lib/env.ts
+src/lib/orders/orders.ts
+src/lib/orders/orders.types.ts
+src/lib/orders/orders.library.ts
+src/lib/api/client/client.ts
+src/components/OrderTable/OrderTable.tsx
+src/components/OrderTable/OrderTable.types.ts
+src/components/ui/button.tsx
+src/hooks/use-orders/use-orders.ts
+tests/api/orders.test.ts
+tests/lib/orders.test.ts
+```
+
+Env bhi ek hi module se parha jata hai, jo missing value par foran fail ho:
+
+```ts
+import "server-only";
+
+export function requireEnv(name: string) {
+  const value = process.env[name];
+
+  if (!value) {
+    throw new Error(`Missing environment variable ${name}`);
+  }
+
+  return value;
+}
+```
+
+### Farq kya hai?
+
+| Folder / file | Kaam |
+| --- | --- |
+| `src/app` | Sirf routes, layouts, metadata. Handler patla, logic nahi |
+| `src/lib/<module>` | Business logic, types beside logic, pure helpers `.library.ts` mein |
+| `src/components/<Name>` | Ek component, us ke props types, private children andar |
+| `src/components/ui` | Design system primitives |
+| `src/hooks/use-<thing>` | Client state ke hooks |
+| `src/proxy.ts` | Next.js 16 mein middleware ki jagah, sirf ek halka kaam |
+| `.env.example` | Har env variable ka naam, value kabhi nahi |
+| `tests/api`, `tests/lib` | Endpoint tests aur pure unit tests alag |
+
+## 5. Kaise apply karein?
+
+<Flow title="Naye repo ka pehla din">
+
+Template ka purana README hatao, apne product ka likho
+↓
+src folder aur at-sign slash alias set karo
+↓
+.env.example aur ek env module banao
+↓
+Pehla module src/lib mein types file ke saath
+↓
+Template ki unused files delete karo
+
+</Flow>
+
+Naya module jorte waqt bas maujooda module ki shakal copy karein: folder, logic file, types file, test. Jab sab modules ek jaise hon to codebase chhota mehsoos hota hai, chahe bara ho.
+
+Har folder ka naming convention ek ho. Components PascalCase (`OrderTable/OrderTable.tsx`), hooks aur lib modules kebab-case (`use-orders`, `render-quota`). Design system primitives ka apna convention ho sakta hai, magar poore folder mein wahi.
+
+## 6. Exceptions aur common mistakes
+
+Kai teams "feature folders" pasand karti hain: `src/features/orders/` ke andar component, hook aur service sab. Mobile apps mein yeh aam hai aur achha chalta hai. Upar wala layout pehle layer (app, lib, components) aur phir module ke hisaab se hai. Trade-off: feature folders ek feature ko ek jagah rakhte hain, layer layout server aur client code ki hadd saaf rakhta hai. Dono theek hain, magar ek repo mein ek hi.
+
+`proxy.ts` sirf ek kaam kare, jaise session refresh ya redirect. Security ki asal check har page aur route handler khud kare.
+
+<Mistake
+  title="utils ya helpers naam ka folder jahan sab jaye"
+  why="Naam se pata nahi chalta andar kya hai, aur har milti julti cheez wahin chali jati hai."
+  better="Function ko us module ke paas rakho jis ka woh kaam karta hai, ya naam wala naya module banao."
+/>
+
+<Mistake
+  title="process.env.KEY! poore code mein bikhra"
+  why="Exclamation mark sirf compiler ko chup karata hai. Missing value runtime par kahin door crash karti hai."
+  better="Ek env module jo boot par validate kare aur missing par saaf error de."
+/>
+
+<Mistake
+  title="Template ki files aur README chhor dena"
+  why="Naye developer ko galat commands aur unused screens milti hain jo kisi kaam ki nahi."
+  better="Pehle hi din template ka README apne product ke README se badlo aur unused code delete karo."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Installation & Project Structure](/courses/nextjs/installation-and-project-structure), [Naming Things](/courses/best-practices/naming) |
+| **Saath mein** | [Types Beside Logic](/courses/best-practices/types-beside-logic), [File Size & Organization](/courses/best-practices/file-size-and-organization) |
+| **Baad mein** | [Following Existing Patterns](/courses/best-practices/following-existing-patterns), [Secrets Management](/courses/best-practices/secrets-management) |
+
+<Flow title="Suggested order">
+
+Naming Things
+↓
+Types Beside Logic
+↓
+Project Structure
+↓
+Following Existing Patterns
+
+</Flow>
+
+## Final quick revision
+
+| Check | Haan / Nahi |
+| --- | --- |
+| Logic sirf `src/lib/<module>` mein | Haan |
+| Har unit ka apna folder aur types file | Haan |
+| Ek folder mein do naming conventions | Nahi |
+| `utils` dumping ground | Nahi |
+| `.env.example` mein har variable ka naam | Haan |
+| Template ka README aur unused code | Delete |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Achha structure woh hai jahan naya developer bina pooche sahi file khol le. Ek layout chuno, pehle din lagao, aur har naya module usi shakal mein banao.
+
+</Callout>

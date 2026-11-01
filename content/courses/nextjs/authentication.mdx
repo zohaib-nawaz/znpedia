@@ -1,0 +1,215 @@
+---
+title: Authentication
+description: Next.js authentication Better Auth ya Auth.js ke saath, session cookies, Data Access Layer checks aur proxy ke optimistic redirect ka sahi tareeqa.
+keywords:
+  - next.js authentication
+  - better auth next.js
+  - auth.js next.js
+  - next.js data access layer
+  - next.js protected routes
+---
+
+## 1. Authentication kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**Authentication ka matlab hai pehchan karna ke user kaun hai, aur authorization ka matlab hai faisla karna ke woh kya dekh ya kar sakta hai.**
+
+</Callout>
+
+Next.js mein auth teen hisson mein samjhein:
+
+| Hissa | Kaam |
+| --- | --- |
+| **Authentication** | Login: email password, Google, GitHub waghera |
+| **Session management** | Login ke baad har request par user ko yaad rakhna, aksar `httpOnly` cookie se |
+| **Authorization** | Har page, Server Action aur Route Handler mein permission check |
+
+Khud se poora auth likhna mushkil aur risky hai. Is liye **Better Auth** ya **Auth.js** jaisi library use karein jo sessions, OAuth aur password hashing sambhal leti hai.
+
+## 2. Kyun zaroori hai?
+
+<CompareTable leftTitle="Sirf proxy ya layout mein check" rightTitle="Data Access Layer ke saath">
+
+Proxy sirf cookie ki maujoodgi dekhta hai | DAL har dafa session verify karta hai
+Server Action seedha call ho kar bypass | Har action mein verifySession
+Layout navigation par dobara nahi chalta | Check data ke bilkul paas
+Har jagah alag auth logic | Ek file, ek jagah se sab checks
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Jagah | Kya check karein |
+| --- | --- |
+| **`proxy.ts`** | Optimistic redirect: cookie nahi to `/login` |
+| **Server Component page** | `verifySession()` phir user ka data |
+| **Server Action** | Session + ownership, mutation se pehle |
+| **Route Handler** | Session na ho to `401`, role galat to `403` |
+| **Client Component** | Sirf UI dikhana ya chhupana, security nahi |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Login se protected data tak">
+
+User login form submit karta hai
+↓
+Auth library credentials ya OAuth verify karti hai
+↓
+httpOnly session cookie set
+↓
+proxy optimistic redirect karta hai
+↓
+DAL session verify karta hai
+↓
+Sirf zaroori data return
+
+</Flow>
+
+<Callout variant="important" title="Mental model">
+
+**Proxy darwaze par ek nazar hai. Asal taala data ke paas Data Access Layer mein lagta hai.**
+
+</Callout>
+
+## 5. Code example
+
+### Step 1: Better Auth setup
+
+```ts
+import { betterAuth } from "better-auth";
+import { prismaAdapter } from "better-auth/adapters/prisma";
+import { nextCookies } from "better-auth/next-js";
+import { db } from "@/lib/db";
+
+export const auth = betterAuth({
+  database: prismaAdapter(db, { provider: "postgresql" }),
+  emailAndPassword: { enabled: true },
+  socialProviders: {
+    github: {
+      clientId: process.env.GITHUB_CLIENT_ID as string,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
+    },
+  },
+  plugins: [nextCookies()],
+});
+```
+
+`app/api/auth/[...all]/route.ts` mein library ka handler lagayein:
+
+```ts
+import { toNextJsHandler } from "better-auth/next-js";
+import { auth } from "@/lib/auth";
+
+export const { GET, POST } = toNextJsHandler(auth);
+```
+
+### Step 2: Data Access Layer
+
+```ts
+import "server-only";
+import { cache } from "react";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
+
+export const getSession = cache(async () => {
+  return auth.api.getSession({ headers: await headers() });
+});
+
+export async function verifySession() {
+  const session = await getSession();
+  if (!session) {
+    redirect("/login");
+  }
+  return { userId: session.user.id, name: session.user.name };
+}
+```
+
+### Step 3: Page aur Server Action mein use
+
+```tsx
+import { verifySession } from "@/lib/dal";
+import { db } from "@/lib/db";
+
+export default async function DashboardPage() {
+  const { userId, name } = await verifySession();
+  const orders = await db.order.findMany({ where: { userId } });
+
+  return (
+    <main>
+      <h1>Khush aamdeed, {name}</h1>
+      <p>Aapke orders: {orders.length}</p>
+    </main>
+  );
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `betterAuth({...})` | Auth config: email password aur GitHub login |
+| `prismaAdapter(db, ...)` | Users aur sessions database mein store |
+| `nextCookies()` | Server Actions mein login par cookie set karne ke liye plugin |
+| `toNextJsHandler(auth)` | `/api/auth/...` ke saare endpoints |
+| `auth.api.getSession({ headers })` | Cookie se session validate |
+| `cache(...)` | Ek render pass mein session sirf ek dafa fetch |
+| `verifySession()` | Session nahi to redirect, warna sirf zaroori fields |
+| `where: { userId }` | User sirf apna data dekhe |
+
+Auth.js (NextAuth v5) bhi isi pattern par chalta hai: `auth.ts` se `auth()` function milta hai jo DAL mein session deta hai. Library jo bhi ho, DAL wala pattern same rehta hai.
+
+### Interview tip
+
+"Kya `proxy.ts` mein auth check kaafi hai?" Jawab: nahi. Proxy sirf cookie dekhta hai, validate nahi karta. Server Actions aur Route Handlers public endpoints hain, is liye unke andar bhi `verifySession()` zaroori hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Sirf proxy.ts par auth ka bharosa karna"
+  why="Cookie ki maujoodgi validation nahi hai, aur actions ya API ko seedha call kar ke bypass ho sakta hai."
+  better="Proxy ko sirf redirect ke liye rakho, har data access par DAL se session verify karo."
+/>
+
+<Mistake
+  title="Layout mein auth check kar ke pages ko safe samajhna"
+  why="Layouts navigation par dobara render nahi hote aur nested segments alag se bhi chal sakte hain."
+  better="Check page, Server Action aur data function ke qareeb karo."
+/>
+
+<Mistake
+  title="Poora user object Client Component ko bhej dena"
+  why="Password hash ya private fields browser tak pohanch sakte hain."
+  better="DAL se sirf woh fields return karo jo UI ko chahiye."
+/>
+
+<Mistake
+  title="Server Action mein ownership check bhool jana"
+  why="Logged in user kisi aur ka record id bhej kar delete ya edit kar sakta hai."
+  better="Query mein userId shamil karo taake user sirf apna data badal sake."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Cookies & Headers](/courses/nextjs/cookies-and-headers), [Server Actions](/courses/nextjs/server-actions), [Environment Variables](/courses/nextjs/environment-variables) |
+| **Saath mein** | [Proxy (formerly Middleware)](/courses/nextjs/proxy), [Forms & Validation](/courses/nextjs/forms-and-validation) |
+| **Baad mein** | [Database Integration](/courses/nextjs/database-integration), [Testing Next.js Apps](/courses/nextjs/testing) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Library | Better Auth ya Auth.js |
+| Session | `httpOnly` cookie, server par validate |
+| Proxy | Sirf optimistic redirect |
+| DAL | `verifySession()` har page, action aur handler mein |
+| Data | Sirf zaroori fields return, `userId` se filter |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Auth library login aur session sambhalti hai, magar authorization aapki zimmedari hai. Har data access par Data Access Layer se session verify karo, proxy par kabhi akele bharosa mat karo.
+
+</Callout>

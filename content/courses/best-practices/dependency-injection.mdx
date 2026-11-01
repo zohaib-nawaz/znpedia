@@ -1,0 +1,207 @@
+---
+title: Loose Coupling & Dependency Injection
+description: Dependency injection aur loose coupling TypeScript mein, mailer, payment aur clock jaisi dependencies parameter se dena taake code testable aur badalne layak rahe.
+keywords:
+  - dependency injection loose coupling
+  - dependency injection typescript
+  - depend on abstractions
+  - testable code mocks
+  - static factory method
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Bahar ki dependencies (email, payment, clock, third-party API) function ke andar khud na banayein, parameter se lein. Aur concrete class ke bajaye ek chhote type par depend karein.**
+
+</Callout>
+
+Dependency injection ka matlab bas itna hai: jo cheez function ko chahiye, woh use **di jaye**, function khud **na dhoondhe**. Class ho to constructor se, plain function ho to parameter se.
+
+Loose coupling iska natija hai. Aap ki service ko pata hai ke use "koi mailer" chahiye jo `send` kar sake. Use yeh nahi pata ke woh SMTP hai, koi vendor hai, ya test ka fake.
+
+## 2. Kyun zaroori hai?
+
+Asli masla: ek service ke andar seedha SMTP transport bana hua tha. Test chalaye to asli users ko email chali gayin. Vendor badalna para to beesiyon files mein import badle. Aur "expire hone wale users" ka test raat 12 baje fail hota tha kyunki code `new Date()` khud bulata tha.
+
+<CompareTable leftTitle="Tight coupling" rightTitle="Injected dependencies">
+
+Test asli email bhejta hai ya asli card charge karta hai | Test mein fake mailer, kuch bahar nahi jata
+Vendor badlo to har file mein import badlo | Sirf ek jagah wiring badlo
+Time par based test kabhi pass kabhi fail | Clock inject, waqt test khud set karta hai
+Service ko vendor SDK ki har detail pata | Service sirf apni zaroorat ka chhota type jaanti hai
+Construction rules har call site par dohraye | Ek factory mein construction, baqi sab use karein
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Concept samjhein, har cheez inject na karein | Pehle chalta code. Clock aur network inject karna achi pehli practice hai |
+| **Production code** | Har side effect wali dependency inject ho: email, payment, storage, AI, clock | Inke bina reliable test aur vendor change mumkin nahi |
+| **Senior level** | Boundaries design karna aur decide karna kya inject ho aur kya nahi | Zyada injection bhi bojh hai. Sahi jagah seam rakhna senior ka kaam hai |
+
+## 4. Bura vs acha code
+
+### Bura: dependency andar bani hui
+
+```ts
+import nodemailer from "nodemailer";
+
+export async function remindExpiring(users: User[]) {
+  const transport = nodemailer.createTransport(process.env.SMTP_URL);
+  const soon = users.filter((user) => user.expiresAt.getTime() - Date.now() < 86_400_000);
+
+  for (const user of soon) {
+    await transport.sendMail({ to: user.email, subject: "Plan expiring" });
+  }
+
+  return soon.length;
+}
+```
+
+Is function ko test karna matlab asli SMTP aur asli waqt. Dono aap ke control mein nahi.
+
+### Acha: dependencies parameter se
+
+```ts
+export type MailMessage = {
+  to: string;
+  subject: string;
+};
+
+export type Mailer = {
+  send: (message: MailMessage) => Promise<void>;
+};
+
+export type Clock = {
+  now: () => Date;
+};
+
+export type ReminderDeps = {
+  mailer: Mailer;
+  clock: Clock;
+};
+```
+
+```ts
+import { EXPIRY_SUBJECT, EXPIRY_WINDOW_MS, type ReminderDeps } from "./reminders.types";
+
+export async function remindExpiring({ mailer, clock }: ReminderDeps, users: User[]) {
+  const soon = users.filter(
+    (user) => user.expiresAt.getTime() - clock.now().getTime() < EXPIRY_WINDOW_MS,
+  );
+
+  await Promise.all(soon.map((user) => mailer.send({ to: user.email, subject: EXPIRY_SUBJECT })));
+
+  return soon.length;
+}
+```
+
+Test ab fake de sakta hai:
+
+```ts
+import { expect, test } from "vitest";
+
+test("reminds only users expiring within a day", async () => {
+  const sent: MailMessage[] = [];
+  const mailer: Mailer = { send: async (message) => { sent.push(message); } };
+  const clock: Clock = { now: () => new Date("2026-01-01T00:00:00Z") };
+
+  const count = await remindExpiring({ mailer, clock }, [soonUser, laterUser]);
+
+  expect(count).toBe(1);
+  expect(sent[0].to).toBe(soonUser.email);
+});
+```
+
+Asli mailer sirf ek jagah banta hai, jaise `SmtpMailer.make()`, jo env parhta hai aur transport banata hai. Cron route usi ko pass karta hai. Call sites par `new` bikhra hua nahi hota, is liye construction ka koi rule badle to ek hi jagah badalta hai.
+
+### Farq kya hai?
+
+| Cheez | Bura code | Acha code |
+| --- | --- | --- |
+| Mailer | Andar `createTransport` | `Mailer` type, bahar se diya |
+| Waqt | `Date.now()` seedha | `clock.now()`, test mein fixed |
+| Test | Asli email, flaky time | Fake mailer, fixed clock |
+| Vendor change | Function khol kar badlo | Naya `Mailer` implementation, function wahi |
+
+## 5. Kaise apply karein?
+
+<Flow title="Dependency inject karne ke steps">
+
+Side effect wali dependency pehchano: network, email, payment, time
+↓
+Sirf zaroorat ke methods ka chhota type banao
+↓
+Function ya class use parameter se le
+↓
+Asli implementation edge par banao: route, cron, script
+↓
+Test mein fake ya in-memory version do
+
+</Flow>
+
+Jahan sab dependencies jori jati hain use "composition root" kehte hain. Next.js mein yeh aksar route handler ya ek chhota factory function hota hai. Service ke andar kabhi nahi.
+
+## 6. Exceptions aur common mistakes
+
+Har cheez inject karna zaroori nahi. Pure helper functions, constants aur formatting jaisi cheezein seedha import karein, unka koi side effect nahi aur test mein asli hi theek hain.
+
+Teams yahan bohat mukhtalif hain. Kuch frameworks IoC container dete hain jo dependencies khud jorta hai. Bohat si JavaScript teams injection ke bajaye test mein module mocking (`vi.mock`) use karti hain. Mocking kam code mangta hai magar test file paths se jur jate hain aur refactor par toot jate hain. Parameter injection thora zyada likhna hai magar saaf aur framework se azad hai.
+
+<Mistake
+  title="Vendor SDK ka poora interface copy kar ke abstraction banana"
+  why="Abstraction phir bhi vendor ki shakal ki hai, vendor badla to type bhi badalna parega."
+  better="Type mein sirf woh methods rakho jo aap ki service ko chahiye, apni zabaan mein."
+/>
+
+<Mistake
+  title="Har chhoti cheez inject karna"
+  why="Function ke parameters lambe ho jate hain aur wiring khud ek bojh ban jati hai, faida kuch nahi."
+  better="Sirf side effect, time aur bahar ke systems inject karo. Pure logic seedha import karo."
+/>
+
+<Mistake
+  title="Global singleton ko service ke andar import karna"
+  why="Yeh dependency injection jaisa lagta hai magar asal mein hidden coupling hai, test mein badalna mushkil."
+  better="Singleton edge par banao aur service ko parameter se do."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Higher-Order Functions](/courses/javascript/higher-order-functions), [Service Layer & Thin Controllers](/courses/best-practices/service-layer) |
+| **Saath mein** | [Separation of Concerns](/courses/best-practices/separation-of-concerns), [DRY Without Tight Coupling](/courses/best-practices/dry-without-coupling) |
+| **Baad mein** | [Testing Pyramid](/courses/best-practices/testing-pyramid), [Endpoint Tests First](/courses/best-practices/endpoint-tests-first) |
+
+<Flow title="Suggested order">
+
+Service Layer
+↓
+Separation of Concerns
+↓
+Loose Coupling & Dependency Injection
+↓
+Testing Pyramid
+
+</Flow>
+
+## Final quick revision
+
+| Check | Haan / Nahi |
+| --- | --- |
+| Service ke andar SMTP, payment ya SDK client banana | Nahi |
+| Dependency ka chhota apna type | Haan |
+| Time `clock` se, `Date.now()` seedha nahi | Haan |
+| Asli implementations edge par jori jati hain | Haan |
+| Pure helpers bhi inject | Nahi, zaroorat nahi |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Function ko jo chahiye woh use do, woh khud na dhoonde. Is se test asli dunya ko nahi chhoote aur vendor badalna ek line ka kaam ban jata hai.
+
+</Callout>

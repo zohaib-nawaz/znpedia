@@ -1,0 +1,203 @@
+---
+title: Classes
+description: JavaScript classes ka modern syntax, constructor, extends, super, private #fields aur static blocks, Roman Urdu mein simple examples ke saath.
+keywords:
+  - javascript classes
+  - javascript class in urdu
+  - private fields javascript
+  - extends and super
+  - static methods javascript
+---
+
+## 1. Classes kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Class ek blueprint hai jis se ek jaise structure wale objects banaye jaate hain.**
+
+</Callout>
+
+Class mein aap batate hain ke object ke paas kaunsa data (fields) aur kaunse kaam (methods) honge. Phir `new` keyword se us blueprint ke objects (instances) bante hain.
+
+JavaScript classes asal mein [prototypes](/courses/javascript/prototypes) ke upar ek saaf syntax hain. Methods ab bhi prototype par hi store hote hain.
+
+## 2. Kyun zaroori hai?
+
+Constructor functions aur `prototype` ko manually likhna lamba aur confusing hota hai. Class syntax wahi kaam chhota aur readable bana deta hai.
+
+<CompareTable leftTitle="Purana constructor function" rightTitle="Modern class">
+
+Function aur prototype alag alag likho | Sab kuch ek class block mein
+Inheritance ke liye Object.create aur call | Sirf extends aur super
+Private data ke liye closure tricks | Asli private #fields
+new bhool jao to silent bug | new ke bina class call karna error deta hai
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Jagah | Example |
+| --- | --- |
+| **Custom errors** | `class ValidationError extends Error` |
+| **Data models** | `User`, `Product`, `Order` jaise objects |
+| **Services** | API client class jo token aur base URL sambhale |
+| **Web Components** | `class MyCard extends HTMLElement` |
+| **Games** | `Player`, `Enemy` jaise entities |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="new User() ke waqt kya hota hai">
+
+Naya khaali object banta hai
+↓
+Uska prototype User.prototype set hota hai
+↓
+Fields initialize hote hain
+↓
+constructor chalta hai aur this naya object hai
+↓
+Object return hota hai
+
+</Flow>
+
+| Hissa | Kaam |
+| --- | --- |
+| `constructor()` | Object bante waqt ek dafa chalta hai |
+| Public field | `count = 0`, har instance ki apni value |
+| Private field | `#balance`, sirf class ke andar accessible |
+| Method | Prototype par store, sab instances share karte hain |
+| `static` | Class par khud, instance par nahi |
+| `static { }` block | Class load hote waqt ek dafa setup code |
+
+## 5. Code example
+
+### Basic class with private field
+
+```js
+class BankAccount {
+  #balance = 0;
+  static count = 0;
+
+  static {
+    BankAccount.bankName = "ZnBank";
+  }
+
+  constructor(owner) {
+    this.owner = owner;
+    BankAccount.count++;
+  }
+
+  deposit(amount) {
+    if (amount <= 0) throw new RangeError("Amount positive honi chahiye");
+    this.#balance += amount;
+    return this.#balance;
+  }
+
+  get balance() {
+    return this.#balance;
+  }
+}
+
+const acc = new BankAccount("Ali");
+acc.deposit(500);
+console.log(acc.balance, BankAccount.count, BankAccount.bankName);
+```
+
+### Inheritance with extends aur super
+
+```js
+class Animal {
+  constructor(name) {
+    this.name = name;
+  }
+
+  speak() {
+    return `${this.name} awaaz nikalta hai`;
+  }
+}
+
+class Dog extends Animal {
+  speak() {
+    return `${super.speak()}: Bhau bhau`;
+  }
+}
+
+console.log(new Dog("Moti").speak());
+```
+
+### Code kaise kaam kar raha hai?
+
+| Line | Kya ho raha hai |
+| --- | --- |
+| `#balance = 0` | Private field, bahar se `acc.#balance` likhna SyntaxError hai |
+| `static count` | Class level counter, `BankAccount.count` se access |
+| `static { }` | Class define hote hi ek dafa chalta hai |
+| `get balance()` | Getter, `acc.balance` property ki tarah padhte hain |
+| `extends Animal` | `Dog` ka prototype chain `Animal` se jud jata hai |
+| `super.speak()` | Parent class ka method call |
+
+### Interview tip
+
+Child class mein agar `constructor` likhein to `this` use karne se pehle `super()` call karna zaroori hai, warna ReferenceError aata hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Child constructor mein super() se pehle this use karna"
+  why="Parent ne abhi object initialize nahi kiya hota, is liye ReferenceError aata hai."
+  better="Constructor ki pehli line mein super(args) call karein, phir this use karein."
+/>
+
+<Mistake
+  title="Method ko callback mein pass karke this khona"
+  why="button.addEventListener('click', obj.save) mein this obj nahi rehta."
+  better="Arrow function wrap karein ya method ko class field arrow function banayein."
+/>
+
+<Mistake
+  title="Underscore wali property ko private samajhna"
+  why="_balance sirf ek naming convention hai, bahar se koi bhi change kar sakta hai."
+  better="Asli privacy ke liye #balance private field use karein."
+/>
+
+<Mistake
+  title="Har cheez ke liye class banana"
+  why="Chhote kaam ke liye class extra boilerplate aur complexity laati hai."
+  better="Simple data ke liye plain objects aur functions kaafi hain, class tab jab state aur behaviour saath hon."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Objects](/courses/javascript/objects), [The this Keyword](/courses/javascript/this-keyword), [Prototypes & Inheritance](/courses/javascript/prototypes) |
+| **Baad mein** | [Error Handling](/courses/javascript/error-handling) (custom error classes), [Modules](/courses/javascript/modules) |
+
+<Flow title="Suggested order">
+
+Objects
+↓
+Prototypes
+↓
+Classes
+↓
+Custom Errors aur Modules
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Class | Objects ka blueprint, prototypes ke upar syntax |
+| `constructor` | Instance bante waqt chalta hai |
+| `#field` | Asli private data |
+| `static` | Class ka apna member, instance ka nahi |
+| `extends` / `super` | Inheritance aur parent ko call |
+| Getter / setter | Property jaisa access, andar logic |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Class sirf ek saaf syntax hai. Andar wahi **prototype chain** chal rahi hoti hai, aur `#private` fields sach mein bahar se chhupe rehte hain.
+
+</Callout>

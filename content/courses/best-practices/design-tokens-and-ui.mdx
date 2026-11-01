@@ -1,0 +1,221 @@
+---
+title: Design Tokens & UI Consistency
+description: Design tokens aur UI consistency, semantic CSS variables, Tailwind theme, raw hex se parhez, spacing scale aur shared UI primitives taake har screen ek jaisi lage.
+keywords:
+  - design tokens ui consistency
+  - semantic color tokens
+  - tailwind css variables theme
+  - no hardcoded hex colors
+  - reusable ui primitives
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Component mein raw hex ya ek dafa ki value nahi. Rang, spacing, radius, shadow aur motion semantic tokens se aate hain jo ek jagah define hain, aur naya component banane se pehle maujooda primitives reuse hote hain.**
+
+</Callout>
+
+Design token ek naam wali design value hai: `primary`, `surface`, `destructive`, `border`. Component yeh nahi kehta ke "yeh `#1e40af` hai", woh kehta hai "yeh primary hai". Primary ka asal rang `globals.css` mein ek hi jagah tay hota hai.
+
+Yeh wahi idea hai jo code mein named constants ka hai, bas design ke liye.
+
+## 2. Kyun zaroori hai?
+
+Asli kahani: brand ka rang badla. Codebase mein 140 jagah hex values thin, 80 files mein, aur teen thore thore alag neele. Do hafte lage, phir bhi kuch screens purane rang mein reh gayin. Dark mode lana to na mumkin tha, kyunki har component ne apna safed khud likha tha.
+
+Doosri kahani: do developers ne alag alag modal banaye. Ek Escape par band hota tha, doosra nahi, aur keyboard users ek modal mein phans jate the.
+
+<CompareTable leftTitle="Raw values aur ad hoc components" rightTitle="Tokens aur shared primitives">
+
+Rebrand matlab sau files mein search replace | Rebrand matlab ek file mein token badlo
+Dark mode ke liye har component dobara | Tokens ki dark values, components wahi
+Teen thore alag gray aur radius | Ek scale, har step ka naam
+Har developer ka apna modal aur button | Ek primitive, sab use karte hain
+Accessibility har jagah alag | Focus ring aur contrast primitive mein ek dafa sahi
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Tailwind ka default scale use karein, arbitrary values se bachein | Scale ke andar rehna consistency ka pehla qadam hai |
+| **Production code** | Semantic tokens aur primitives lazmi. Component mein hex review mein ruk jata hai | Rebrand, dark mode aur accessibility sab isi par khare hain |
+| **Senior level** | Token naming, scales aur primitive inventory design karna aur document karna | Team ko pata ho kaunsa primitive hai aur kya mana hai |
+
+## 4. Bura vs acha code
+
+### Bura: raw values aur apna button
+
+```tsx
+export function DeleteButton({ onDelete }: DeleteButtonProps) {
+  return (
+    <button
+      onClick={onDelete}
+      className="rounded-[7px] bg-[#dc2626] px-[13px] py-[9px] text-[#ffffff] outline-none"
+    >
+      Delete
+    </button>
+  );
+}
+```
+
+Hex rang, ajeeb spacing (`13px`), koi dark mode nahi, aur `outline-none` ne keyboard focus ring hi gayab kar di.
+
+### Acha: tokens ek jagah
+
+```css
+@import "tailwindcss";
+
+:root {
+  --surface: oklch(0.99 0 0);
+  --on-surface: oklch(0.21 0 0);
+  --primary: oklch(0.52 0.2 262);
+  --on-primary: oklch(0.99 0 0);
+  --destructive: oklch(0.58 0.22 27);
+  --on-destructive: oklch(0.99 0 0);
+  --border: oklch(0.92 0 0);
+}
+
+.dark {
+  --surface: oklch(0.18 0 0);
+  --on-surface: oklch(0.96 0 0);
+  --border: oklch(0.3 0 0);
+}
+
+@theme inline {
+  --color-surface: var(--surface);
+  --color-on-surface: var(--on-surface);
+  --color-primary: var(--primary);
+  --color-on-primary: var(--on-primary);
+  --color-destructive: var(--destructive);
+  --color-on-destructive: var(--on-destructive);
+  --color-border: var(--border);
+}
+```
+
+Class merge ke liye ek helper:
+
+```ts
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+```
+
+Ab feature component sirf primitive use karta hai:
+
+```tsx
+import { Button } from "@/components/ui/button";
+
+export function DeleteButton({ onDelete }: DeleteButtonProps) {
+  return (
+    <Button variant="destructive" onClick={onDelete}>
+      Delete
+    </Button>
+  );
+}
+```
+
+`Button` primitive ke andar `bg-destructive text-on-destructive rounded-md px-4 py-2` aur ek visible focus ring ek hi dafa likhe gaye hain.
+
+### Farq kya hai?
+
+| Cheez | Bura | Acha |
+| --- | --- | --- |
+| Rang | `#dc2626` component mein | `destructive` token |
+| Spacing | `13px`, `9px` | Scale ke steps, `px-4 py-2` |
+| Dark mode | Na mumkin | Token ki dark value |
+| Focus | `outline-none`, ring gayab | Primitive mein visible ring |
+| Reuse | Har jagah naya button | Ek `Button`, variants ke saath |
+
+## 5. Kaise apply karein?
+
+<Flow title="Tokens aur primitives set karna">
+
+Roles ke naam rakho: surface, primary, destructive, border, text tiers
+↓
+globals.css mein CSS variables, light aur dark
+↓
+Tailwind theme mein map karo
+↓
+Spacing, radius, shadow, type aur motion ke fixed scales
+↓
+components/ui mein primitives, feature components unhe use karein
+
+</Flow>
+
+| Token group | Misaal |
+| --- | --- |
+| Color | `surface`, `on-surface`, `primary`, `destructive`, `border`, `muted` |
+| Spacing | 4 ya 8 ki rhythm: 4, 8, 12, 16, 24, 32 |
+| Type | Ek scale, jaise 12, 14, 16, 18, 24, 32, aur do teen weights |
+| Radius, shadow, z-index | Har ek ka chhota fixed scale, har step ka naam |
+| Motion | Durations jaise 150ms state, 200ms reveal, 300ms attention |
+
+Naya component banane se pehle `components/ui` dekhein. Milta julta primitive mil jaye to variant jorein, naya mat banayein. Har primitive loading, empty, error aur disabled states sambhale.
+
+## 6. Exceptions aur common mistakes
+
+Bohat si teams component mein seedha Tailwind palette use karti hain (`bg-red-600`) aur chhote projects ya prototypes mein yeh theek chalta hai. Semantic tokens ek layer barhate hain. Trade-off: shuru mein thora kaam, magar rebrand, dark mode aur multi-brand ke waqt yehi layer hafte bachati hai.
+
+Charts ke data colors, brand logo ka SVG, ya marketing ki illustration token system se bahar ho sakte hain, magar charts ke liye bhi ek tay palette token set hona chahiye.
+
+<Mistake
+  title="Tokens ko rang ke naam dena, jaise blue-brand"
+  why="Rebrand mein blue-brand ka rang hara ho gaya to naam jhoot bolne lagta hai."
+  better="Role ke naam rakho: primary, accent, destructive, surface."
+/>
+
+<Mistake
+  title="Arbitrary values jaise p-[13px] aur text-[#333]"
+  why="Har ek dafa ki value scale ko torti hai aur screens dheere dheere alag lagne lagti hain."
+  better="Scale ke qareebi step ko use karo. Asal mein nayi value chahiye to token mein jorein."
+/>
+
+<Mistake
+  title="Focus ring hata dena kyunki design mein achi nahi lagti"
+  why="Keyboard users ko pata hi nahi chalta ke woh kahan hain, aur yeh accessibility ka blocking masla hai."
+  better="Ring ko token se style karo, hatao mat. Primitive mein ek dafa sahi karo."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Styling: CSS Modules & Tailwind](/courses/nextjs/styling), [Constants & Magic Values](/courses/best-practices/constants-and-magic-values) |
+| **Saath mein** | [React Component Practices](/courses/best-practices/react-component-practices), [Following Existing Patterns](/courses/best-practices/following-existing-patterns) |
+| **Baad mein** | [Visual Hierarchy & Spacing](/courses/best-practices/visual-hierarchy-and-spacing), [Motion & Design Iteration](/courses/best-practices/motion-and-iteration) |
+
+<Flow title="Suggested order">
+
+Styling with Tailwind
+↓
+Design Tokens & UI Consistency
+↓
+Visual Hierarchy & Spacing
+↓
+Motion & Design Iteration
+
+</Flow>
+
+## Final quick revision
+
+| Check | Haan / Nahi |
+| --- | --- |
+| Component mein raw hex | Nahi |
+| Tokens role ke naam se | Haan |
+| Light aur dark values ek jagah | Haan |
+| Arbitrary spacing values | Nahi, scale |
+| Naya primitive banane se pehle `components/ui` dekha | Haan |
+| Focus ring visible | Haan |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Component ko rang ka naam nahi, kaam ka naam pata ho. Value ek jagah, primitive ek jagah, aur poori app ek hi zabaan mein dikhti hai.
+
+</Callout>

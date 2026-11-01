@@ -1,0 +1,222 @@
+---
+title: API Handler Shape
+description: REST API handler best practices, har route handler ek hi tarteeb mein chale, auth se response tak, aur business logic service mein rahe. Roman Urdu guide.
+keywords:
+  - rest api handler best practices
+  - nextjs route handler structure
+  - thin controller
+  - api endpoint pattern
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Har API handler upar se neeche ek hi tarteeb mein chalta hai: authenticate, rate limit, validate, ek service function call, phir response. Handler ke andar business logic nahi hoti.**
+
+</Callout>
+
+Handler se murad hai Next.js ka route handler (`app/api/.../route.ts`), server action, ya kisi backend framework (jaise AdonisJS) ka controller method. Yeh woh pehli jagah hai jahan HTTP request aap ke code ko chhooti hai.
+
+Handler ko traffic police samjhein, kitchen nahi. Woh dekhta hai kaun aaya, kya laya, aur kaam sahi department ko de deta hai. Price calculate karna, status decide karna ya query banana us ka kaam nahi.
+
+Ek achha andaza: handler 40 lines se lamba ho raha hai to us mein woh logic chhupi hai jo service mein honi chahiye.
+
+## 2. Kyun zaroori hai?
+
+Socho ek 150 line ka handler hai. Auth check line 60 par hai, us se pehle ek query already chal chuki hai. Kal koi developer line 30 par ek early return add karta hai aur endpoint chupke se public ho jata hai. Review mein kisi ko nazar nahi aata kyunki handler parhna hi mushkil hai.
+
+Doosra asli masla: discount ka hisaab handler ke andar hai. Phir ek cron job ko wahi hisaab chahiye, to code copy hota hai. Ek copy mein bug fix hota hai, doosri mein nahi, aur customers ko alag alag bill lagta hai.
+
+<CompareTable leftTitle="Bina rule ke" rightTitle="Rule ke saath">
+
+Auth check kahin beech mein, kabhi bhool jata hai | Auth hamesha pehli line, review mein ek nazar mein dikhta hai
+Logic HTTP ke saath bandhi, test ke liye server chahiye | Service function bina HTTP ke unit test hota hai
+Cron ya script ko logic copy karni parti hai | Cron, script aur handler ek hi function call karte hain
+Har endpoint apne andaz mein likha | Har endpoint ek jaisa, naya developer foran samajh leta hai
+Expensive kaam rate limit se pehle ho jata hai | Rate limit body parse hone se pehle lagta hai
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Achhi aadat, lekin sakht nahi | Do teen endpoints mein bhi tarteeb rakhna aage kaam aata hai |
+| **Production code** | Lazmi | Security checks ka missing hona yahi se pakra jata hai |
+| **Senior level** | Team par lagu karna | Review mein lamba handler dekh kar logic service mein move karwana |
+
+Kab seekhein: jab aap pehla route handler ya server action likh lein aur [Service Layer](/courses/best-practices/service-layer) ka idea samajh aa jaye.
+
+## 4. Bura vs acha code
+
+### Bura: sab kuch handler ke andar
+
+```ts
+export async function POST(request: Request) {
+  const body = await request.json();
+  const product = await db.query("select * from products where id = $1", [body.productId]);
+
+  let price = product.rows[0].price * body.quantity;
+  if (body.quantity > 10) {
+    price = price * 0.9;
+  }
+
+  const user = await getCurrentUser();
+  if (!user) {
+    return Response.json({ message: "login karo" }, { status: 401 });
+  }
+
+  const order = await db.query(
+    "insert into orders (user_id, product_id, total) values ($1, $2, $3) returning *",
+    [user.id, body.productId, price],
+  );
+
+  return Response.json(order.rows[0]);
+}
+```
+
+Is mein query auth se pehle chalti hai, body validate nahi hoti, discount ka rule handler mein phansa hai, aur poori database row client ko chali jati hai.
+
+### Acha: handler sirf tarteeb sambhalta hai
+
+File `app/api/orders/route.ts`:
+
+```ts
+import { NextResponse } from "next/server";
+
+import { getCurrentUser } from "@/lib/auth/auth";
+import { createOrder } from "@/lib/orders/orders";
+import { OutOfStockError } from "@/lib/orders/orders.errors";
+import { createOrderSchema, ORDER_MESSAGES } from "@/lib/orders/orders.types";
+import { limitByKey } from "@/lib/rate-limit/rate-limit";
+
+export async function POST(request: Request) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: ORDER_MESSAGES.unauthorized }, { status: 401 });
+  }
+
+  const limit = await limitByKey(`orders:create:${user.id}`);
+  if (!limit.allowed) {
+    return NextResponse.json({ error: ORDER_MESSAGES.rateLimited }, { status: 429 });
+  }
+
+  const parsed = createOrderSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: ORDER_MESSAGES.invalidInput }, { status: 422 });
+  }
+
+  try {
+    const order = await createOrder(user.id, parsed.data);
+    return NextResponse.json({ order }, { status: 201 });
+  } catch (error) {
+    if (error instanceof OutOfStockError) {
+      return NextResponse.json({ error: ORDER_MESSAGES.outOfStock }, { status: 409 });
+    }
+    throw error;
+  }
+}
+```
+
+Discount aur insert ab `lib/orders/orders.ts` mein hain:
+
+```ts
+export async function createOrder(userId: string, input: CreateOrderInput) {
+  const product = await findProductById(input.productId);
+  if (product.stock < input.quantity) {
+    throw new OutOfStockError(product.id);
+  }
+
+  const total = calculateTotal(product.price, input.quantity);
+
+  return insertOrder({ userId, productId: product.id, total });
+}
+```
+
+### Farq kya hai?
+
+| Cheez | Bura code | Acha code |
+| --- | --- | --- |
+| Auth | Query ke baad | Sab se pehle |
+| Rate limit | Nahi | Body parse se pehle |
+| Validation | Nahi, `body.quantity` kuch bhi ho sakta hai | Zod schema, fail par 422 |
+| Business logic | Handler mein | `createOrder` service mein |
+| Errors | Crash ya 500 | Known error 409 mein map |
+| Response | Poori DB row | Sirf contract wala `order` |
+
+## 5. Kaise apply karein?
+
+<Flow title="Har handler ki tarteeb">
+
+Authenticate aur authorize (shared helper se)
+↓
+Rate limit (body parse se pehle)
+↓
+Input parse aur validate (400 ya 422)
+↓
+Ek service function call
+↓
+Contract wala response, ya known error ko status mein map
+
+</Flow>
+
+Checklist jab naya endpoint likhein:
+
+- Pehli line caller ko resolve karti hai, ya endpoint saaf likhta hai ke yeh public hai.
+- Handler mein koi `select`, `insert` ya domain `if` nahi.
+- Ek hi service call. Do teen services ko jodna hai to woh jodna bhi service ka kaam hai.
+- Server action ho to bhi yahi tarteeb, bas response ki jagah return value.
+
+## 6. Exceptions aur common mistakes
+
+Kuch endpoints mein kuch steps nahi hote. Health check public hota hai aur rate limit ki zaroorat kam hoti hai. Webhook mein session nahi hota, wahan authentication ka matlab signature verify karna hai. Lekin tarteeb wahi rehti hai, sirf step ki shakal badalti hai.
+
+<Mistake
+  title="Rate limit ko validation ke baad lagana"
+  why="Attacker bari body bhej kar parsing aur validation ka kharcha karwa leta hai, limit tak pohanchne se pehle hi server thak jata hai."
+  better="Caller resolve karte hi rate limit lagao, phir body parse karo."
+/>
+
+<Mistake
+  title="Route file mein helper functions bana lena"
+  why="Handler file dobara mini service ban jati hai aur wahi logic doosri jagah reuse nahi ho sakti."
+  better="Helper ko service module ya us ki library file mein rakho, handler sirf import kare."
+/>
+
+<Mistake
+  title="Handler mein teen services ko orchestrate karna"
+  why="Order banao, email bhejo, inventory ghatao, yeh flow ab cron se reuse nahi ho sakta aur partial failure handle nahi hota."
+  better="Ek service function poora flow chalaye aur handler sirf us ko call kare."
+/>
+
+<Mistake
+  title="Har error ko catch kar ke 500 return karna"
+  why="Out of stock jaisi expected cheez bhi server error lagti hai aur client sahi message nahi dikha pata."
+  better="Known errors ke liye specific class banao aur unhein 404, 409 ya 422 mein map karo, baqi ko upar jane do."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Route Handlers (API)](/courses/nextjs/route-handlers), [Service Layer & Thin Controllers](/courses/best-practices/service-layer), [Small Functions](/courses/best-practices/small-functions) |
+| **Saath mein** | [Input Validation at the Boundary](/courses/best-practices/input-validation), [Error Handling & Error Envelope](/courses/best-practices/error-handling-and-envelope) |
+| **Baad mein** | [Authorization & Multi-Tenancy](/courses/best-practices/authorization-and-tenancy), [Rate Limiting & Background Jobs](/courses/best-practices/rate-limiting-and-background-jobs), [Endpoint Tests First](/courses/best-practices/endpoint-tests-first) |
+
+## Final quick revision
+
+| Check | Sawal |
+| --- | --- |
+| Auth pehle | Kya pehli line caller resolve karti hai? |
+| Rate limit | Kya body parse se pehle lagta hai? |
+| Validation | Kya input schema se parse ho kar typed bana? |
+| Ek service call | Kya handler mein koi query ya domain `if` hai? |
+| Response | Kya sirf contract wale fields wapas ja rahe hain? |
+| Lambai | Kya handler 40 lines ke andar hai? |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Handler darwaza hai, kamra nahi. Woh check karta hai, parse karta hai, ek function ko kaam deta hai aur jawab lautata hai. Asal faisle service mein hote hain jahan unhein test aur reuse kiya ja sake.
+
+</Callout>

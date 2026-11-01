@@ -1,0 +1,190 @@
+---
+title: Iterators & Generators
+description: JavaScript iterators generators kya hain, iteration protocol, function* aur yield kaise kaam karte hain, lazy sequences ke examples ke saath.
+keywords:
+  - javascript iterators generators
+  - generator function yield
+  - iteration protocol
+  - symbol iterator javascript
+---
+
+## 1. Iterators aur Generators kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Iterator ek object hai jo `next()` call karne par ek ek value deta hai. Generator ek khaas function (`function*`) hai jo iterator khud bana deta hai.**
+
+</Callout>
+
+`for...of`, spread `...` aur destructuring sab andar se **iteration protocol** use karte hain. Arrays, strings, `Map` aur `Set` isi liye loop ho sakte hain kyunke yeh sab **iterable** hain.
+
+## 2. Kyun zaroori hain?
+
+Kabhi aapko values ek saath nahi, balkay **ek ek kar ke** chahiye hoti hain. Jaise bari list ke pages, ya ek infinite ID sequence. Sab kuch pehle array mein bharna memory waste karta hai.
+
+<CompareTable leftTitle="Sab kuch array mein" rightTitle="Generator ke saath">
+
+Poori list pehle banani parti hai | Value tab banti hai jab maangi jaye
+Bari list memory bhar deti hai | Ek waqt mein sirf ek value
+Infinite sequence possible nahi | Infinite sequence aaram se
+Custom object for...of mein nahi chalta | Symbol.iterator se loop ho jata hai
+
+</CompareTable>
+
+## 3. Kahan use hote hain?
+
+| Use case | Example |
+| --- | --- |
+| **Custom data structures** | Apni `LinkedList` ko `for...of` ke qabil banana |
+| **Lazy sequences** | IDs, Fibonacci, ya range jo zaroorat par bane |
+| **Pagination** | `for await...of` se API ke pages ek ek kar ke lana |
+| **Streams** | Node.js streams aur `ReadableStream` async iterable hain |
+| **Libraries** | Redux-Saga jaisi libraries generators par bani hain |
+
+## 4. Kaise kaam karte hain?
+
+Iterator ka `next()` har baar ek object deta hai: `{ value, done }`. Jab `done` true ho jaye to loop ruk jata hai.
+
+Generator function `yield` par **ruk jata hai** aur agli `next()` call par wahin se dobara chalta hai.
+
+<Flow title="Generator ka flow">
+
+Generator function call hota hai
+↓
+Iterator object milta hai, code abhi nahi chala
+↓
+next() call
+↓
+Code pehle yield tak chalta hai aur ruk jata hai
+↓
+value wapas milti hai, done false
+↓
+Aakhir mein function khatam, done true
+
+</Flow>
+
+## 5. Code example
+
+### Iterator haath se
+
+```js
+const range = {
+  from: 1,
+  to: 3,
+  [Symbol.iterator]() {
+    let current = this.from;
+    const last = this.to;
+    return {
+      next() {
+        if (current <= last) {
+          return { value: current++, done: false };
+        }
+        return { value: undefined, done: true };
+      },
+    };
+  },
+};
+
+for (const n of range) {
+  console.log(n);
+}
+```
+
+### Wohi kaam generator se
+
+```js
+function* rangeGen(from, to) {
+  for (let i = from; i <= to; i++) {
+    yield i;
+  }
+}
+
+console.log([...rangeGen(1, 3)]);
+
+function* idMaker() {
+  let id = 1;
+  while (true) {
+    yield id++;
+  }
+}
+
+const ids = idMaker();
+console.log(ids.next().value);
+console.log(ids.next().value);
+```
+
+### Async generator
+
+```js
+async function* fetchPages(url) {
+  let page = 1;
+  while (page <= 3) {
+    const res = await fetch(`${url}?page=${page}`);
+    yield await res.json();
+    page++;
+  }
+}
+
+for await (const data of fetchPages("/api/posts")) {
+  console.log(data);
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `[Symbol.iterator]()` | Object ko iterable banata hai, `for...of` isi ko call karta hai |
+| `next()` | `{ value, done }` return karta hai |
+| `function*` | Generator function, call karne par iterator deta hai |
+| `yield i` | Value bahar bhejo aur ruk jao |
+| `while (true)` | Infinite loop safe hai kyunke har `yield` par ruk jata hai |
+| `for await...of` | Async generator se values ek ek kar ke await karta hai |
+
+### Interview tip
+
+"Iterable aur iterator mein kya farq hai?" Iterable woh object hai jiske paas `Symbol.iterator` method ho. Iterator woh object hai jo us method se milta hai aur jiske paas `next()` ho. Generator object dono hota hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Generator ko normal function samajh kar call karna"
+  why="rangeGen(1, 3) call karne se code nahi chalta, sirf iterator object milta hai."
+  better="for...of, spread ya next() se values nikalein."
+/>
+
+<Mistake
+  title="Infinite generator ko spread kar dena"
+  why="Spread saari values ikatthi karne ki koshish karta hai, infinite sequence mein page hang ho jata hai."
+  better="Infinite generator ke saath next() ya break wala loop use karein."
+/>
+
+<Mistake
+  title="Ek hi iterator ko dobara loop karna"
+  why="Generator object ek baar khatam ho jaye to dobara values nahi deta."
+  better="Naye loop ke liye generator function dobara call karein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Loops](/courses/javascript/loops), [Map & Set](/courses/javascript/map-and-set), [Spread & Rest](/courses/javascript/spread-and-rest) |
+| **Saath** | [Promises](/courses/javascript/promises), [Async / Await](/courses/javascript/async-await) |
+| **Baad mein** | [Fetch API](/courses/javascript/fetch-api), [Event Loop](/courses/javascript/event-loop) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Iterable | Jiske paas `Symbol.iterator` ho |
+| Iterator | Jiske paas `next()` ho jo `{ value, done }` de |
+| Generator | `function*` jo `yield` par rukta hai |
+| Lazy | Value tab banti hai jab maangi jaye |
+| Async | `async function*` aur `for await...of` |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Generator **pause aur resume** hone wala function hai. `yield` par rukta hai, `next()` par wahin se chalta hai.
+
+</Callout>

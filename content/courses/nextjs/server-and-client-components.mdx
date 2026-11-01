@@ -1,0 +1,185 @@
+---
+title: "Server & Client Components"
+description: "Next.js server client components: kab Server Component, kab use client, data server par fetch karna aur interactive hisson ko Client Component banana."
+keywords:
+  - next.js server client components
+  - use client directive
+  - react server components next.js
+  - next.js client component
+  - server-only package
+---
+
+## 1. Server aur Client Components kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Server Component sirf server par render hota hai aur us ka JavaScript browser ko nahi jata. Client Component `"use client"` se banta hai, browser mein hydrate hota hai aur state, events aur hooks use kar sakta hai.**
+
+</Callout>
+
+App Router mein **har component default Server Component hai**. Jab aap ko `useState`, `onClick` ya browser API chahiye, tab file ke upar `"use client"` likhte hain.
+
+## 2. Kyun zaroori hai?
+
+<CompareTable leftTitle="Sab kuch client par" rightTitle="Server + Client mix">
+
+Poora UI ka JS browser mein | Sirf interactive hisson ka JS
+Data ke liye API route + useEffect | Server Component mein seedha await
+API keys chhupane ki fikr | Secrets server par hi rehte hain
+Pehle loading spinner | HTML data ke saath aata hai
+Bara bundle, slow phones par mushkil | Chhota bundle, tez load
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Kaam | Kaunsa component |
+| --- | --- |
+| Database ya API se data fetch | Server |
+| Secrets, API keys, tokens | Server |
+| Bari libraries (markdown parser, date formatting) | Server |
+| `onClick`, `onChange`, forms ki live state | Client |
+| `useState`, `useEffect`, `useContext` | Client |
+| `window`, `localStorage`, geolocation | Client |
+
+## 4. Kaise kaam karta hai?
+
+`"use client"` ek **boundary** hai. Jis file mein yeh likha ho, woh aur us file se import hone wale saare components client bundle mein chale jate hain.
+
+<Flow title="Render ka safar">
+
+Server par Server Components render
+   ↓
+RSC payload + HTML banta hai
+   ↓
+Browser ko HTML (foran dikhta hai)
+   ↓
+Client Components ka JS load
+   ↓
+Hydration, buttons interactive
+
+</Flow>
+
+Do rules yaad rakhein:
+
+- Server Component, Client Component ko **import** kar sakta hai.
+- Client Component, Server Component ko import nahi kar sakta, lekin use **`children` ya props** ke zariye le sakta hai.
+
+Server se Client ko jane wale props **serializable** hone chahiye: string, number, plain objects, arrays, Promise. Functions pass nahi ho sakte (Server Actions ke ilawa).
+
+## 5. Code example
+
+### Server Component page jo Client Component use kare
+
+```tsx
+import { LikeButton } from "./like-button";
+
+async function getPost(id: string) {
+  const res = await fetch(`https://api.example.com/posts/${id}`);
+  return res.json();
+}
+
+export default async function PostPage({ params }: PageProps<"/posts/[id]">) {
+  const { id } = await params;
+  const post = await getPost(id);
+
+  return (
+    <article>
+      <h1>{post.title}</h1>
+      <p>{post.body}</p>
+      <LikeButton initialLikes={post.likes} />
+    </article>
+  );
+}
+```
+
+### Client Component
+
+```tsx
+"use client";
+
+import { useState } from "react";
+
+export function LikeButton({ initialLikes }: { initialLikes: number }) {
+  const [likes, setLikes] = useState(initialLikes);
+  return <button onClick={() => setLikes(likes + 1)}>Like {likes}</button>;
+}
+```
+
+### Server-only code ki hifazat
+
+```ts
+import "server-only";
+
+export async function getSecretStats() {
+  const res = await fetch("https://api.example.com/stats", {
+    headers: { Authorization: `Bearer ${process.env.STATS_API_KEY}` },
+  });
+  return res.json();
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `PostPage` | Server Component, async aur data seedha fetch |
+| `LikeButton` | Client Component, `useState` aur `onClick` |
+| `initialLikes` | Server se serializable prop client ko |
+| `"use client"` | Boundary, is file se neeche sab client bundle mein |
+| `import "server-only"` | Galti se client mein import ho to build error |
+
+### Interview tip
+
+"`use client` ka matlab kya yeh hai ke component server par render nahi hota?" Nahi. Client Components bhi pehli dafa server par HTML ke liye render hote hain, phir browser mein hydrate hote hain.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Page ke top par use client laga dena"
+  why="Poora page aur us ke saare imports client bundle mein chale jate hain, server ke faide khatam."
+  better="Interactive hissa alag chhote Client Component mein nikalein aur page ko Server rakhein."
+/>
+
+<Mistake
+  title="Client Component mein Server Component import karna"
+  why="Import hote hi woh bhi client component ban jata hai, server-only code fail hota hai."
+  better="Server Component ko children prop ke zariye Client Component ke andar pass karein."
+/>
+
+<Mistake
+  title="Server se function prop pass karna"
+  why="Functions serializable nahi, Next.js error deta hai."
+  better="Data pass karein, ya mutation ke liye Server Action pass karein."
+/>
+
+<Mistake
+  title="Secret env variable Client Component mein use karna"
+  why="NEXT_PUBLIC ke baghair woh undefined hogi, aur NEXT_PUBLIC lagane se secret browser mein leak hoga."
+  better="Secrets sirf Server Components ya server-only files mein parhein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [React Server Components](/courses/react/server-components), [React state](/courses/react/state), [Routing & Pages](/courses/nextjs/routing-and-pages) |
+| **Saath** | [Data Fetching](/courses/nextjs/data-fetching), [Environment Variables](/courses/nextjs/environment-variables) |
+| **Baad mein** | [Rendering Strategies](/courses/nextjs/rendering-strategies), [Streaming & Suspense](/courses/nextjs/streaming-and-suspense), [Server Actions](/courses/nextjs/server-actions) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Default | Server Component |
+| Client kab | State, events, hooks, browser APIs |
+| Boundary | `"use client"` file ke upar |
+| Server ko client mein | `children` ya props se |
+| Props | Serializable hone chahiye |
+| Hifazat | `import "server-only"` |
+
+<Callout variant="important" title="Yaad rakhein">
+
+**Data aur secrets server par, interactivity client par.** `"use client"` ko jitna neeche (leaf components mein) rakh sakein, utna behtar.
+
+</Callout>

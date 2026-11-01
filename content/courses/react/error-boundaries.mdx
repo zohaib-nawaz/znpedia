@@ -1,0 +1,187 @@
+---
+title: Error Boundaries
+description: React error boundary se render errors pakar kar poori app crash hone se bachana seekhein, class component, react-error-boundary aur reset ke saath.
+keywords:
+  - react error boundary
+  - react error handling urdu
+  - react-error-boundary library
+  - getderivedstatefromerror
+---
+
+## 1. Error Boundary kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**Error Boundary ek component hai jo apne children ke render ke dauran aane wale errors pakarta hai aur crash ki jagah fallback UI dikhata hai.**
+
+</Callout>
+
+React mein agar kisi component ke render mein error aaye aur koi usay na pakre, to React **poora root unmount** kar deta hai. User ko khali safed screen dikhti hai.
+
+Error Boundary JavaScript ke `try/catch` jaisa hai, lekin components ke tree ke liye.
+
+## 2. Kyun zaroori hai?
+
+<CompareTable leftTitle="Bina Error Boundary" rightTitle="Error Boundary ke saath">
+
+Ek widget ka error, poori app safed | Sirf woh widget fallback dikhata hai
+User ko pata nahi kya hua | Saaf message aur Try again button
+Error kahin log nahi hota | componentDidCatch mein error reporting
+Reload ke ilawa koi rasta nahi | Reset kar ke dobara render
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Jagah | Kyun |
+| --- | --- |
+| Poori app ke upar | Last line of defense, generic error page |
+| Har route ya page ke gird | Ek page ka error baqi navigation ko na tode |
+| Third-party widget, chart, map | Bahar ka code crash kare to sirf woh hissa |
+| `use(promise)` wale components | Rejected Promise ka error yahan aata hai |
+
+Next.js App Router mein `error.tsx` file khud ek Error Boundary banati hai.
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Error se fallback tak">
+
+Child component render mein error throw karta hai
+↓
+React tree mein upar sab se qareebi Error Boundary dhoondta hai
+↓
+getDerivedStateFromError state update karta hai
+↓
+Boundary children ki jagah fallback render karta hai
+↓
+componentDidCatch error ko log karta hai
+
+</Flow>
+
+<Callout variant="note" title="Kya nahi pakarta">
+
+Error Boundary **event handlers** (jaise `onClick`), `setTimeout` jaisa async code, server rendering ke errors, aur **khud apne** errors nahi pakarta. Event handler ke errors ke liye normal `try/catch` use karein.
+
+</Callout>
+
+## 5. Code example
+
+### Class component boundary
+
+Error Boundary abhi bhi **class component** se hi banti hai, kyunke iske liye koi hook nahi hai.
+
+```tsx
+import { Component, type ErrorInfo, type ReactNode } from "react";
+
+type Props = { fallback: ReactNode; children: ReactNode };
+type State = { hasError: boolean };
+
+export class ErrorBoundary extends Component<Props, State> {
+  state: State = { hasError: false };
+
+  static getDerivedStateFromError(): State {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error(error, info.componentStack);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
+```
+
+```tsx
+<ErrorBoundary fallback={<p>Chart load nahi ho saka.</p>}>
+  <SalesChart />
+</ErrorBoundary>
+```
+
+### react-error-boundary library ke saath reset
+
+```tsx
+import { ErrorBoundary, type FallbackProps } from "react-error-boundary";
+
+function Fallback({ error, resetErrorBoundary }: FallbackProps) {
+  return (
+    <div role="alert">
+      <p>Kuch ghalat ho gaya: {error instanceof Error ? error.message : "Unknown error"}</p>
+      <button onClick={resetErrorBoundary}>Try again</button>
+    </div>
+  );
+}
+
+export function Dashboard() {
+  return (
+    <ErrorBoundary FallbackComponent={Fallback}>
+      <SalesChart />
+    </ErrorBoundary>
+  );
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `getDerivedStateFromError` | Error aate hi state `hasError: true` |
+| `componentDidCatch` | Logging ya Sentry jaisi service ko report |
+| `info.componentStack` | Kis component tree mein error aaya |
+| `fallback` | Error ke waqt dikhne wala UI |
+| `resetErrorBoundary` | State reset, children dobara render ki koshish |
+
+React 19 mein `createRoot` ke `onCaughtError` aur `onUncaughtError` options bhi hain, jahan aap saare errors ek jagah report kar sakte hain.
+
+## 6. Common mistakes
+
+<Mistake
+  title="onClick ke error ke liye Error Boundary par bharosa"
+  why="Event handler render ke dauran nahi chalta, is liye boundary us error ko kabhi nahi dekhti."
+  better="Handler ke andar try catch likhein aur error ko state mein rakh kar UI dikhayein."
+/>
+
+<Mistake
+  title="Poori app ke liye sirf ek boundary"
+  why="Ek chhote widget ka error bhi poora page fallback mein badal deta hai."
+  better="Top par ek boundary rakhein, aur ahem sections ya widgets ke gird alag boundaries."
+/>
+
+<Mistake
+  title="Fallback mein reset ka koi rasta na dena"
+  why="User page reload karne par majboor hota hai aur form data kho deta hai."
+  better="Try again button dein jo boundary reset kare, jaise react-error-boundary ka resetErrorBoundary."
+/>
+
+### Interview tip
+
+Poocha ja sakta hai "Function component Error Boundary ban sakta hai?" Jawab: **khud nahi**, abhi tak sirf class component `getDerivedStateFromError` aur `componentDidCatch` de sakta hai. Function components ke liye `react-error-boundary` library wrapper deti hai.
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Components](/courses/react/components), [Conditional Rendering](/courses/react/conditional-rendering), [Handling Events](/courses/react/events) |
+| **Saath** | [Suspense & lazy()](/courses/react/suspense-and-lazy), [The use() API](/courses/react/use-hook) |
+| **Baad mein** | [Server Components](/courses/react/server-components), [Testing React Apps](/courses/react/testing) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Kya hai | Render errors pakar kar fallback dikhane wala component |
+| Banta kaise hai | Class component, `getDerivedStateFromError` |
+| Logging | `componentDidCatch(error, info)` |
+| Nahi pakarta | Event handlers, async code, SSR, khud apna error |
+| Easy option | `react-error-boundary` library |
+| Next.js | `error.tsx` file |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Error Boundaries ko **Suspense** ki tarah sochein: Suspense loading sambhalta hai, Error Boundary errors. Dono ko ahem sections ke gird rakhein taake ek hissa fail ho to baqi app chalti rahe.
+
+</Callout>

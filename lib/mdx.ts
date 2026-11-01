@@ -1,5 +1,4 @@
 import fs from "fs";
-import path from "path";
 
 import GithubSlugger from "github-slugger";
 import { compileMDX } from "next-mdx-remote/rsc";
@@ -21,9 +20,20 @@ function extractHeadingsFromSource(source: string): TocHeading[] {
   const headings: TocHeading[] = [];
   const slugger = new GithubSlugger();
 
+  let insideFence = false;
+
   for (const line of body.split("\n")) {
+    if (/^\s*(```|~~~)/.test(line)) {
+      insideFence = !insideFence;
+      continue;
+    }
+    if (insideFence) {
+      continue;
+    }
     const match = line.match(/^(#{2,3})\s+(.+?)\s*$/);
-    if (!match) continue;
+    if (!match) {
+      continue;
+    }
     const level = match[1].length;
     const text = match[2].replace(/\{#.+?\}$/, "").trim();
     const id = normalizeHeadingId(slugger.slug(text));
@@ -54,26 +64,12 @@ export async function getChapterMDX(courseSlug: string, chapterSlug: string) {
     },
   });
 
-  const title =
-    frontmatter.title ?? slugToTitle(chapterSlug);
-  const description =
-    frontmatter.description ??
-    `Placeholder chapter: ${title} in the ${courseSlug} course.`;
+  const title = frontmatter.title ?? slugToTitle(chapterSlug);
+  const description = frontmatter.description ?? `${title} ko Roman Urdu mein seekhein.`;
 
   return {
     content,
     frontmatter: { ...frontmatter, title, description },
     toc: filterTocHeadings(headings),
   };
-}
-
-export function getSiteUrl(): string {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-}
-
-export function getChapterCanonicalUrl(
-  courseSlug: string,
-  chapterSlug: string
-): string {
-  return `${getSiteUrl()}/courses/${courseSlug}/${chapterSlug}`;
 }

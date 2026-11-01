@@ -1,0 +1,190 @@
+---
+title: Route Handlers (API)
+description: Next.js route handlers se app/api mein REST API banana seekhein, Web Request aur Response, dynamic params, auth check aur caching ke saath.
+keywords:
+  - next.js route handlers api
+  - next.js api routes app router
+  - route.ts next.js
+  - next.js rest api
+---
+
+## 1. Route Handlers kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Route Handler ek `route.ts` file hai jo kisi URL par HTTP methods (`GET`, `POST` waghera) handle karti hai aur Web standard `Request` aur `Response` use karti hai.**
+
+</Callout>
+
+Pages Router mein isay **API Routes** kehte the. App Router mein `app` folder ke andar kahin bhi `route.ts` bana kar API endpoint ban jata hai, jaise `app/api/products/route.ts` se `/api/products`.
+
+Route Handler koi UI render nahi karta. Yeh JSON, text, file ya redirect wapas karta hai.
+
+## 2. Kyun zaroori hai?
+
+Server Actions sirf aapki apni app ke forms ke liye hain. Lekin kabhi bahar ki duniya ko bhi aapke server se baat karni hoti hai: mobile app, webhook, doosri website.
+
+<CompareTable leftTitle="Server Action" rightTitle="Route Handler">
+
+Sirf apni Next.js app se call | Koi bhi client call kar sakta hai
+POST only, URL hidden | GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS
+Form aur mutation ke liye | Public API, webhooks, file downloads
+Response UI update hota hai | Response JSON ya koi bhi format
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Use case | Example route |
+| --- | --- |
+| **Mobile app ke liye API** | `app/api/products/route.ts` |
+| **Stripe ya CMS webhook** | `app/api/webhooks/stripe/route.ts` |
+| **File download ya CSV export** | `app/api/reports/route.ts` |
+| **OAuth callback** | `app/api/auth/callback/route.ts` |
+| **RSS feed** | `app/feed.xml/route.ts` |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Route Handler ka flow">
+
+Client HTTP request bhejta hai
+↓
+Next.js URL se route.ts dhoondta hai
+↓
+Method ke naam wala function chalta hai
+↓
+Auth check + validation + kaam
+↓
+Response.json wapas
+
+</Flow>
+
+Kuch zaroori rules:
+
+| Rule | Detail |
+| --- | --- |
+| File naam | Hamesha `route.ts` ya `route.js` |
+| Conflict | Ek hi segment mein `page.tsx` aur `route.ts` dono nahi ho sakte |
+| Unknown method | Next.js khud `405 Method Not Allowed` deta hai |
+| Caching | By default koi caching nahi, har request par chalta hai |
+| Params | `ctx.params` ek Promise hai, `await` karna zaroori |
+
+<Callout variant="important" title="Mental model">
+
+**Method ka naam = function ka naam. Request andar aati hai, Response bahar jata hai.**
+
+</Callout>
+
+## 5. Code example
+
+### Example 1: List aur create
+
+```ts
+import { db } from "@/lib/db";
+import { getSession } from "@/lib/dal";
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const category = searchParams.get("category") ?? undefined;
+
+  const products = await db.product.findMany({ where: { category } });
+  return Response.json(products);
+}
+
+export async function POST(request: Request) {
+  const session = await getSession();
+  if (!session) {
+    return Response.json({ error: "Login karein" }, { status: 401 });
+  }
+
+  const body = await request.json();
+  const product = await db.product.create({ data: { name: String(body.name) } });
+  return Response.json(product, { status: 201 });
+}
+```
+
+### Example 2: Dynamic segment `app/api/products/[id]/route.ts`
+
+```ts
+import type { NextRequest } from "next/server";
+import { db } from "@/lib/db";
+
+export async function GET(_request: NextRequest, ctx: RouteContext<"/api/products/[id]">) {
+  const { id } = await ctx.params;
+  const product = await db.product.findUnique({ where: { id } });
+
+  if (!product) {
+    return Response.json({ error: "Product nahi mila" }, { status: 404 });
+  }
+
+  return Response.json(product);
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `export async function GET` | `GET /api/products` is function ko chalata hai |
+| `new URL(request.url)` | Query string parhne ka standard tareeqa |
+| `request.json()` | POST body ko JSON mein parse |
+| `Response.json(data, { status })` | JSON response, status code ke saath |
+| `RouteContext<"/api/products/[id]">` | Next.js ka global type helper, `params` typed |
+| `await ctx.params` | Next.js 16 mein params async hain |
+
+Cache Components on hon to static `GET` handler prerender ho sakta hai. Data cache karna ho to `"use cache"` handler ke andar nahi, ek alag helper function mein lagayein.
+
+### Interview tip
+
+"Server Action ya Route Handler?" Jawab: apni app ke forms aur mutations ke liye Server Action, bahar ke clients, webhooks aur non-HTML responses ke liye Route Handler.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Same folder mein page.tsx aur route.ts dono rakhna"
+  why="Dono ek hi URL claim karte hain, Next.js conflict error deta hai."
+  better="API ko alag segment mein rakho, jaise app/api/... ke andar."
+/>
+
+<Mistake
+  title="Apne hi Server Component se apni API ko fetch karna"
+  why="Extra network hop lagta hai aur production build mein URL issues aate hain."
+  better="Server Component mein seedha database ya service function call karo."
+/>
+
+<Mistake
+  title="Route Handler ko protected samajhna kyun ke UI mein link nahi"
+  why="Har route.ts ek public URL hai, koi bhi curl se hit kar sakta hai."
+  better="Har handler mein session aur role check karo, 401 ya 403 return karo."
+/>
+
+<Mistake
+  title="Request body validate kiye baghair use karna"
+  why="Galat type ya missing fields database error ya security bug bana dete hain."
+  better="Zod schema se body ko safeParse karo aur 400 return karo agar fail ho."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Routing & Pages](/courses/nextjs/routing-and-pages), [Dynamic Routes](/courses/nextjs/dynamic-routes) |
+| **Saath mein** | [Server Actions](/courses/nextjs/server-actions), [Cookies & Headers](/courses/nextjs/cookies-and-headers) |
+| **Baad mein** | [Proxy (formerly Middleware)](/courses/nextjs/proxy), [Authentication](/courses/nextjs/authentication), [Database Integration](/courses/nextjs/database-integration) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| File | `app/api/.../route.ts` |
+| Functions | `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`, `OPTIONS` |
+| Input | Web `Request` ya `NextRequest` |
+| Output | `Response.json(data, { status })` |
+| Params | `await ctx.params` |
+| Security | Har handler mein auth check |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Route Handler aapki app ka **public API darwaza** hai. Web standard Request aur Response use karo, params `await` karo, aur har request par auth aur validation karo.
+
+</Callout>

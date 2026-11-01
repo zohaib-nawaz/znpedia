@@ -1,0 +1,194 @@
+---
+title: Server Actions
+description: Next.js server actions kya hain, use server directive se forms aur mutations server par kaise chalate hain, auth check aur revalidation ke saath.
+keywords:
+  - next.js server actions
+  - use server directive
+  - next.js form action
+  - server functions react
+---
+
+## 1. Server Actions kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Server Action ek async function hai jo `"use server"` directive ki wajah se hamesha server par chalta hai, aur aap usay form ya button se seedha call kar sakte hain.**
+
+</Callout>
+
+Pehle data save karne ke liye aap API route banate, phir client se `fetch("/api/...")` karte. Server Actions mein aap function likhte hain, aur Next.js khud uske liye ek secure POST endpoint bana deta hai.
+
+React ki zubaan mein inhein **Server Functions** kehte hain. Jab yeh form `action` ya mutation ke liye use hon to Next.js inhein Server Actions kehta hai.
+
+## 2. Kyun zaroori hai?
+
+<CompareTable leftTitle="API route + client fetch" rightTitle="Server Action">
+
+Alag API file aur alag client code | Ek function, seedha form se call
+JSON body banana aur parse karna | FormData khud milta hai
+Loading state manually | useActionState se pending milta hai
+JavaScript load hone se pehle form kaam nahi karta | Progressive enhancement, bina JS bhi submit
+Cache refresh alag se | updateTag ya revalidatePath usi function mein
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Use case | Action kya karta hai |
+| --- | --- |
+| **Create post** | Database mein row insert, phir redirect |
+| **Like button** | Count update, phir `updateTag` |
+| **Profile settings** | Form data validate aur save |
+| **Delete item** | Auth check, delete, list refresh |
+| **Logout** | Session cookie delete |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Server Action ka flow">
+
+User form submit karta hai
+↓
+Browser POST request bhejta hai
+↓
+Next.js sahi Server Action dhoondta hai
+↓
+Action server par chalta hai
+↓
+Database update + cache invalidate
+↓
+Updated UI ek hi round trip mein wapas
+
+</Flow>
+
+`"use server"` do jagah likh sakte hain:
+
+| Jagah | Asar |
+| --- | --- |
+| File ki pehli line | File ke saare exports Server Actions ban jate hain, Client Components inhein import kar sakte hain |
+| Async function body ki pehli line | Sirf woh function Server Action, Server Component ke andar inline |
+
+<Callout variant="important" title="Mental model">
+
+**Server Action ek public endpoint hai. Koi bhi isay call kar sakta hai, is liye andar auth aur validation zaroor karo.**
+
+</Callout>
+
+## 5. Code example
+
+### Example 1: Actions file
+
+```ts
+"use server";
+
+import { updateTag } from "next/cache";
+import { redirect } from "next/navigation";
+import { db } from "@/lib/db";
+import { verifySession } from "@/lib/dal";
+
+export async function createTodo(formData: FormData) {
+  const session = await verifySession();
+  const title = String(formData.get("title") ?? "").trim();
+
+  if (!title) {
+    return;
+  }
+
+  await db.todo.create({ data: { title, userId: session.userId } });
+  updateTag("todos");
+  redirect("/todos");
+}
+
+export async function deleteTodo(id: string) {
+  const session = await verifySession();
+  await db.todo.delete({ where: { id, userId: session.userId } });
+  updateTag("todos");
+}
+```
+
+### Example 2: Form aur button se call karna
+
+```tsx
+import { createTodo, deleteTodo } from "./actions";
+
+export default function TodoPage() {
+  return (
+    <main>
+      <form action={createTodo}>
+        <input name="title" placeholder="Naya kaam" required />
+        <button type="submit">Add</button>
+      </form>
+
+      <form action={deleteTodo.bind(null, "todo_123")}>
+        <button type="submit">Delete</button>
+      </form>
+    </main>
+  );
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `"use server"` file top par | Saare exported functions Server Actions |
+| `verifySession()` | Har action mein pehle user ki pehchan |
+| `formData.get("title")` | Input ka `name` attribute se value |
+| `updateTag("todos")` | User ko fauran nayi list dikhe |
+| `redirect("/todos")` | Kaam ke baad doosre page par bhejo |
+| `deleteTodo.bind(null, id)` | Extra argument pass karne ka tareeqa |
+
+Pending state aur validation errors dikhane ke liye `useActionState` use hota hai. Yeh detail [Forms & Validation](/courses/nextjs/forms-and-validation) chapter mein hai.
+
+### Interview tip
+
+"Server Actions secure kyun hain?" ka sahi jawab: woh khud se secure **nahi** hain. Har action ek POST endpoint hai, is liye andar authentication, authorization aur input validation zaroori hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Action ke andar auth check na karna"
+  why="Agar button UI mein chhupa bhi ho, koi bhi request bana kar action call kar sakta hai."
+  better="Har action ke shuru mein session verify karo aur ownership check karo."
+/>
+
+<Mistake
+  title="FormData ko bina validation database mein dalna"
+  why="User kuch bhi bhej sakta hai, galat ya khatarnak data save ho jata hai."
+  better="Zod jaisi library se schema bana kar safeParse karo."
+/>
+
+<Mistake
+  title="Data padhne ke liye Server Action use karna"
+  why="Actions mutations ke liye hain, yeh sequentially chalte hain aur cache nahi hote."
+  better="Data reading Server Components mein karo, actions sirf likhne ke liye."
+/>
+
+<Mistake
+  title="redirect ko try catch ke andar rakhna"
+  why="redirect ek special error throw karta hai, catch use pakar leta hai aur redirect nahi hota."
+  better="redirect ko try catch ke bahar, kaam mukammal hone ke baad call karo."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Server & Client Components](/courses/nextjs/server-and-client-components), [Data Fetching](/courses/nextjs/data-fetching) |
+| **Saath mein** | [Revalidation](/courses/nextjs/revalidation), [Cookies & Headers](/courses/nextjs/cookies-and-headers) |
+| **Baad mein** | [Forms & Validation](/courses/nextjs/forms-and-validation), [Authentication](/courses/nextjs/authentication), [Database Integration](/courses/nextjs/database-integration) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Directive | `"use server"` file ya function level par |
+| Call kaise | `<form action={fn}>` ya event handler se |
+| Input | `FormData` |
+| Security | Har action mein auth + validation |
+| Baad ka kaam | `updateTag`, `revalidatePath`, `redirect` |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Server Action ek function jaisa dikhta hai magar asal mein ek **public POST endpoint** hai. Mutation ke liye perfect, magar har dafa auth aur validation ke saath.
+
+</Callout>

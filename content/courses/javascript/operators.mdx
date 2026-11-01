@@ -1,0 +1,188 @@
+---
+title: Operators
+description: JavaScript operators ki guide, arithmetic, assignment, comparison, logical aur nullish operators examples ke saath. Roman Urdu mein short aur clear.
+keywords:
+  - javascript operators
+  - logical operators javascript
+  - nullish coalescing operator
+  - javascript comparison operators
+  - operator precedence
+---
+
+## 1. Operators kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Operator ek symbol hai jo values par koi kaam karta hai, jaise jodna, compare karna ya condition check karna.**
+
+</Callout>
+
+`2 + 3` mein `+` operator hai aur `2`, `3` **operands** hain. Operators ke main groups:
+
+| Group | Operators |
+| --- | --- |
+| **Arithmetic** | `+`, `-`, `*`, `/`, `%`, `**`, `++`, `--` |
+| **Assignment** | `=`, `+=`, `-=`, `*=`, `??=`, `\|\|=`, `&&=` |
+| **Comparison** | `===`, `!==`, `>`, `<`, `>=`, `<=` |
+| **Logical** | `&&`, `\|\|`, `!` |
+| **Nullish** | `??` |
+| **Others** | `typeof`, ternary `? :`, optional chaining `?.` |
+
+## 2. Kyun zaroori hai?
+
+Har program calculations aur faislon par chalta hai. Total nikalna, discount lagana, login check karna, sab operators se hota hai. Sahi operator chunne se code chhota aur bug free hota hai.
+
+<CompareTable leftTitle="Lamba tareeqa" rightTitle="Sahi operator ke saath">
+
+count = count + 1 | count += 1 ya count++
+Har condition alag if mein | Do conditions ek line mein and se
+Default ke liye poora if else | Nullish operator se ek line mein default
+Square ke liye Math.pow | Exponent operator do stars wala
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Real use | Operator |
+| --- | --- |
+| **Cart total** | `+`, `*`, `+=` |
+| **Even ya odd check** | `%` |
+| **Login aur admin dono check** | `&&` |
+| **Default username** | `??` |
+| **Age 18 ya zyada** | `>=` |
+| **Exact match** | `===` |
+
+## 4. Kaise kaam karta hai?
+
+Ek expression mein kai operators hon to **precedence** tay karti hai pehle kaunsa chalega, bilkul school ki math ki tarah.
+
+<Flow title="Precedence ka simple order">
+
+Brackets ( )
+     ↓
+Exponent **
+     ↓
+Multiply, divide, remainder
+     ↓
+Plus, minus
+     ↓
+Comparison
+     ↓
+Logical and, phir or
+
+</Flow>
+
+Logical operators **short circuit** karte hain. `&&` pehli falsy value par ruk jata hai. `||` pehli truthy value par ruk jata hai. `??` sirf `null` ya `undefined` par right side leta hai.
+
+<Callout variant="important" title="Mental model">
+
+**`||` kehta hai "falsy ho to default lo". `??` kehta hai "sirf khaali (null ya undefined) ho to default lo".**
+
+</Callout>
+
+## 5. Code example
+
+Arithmetic aur assignment:
+
+```js
+const price = 500;
+const qty = 3;
+let total = price * qty;
+
+total += 100;
+console.log(total);
+console.log(10 % 3);
+console.log(2 ** 5);
+```
+
+Output: `1600`, `1`, `32`.
+
+Comparison aur logical:
+
+```js
+const age = 20;
+const hasTicket = true;
+
+console.log(age >= 18 && hasTicket);
+console.log(age < 18 || hasTicket);
+console.log(!hasTicket);
+```
+
+Output: `true`, `true`, `false`.
+
+`||` vs `??` ka farq:
+
+```js
+const savedVolume = 0;
+
+const v1 = savedVolume || 50;
+const v2 = savedVolume ?? 50;
+console.log(v1, v2);
+
+const settings = {};
+settings.theme ??= "dark";
+console.log(settings.theme);
+```
+
+Output: `50 0`, phir `dark`. User ne volume `0` rakha tha, `||` ne usay ghalti se `50` kar diya, `??` ne sahi `0` rakha.
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `total += 100` | `total = total + 100` ka short form |
+| `10 % 3` | Remainder, `1` |
+| `2 ** 5` | 2 ki power 5, `32` |
+| `&&` | Dono true hon to true |
+| `\|\|` | Koi ek true ho to true |
+| `??` | Left side `null` / `undefined` ho to right side |
+| `??=` | Sirf khaali ho to value assign karo |
+
+### Interview tip
+
+`??` ko `&&` ya `||` ke saath bina brackets mix karna `SyntaxError` deta hai, jaise `a || b ?? c`. Brackets lagana zaroori hai: `(a || b) ?? c`.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Default value ke liye || use karna jab 0 ya empty string valid ho"
+  why="|| har falsy value (0, empty string, false) ko replace kar deta hai, valid data gum ho jata hai."
+  better="Sirf null aur undefined ke liye default chahiye ho to ?? use karein."
+/>
+
+<Mistake
+  title="Comparison ke liye == use karna"
+  why="== type coercion karta hai, is liye 0 == empty string bhi true aata hai."
+  better="Hamesha === aur !== use karein."
+/>
+
+<Mistake
+  title="Precedence ka andaza lagana"
+  why="Lambe expressions mein pata nahi chalta kaunsa hissa pehle chal raha hai, ghalat result aata hai."
+  better="Jahan shak ho brackets laga dein, code bhi parhne mein asaan hota hai."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Data Types](/courses/javascript/data-types), [Type Conversion](/courses/javascript/type-conversion) |
+| **Is ke baad** | [Conditionals](/courses/javascript/conditionals), [Truthy, Falsy & Equality](/courses/javascript/truthy-falsy-and-equality) |
+| **Aage** | [Optional Chaining & Nullish Coalescing](/courses/javascript/optional-chaining-and-nullish), [Spread & Rest](/courses/javascript/spread-and-rest) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Arithmetic | `+ - * / % **` |
+| Shortcut assignment | `+=`, `-=`, `??=` |
+| Comparison | Hamesha `===` aur `!==` |
+| Logical | `&&`, `\|\|`, `!` short circuit karte hain |
+| `??` | Sirf `null` / `undefined` par default |
+| Precedence | Shak ho to brackets |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Default value ke liye **`??` ko `||` par tarjeeh dein** jab `0` ya `""` bhi valid value ho sakti ho.
+
+</Callout>

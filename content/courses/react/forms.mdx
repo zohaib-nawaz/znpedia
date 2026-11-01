@@ -1,0 +1,181 @@
+---
+title: Forms & Controlled Inputs
+description: React forms controlled inputs ke saath kaise banayein, value aur onChange, checkbox, select aur submit handling Roman Urdu mein, React 19 form action ka intro.
+keywords:
+  - react forms controlled inputs
+  - react onchange input
+  - controlled vs uncontrolled react
+  - react form submit
+---
+
+## 1. Forms & Controlled Inputs kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Controlled input woh input hai jis ki value React state se aati hai aur har change `onChange` ke through state mein jata hai.**
+
+</Callout>
+
+Is tarah state hi **single source of truth** ban jati hai. Input wahi dikhata hai jo state mein hai, aur state hamesha input ki latest value rakhti hai.
+
+Iske ulat **uncontrolled input** apni value khud DOM mein rakhta hai, aur aap zaroorat par usay padhte hain (submit par `FormData` se ya ref se).
+
+## 2. Kyun zaroori hai?
+
+<CompareTable leftTitle="Uncontrolled" rightTitle="Controlled">
+
+Value DOM ke paas | Value React state mein
+Submit par hi value pata chalti hai | Har keystroke par value available
+Live validation mushkil | Typing ke saath error dikha sakte hain
+Simple forms ke liye kaafi | Dynamic forms aur instant feedback
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Use case | Kyun controlled |
+| --- | --- |
+| **Signup form** | Password strength live dikhana |
+| **Search box** | Har letter par list filter karna |
+| **Character counter** | Tweet jaisa limit counter |
+| **Dependent fields** | Country badle to city list badle |
+| **Submit button** | Form valid na ho to disable |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Controlled input ka loop">
+
+State mein value hai
+↓
+Input value state se leta hai
+↓
+User type karta hai, onChange chalta hai
+↓
+Handler setState se nayi value deta hai
+↓
+Re-render, input nayi value dikhata hai
+
+</Flow>
+
+Text input ke liye `value`, checkbox ke liye `checked`. Dono ke saath `onChange` zaroori hai.
+
+## 5. Code example
+
+### Controlled text aur checkbox
+
+```jsx
+import { useState } from "react";
+
+export default function SignupForm() {
+  const [email, setEmail] = useState("");
+  const [agree, setAgree] = useState(false);
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    console.log({ email, agree });
+  }
+
+  const canSubmit = email.includes("@") && agree;
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="Email"
+      />
+      <label>
+        <input
+          type="checkbox"
+          checked={agree}
+          onChange={(e) => setAgree(e.target.checked)}
+        />
+        Terms se agree hoon
+      </label>
+      <button disabled={!canSubmit}>Signup</button>
+    </form>
+  );
+}
+```
+
+### Kai fields, ek state object
+
+```jsx
+const [form, setForm] = useState({ name: "", city: "Lahore" });
+
+function handleChange(e) {
+  setForm({ ...form, [e.target.name]: e.target.value });
+}
+
+<input name="name" value={form.name} onChange={handleChange} />
+<select name="city" value={form.city} onChange={handleChange}>
+  <option>Lahore</option>
+  <option>Karachi</option>
+</select>
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `value={email}` | Input ki value state se |
+| `e.target.value` | User ka typed text |
+| `e.target.checked` | Checkbox ke liye boolean |
+| `e.preventDefault()` | Page reload rokna |
+| `[e.target.name]` | Field ke `name` se sahi key update |
+| `canSubmit` | Derived value, alag state nahi |
+
+### React 19: form action
+
+React 19 mein `<form action={fn}>` bhi likh sakte hain. Function ko `FormData` milta hai, aur submit ke baad uncontrolled fields khud reset ho jate hain. Yeh pending state aur server actions ke saath behtar chalta hai. Iski poori detail [Actions, useActionState & useOptimistic](/courses/react/actions-and-form-hooks) mein hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="value dena lekin onChange na dena"
+  why="Input read-only ban jata hai, user type karta hai magar kuch nahi badalta aur console warning aati hai."
+  better="value ke saath hamesha onChange do, ya sirf initial value chahiye to defaultValue use karo."
+/>
+
+<Mistake
+  title="Initial state undefined rakhna, phir baad mein string dena"
+  why="Input uncontrolled se controlled ban jata hai aur React warning deta hai."
+  better="Text ke liye hamesha useState('') se shuru karo, checkbox ke liye false."
+/>
+
+<Mistake
+  title="Checkbox ke liye e.target.value padhna"
+  why="Checkbox ka value attribute hota hai, checked status nahi."
+  better="Checkbox ke liye checked prop aur e.target.checked use karo."
+/>
+
+<Mistake
+  title="onSubmit mein preventDefault bhool jana"
+  why="Browser poora page reload kar deta hai aur state khatam ho jati hai."
+  better="onSubmit handler ki pehli line mein e.preventDefault() likho, ya React 19 form action use karo."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Chapters |
+| --- | --- |
+| **Pehle** | [State with useState](/courses/react/state), [Handling Events](/courses/react/events) |
+| **Baad mein** | [Actions, useActionState & useOptimistic](/courses/react/actions-and-form-hooks), [useRef](/courses/react/use-ref) |
+| **Related** | [Lifting State Up](/courses/react/lifting-state-up) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Controlled | `value` + `onChange`, state source of truth |
+| Uncontrolled | `defaultValue`, DOM value rakhta hai |
+| Checkbox | `checked` aur `e.target.checked` |
+| Submit | `onSubmit` + `preventDefault` |
+| React 19 | `<form action>` FormData ke saath |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Controlled input mein **state likhti hai, input dikhata hai**. `value` diya to `onChange` bhi do.
+
+</Callout>

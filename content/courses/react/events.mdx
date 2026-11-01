@@ -1,0 +1,172 @@
+---
+title: Handling Events
+description: React onClick events aur doosre event handlers kaise likhein, arguments pass karna, preventDefault aur event object Roman Urdu mein seekhein.
+keywords:
+  - react onclick events
+  - react event handling urdu
+  - react onchange
+  - event handler arguments react
+---
+
+## 1. Handling Events kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**Event handler woh function hai jo React kisi user action (click, typing, submit) par call karta hai.**
+
+</Callout>
+
+React mein events JSX attributes ke through lagte hain, jaise `onClick`, `onChange`, `onSubmit`. Naam **camelCase** mein hote hain aur value ek **function** hoti hai, string nahi.
+
+## 2. Kyun zaroori hai?
+
+Interactive UI ka matlab hai user ke action par kuch hona. Events ke bina React app sirf ek static page hai.
+
+<CompareTable leftTitle="Plain DOM" rightTitle="React events">
+
+querySelector se element dhoondo | Handler seedha JSX mein likho
+addEventListener manually lagao | onClick attribute kaafi hai
+Listener hatana yaad rakho | React khud manage karta hai
+Logic aur markup alag jagah | Handler component ke andar, state ke paas
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Event | Kab chalta hai | Example |
+| --- | --- | --- |
+| `onClick` | Click ya tap | Like button, menu toggle |
+| `onChange` | Input value badle | Search box, checkbox |
+| `onSubmit` | Form submit ho | Login form |
+| `onKeyDown` | Key press ho | Enter par message send |
+| `onMouseEnter` | Mouse upar aaye | Tooltip dikhana |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Click se UI update tak">
+
+User button click karta hai
+↓
+React aapka handler call karta hai aur event object deta hai
+↓
+Handler state update karta hai
+↓
+React re-render karta hai
+↓
+Screen par naya UI
+
+</Flow>
+
+Aap function ka **reference** dete hain (`onClick={handleClick}`), React usay sahi waqt par call karta hai. Agar aap `handleClick()` likhenge to woh render ke dauran hi chal jayega.
+
+## 5. Code example
+
+### Basic click handler
+
+```jsx
+import { useState } from "react";
+
+export default function LikeButton() {
+  const [likes, setLikes] = useState(0);
+
+  function handleClick() {
+    setLikes(likes + 1);
+  }
+
+  return <button onClick={handleClick}>Like ({likes})</button>;
+}
+```
+
+### Argument pass karna
+
+```jsx
+function SizePicker({ onSelect }) {
+  const sizes = ["S", "M", "L"];
+
+  return (
+    <div>
+      {sizes.map((size) => (
+        <button key={size} onClick={() => onSelect(size)}>
+          {size}
+        </button>
+      ))}
+    </div>
+  );
+}
+```
+
+### Event object aur preventDefault
+
+```jsx
+function SearchBox() {
+  function handleKeyDown(e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      console.log("Search:", e.currentTarget.value);
+    }
+  }
+
+  return <input onKeyDown={handleKeyDown} placeholder="Search..." />;
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `onClick={handleClick}` | Function ka reference, React click par call karega |
+| `() => onSelect(size)` | Arrow function taake argument ke saath baad mein call ho |
+| `e` | Event object (React ka synthetic event, browser jaisa API) |
+| `e.key` | Kaunsi key dabi |
+| `e.preventDefault()` | Browser ka default behaviour rokna |
+| `onSelect` prop | Parent ka function child ko diya, child event par usay call karta hai |
+
+Handler props ka naam aam taur par `on` se shuru hota hai (`onSelect`), aur handler functions ka naam `handle` se (`handleClick`).
+
+## 6. Common mistakes
+
+<Mistake
+  title="onClick mein function call kar dena, reference ki jagah"
+  why="handleClick() render ke dauran hi chal jata hai. Agar woh state set kare to infinite re-render loop ban sakta hai."
+  better="onClick={handleClick} likho, ya argument chahiye to onClick={() => handleClick(id)}."
+/>
+
+<Mistake
+  title="HTML ki tarah lowercase onclick aur string value likhna"
+  why="React camelCase naam aur function value expect karta hai, string handler kaam nahi karta."
+  better="onClick, onChange, onSubmit camelCase mein likho aur function pass karo."
+/>
+
+<Mistake
+  title="Nested element par click se parent ka handler bhi chal jana aur samajh na aana"
+  why="Events bubble hote hain, child ka click parent tak bhi pohanchta hai."
+  better="Zaroorat ho to child handler mein e.stopPropagation() call karo."
+/>
+
+### Interview tip
+
+Poocha ja sakta hai "event bubbling kya hai?" Jawab: event pehle target element par chalta hai, phir parents tak upar jata hai. `stopPropagation` isay rokta hai, `preventDefault` sirf browser ka default action rokta hai.
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Chapters |
+| --- | --- |
+| **Pehle** | [State with useState](/courses/react/state), [Props](/courses/react/props) |
+| **Baad mein** | [Forms & Controlled Inputs](/courses/react/forms), [Lifting State Up](/courses/react/lifting-state-up) |
+| **Related** | [Conditional Rendering](/courses/react/conditional-rendering) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Naam | camelCase: `onClick`, `onChange` |
+| Value | Function reference, call nahi |
+| Arguments | Arrow function mein wrap karo |
+| Event object | Handler ka pehla parameter |
+| Default rokna | `e.preventDefault()` |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Function **do**, call **mat karo**. `onClick={handleClick}` sahi hai, `onClick={handleClick()}` galat.
+
+</Callout>

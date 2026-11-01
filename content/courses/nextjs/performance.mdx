@@ -1,0 +1,193 @@
+---
+title: Performance & Core Web Vitals
+description: Next.js performance core web vitals (LCP, INP, CLS) ko measure aur improve karna, useReportWebVitals aur bundle analyzer ke saath, Roman Urdu mein.
+keywords:
+  - next.js performance core web vitals
+  - usereportwebvitals
+  - next.js bundle analyzer
+  - lcp inp cls
+---
+
+## 1. Performance & Core Web Vitals kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Core Web Vitals Google ke teen metrics hain jo real users ka experience naapte hain: LCP (loading), INP (interaction) aur CLS (visual stability).**
+
+</Callout>
+
+| Metric | Kya naapta hai | Achha score |
+| --- | --- | --- |
+| **LCP** (Largest Contentful Paint) | Sab se bara element kitni der mein dikha | 2.5 second se kam |
+| **INP** (Interaction to Next Paint) | Click ya type ke baad screen kitni jaldi update hui | 200 ms se kam |
+| **CLS** (Cumulative Layout Shift) | Content load hote hue kitna khiska | 0.1 se kam |
+
+## 2. Kyun zaroori hai?
+
+Slow site par users chale jate hain, aur Google ranking mein bhi page experience ek signal hai. Next.js bohot kuch default mein optimize karta hai, lekin galat choices se yeh faida khatam ho sakta hai.
+
+<CompareTable leftTitle="Andaze se optimize" rightTitle="Measure kar ke optimize">
+
+Lagta hai site slow hai | Real users ka LCP, INP, CLS data
+Har cheez Client Component | Server Components, kam JavaScript
+Bari library poori bundle mein | Analyzer se bhaari packages pakro
+Images aur fonts bina optimize | next/image aur next/font
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Problem | Asar | Next.js tool |
+| --- | --- | --- |
+| Bari hero image | LCP kharab | `next/image` aur `preload` |
+| Font swap par text khiskna | CLS kharab | `next/font` |
+| Bhaari client JavaScript | INP kharab | Server Components, `next/dynamic` |
+| Slow data fetch | LCP kharab | Streaming, `Suspense`, `"use cache"` |
+| Third party scripts | INP aur LCP kharab | `next/script` ke saath `strategy` |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Performance improve karne ka loop">
+
+Real users se Web Vitals collect karo
+↓
+Sab se kharab metric aur page dhoondo
+↓
+Bundle analyzer ya DevTools se wajah pakro
+↓
+Fix lagao (image, font, client JS, caching)
+↓
+Production build par dobara measure karo
+
+</Flow>
+
+Development mode slow hota hai aur us ke numbers asal nahi hote. Hamesha `next build` aur `next start` ke baad, ya production par measure karein.
+
+## 5. Code example
+
+### Real user metrics: `useReportWebVitals`
+
+```tsx
+"use client";
+
+import { useReportWebVitals } from "next/web-vitals";
+
+type ReportCallback = Parameters<typeof useReportWebVitals>[0];
+
+const sendToAnalytics: ReportCallback = (metric) => {
+  const body = JSON.stringify({ name: metric.name, value: metric.value, rating: metric.rating });
+  navigator.sendBeacon("/api/vitals", body);
+};
+
+export function WebVitals() {
+  useReportWebVitals(sendToAnalytics);
+  return null;
+}
+```
+
+Is component ko root layout ke `body` mein `WebVitals` ki tarah render kar do.
+
+### Heavy component ko lazy load karna
+
+```tsx
+"use client";
+
+import dynamic from "next/dynamic";
+
+const Chart = dynamic(() => import("./chart"), {
+  loading: () => <p>Chart load ho raha hai...</p>,
+});
+
+export function Dashboard() {
+  return <Chart />;
+}
+```
+
+### Bundle analyze karna
+
+```bash
+npx next analyze
+```
+
+Turbopack (Next.js 16.1+) ka built-in analyzer route aur client ya server ke hisaab se modules dikhata hai. Webpack wala `@next/bundle-analyzer` plugin bhi abhi chalta hai:
+
+```ts
+import type { NextConfig } from "next";
+import bundleAnalyzer from "@next/bundle-analyzer";
+
+const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === "true" });
+
+const nextConfig: NextConfig = {};
+
+export default withBundleAnalyzer(nextConfig);
+```
+
+```bash
+ANALYZE=true npx next build --webpack
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `useReportWebVitals` | Har metric (LCP, INP, CLS, FCP, TTFB) ready hone par callback chalata hai |
+| Callback bahar define | Function reference stable rehta hai, duplicate reports nahi |
+| `sendBeacon` | Page band hote hue bhi data bhej deta hai |
+| `dynamic()` | Chart ka code alag chunk mein, zaroorat par load |
+| `next analyze` | Turbopack bundle ka interactive treemap |
+| `--webpack` | `@next/bundle-analyzer` webpack plugin hai, is liye webpack build chahiye |
+
+## 6. Common mistakes
+
+<Mistake
+  title="next dev mein performance naapna"
+  why="Development mode mein extra checks aur unoptimized code hota hai, numbers production se bohot bure aate hain."
+  better="next build aur next start chala kar Lighthouse ya real user data dekho."
+/>
+
+<Mistake
+  title="Poore page ko use client bana dena"
+  why="Saara component tree aur us ki libraries browser bundle mein chali jati hain, INP aur load time dono bigarte hain."
+  better="use client sirf interactive leaf components par lagao, baqi Server Components rakho."
+/>
+
+<Mistake
+  title="Sirf Lighthouse score par bharosa"
+  why="Lighthouse lab test hai ek machine par, real users ke slow phones aur network alag hote hain, aur INP lab mein naapa hi nahi jata."
+  better="useReportWebVitals ya Vercel Speed Insights se field data bhi collect karo."
+/>
+
+<Mistake
+  title="Heavy data transform client par karna"
+  why="Markdown parsing ya syntax highlighting jaisi libraries client bundle bara karti hain halanke output sirf HTML hai."
+  better="Aisa kaam Server Component mein karo, client ko sirf rendered markup bhejo."
+/>
+
+### Interview tip
+
+"INP ne FID ki jagah kyun li?" FID sirf pehle interaction ki delay naapta tha. INP poore visit ke interactions mein se sab se slow ke qareeb wala naapta hai, is liye real responsiveness ki behtar tasveer deta hai.
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Chapters |
+| --- | --- |
+| Pehle | [Image Optimization](/courses/nextjs/image-optimization), [Font Optimization](/courses/nextjs/font-optimization), [Server & Client Components](/courses/nextjs/server-and-client-components) |
+| Saath mein | [Streaming & Suspense](/courses/nextjs/streaming-and-suspense), [Cache Components & use cache](/courses/nextjs/cache-components) |
+| Baad mein | [next.config & Turbopack](/courses/nextjs/next-config-and-turbopack), [Deployment](/courses/nextjs/deployment) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| LCP | Loading, 2.5s se kam |
+| INP | Responsiveness, 200ms se kam |
+| CLS | Stability, 0.1 se kam |
+| Measure | `useReportWebVitals` from `next/web-vitals` |
+| Bundle check | `next analyze` ya `@next/bundle-analyzer` with `--webpack` |
+| Kam JS | Server Components aur `next/dynamic` |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Pehle measure karo, phir fix karo. Production build par real users ka data dekho, sab se kharab metric pakro, aur client JavaScript ko kam se kam rakho.
+
+</Callout>

@@ -1,0 +1,177 @@
+---
+title: useContext
+description: React useContext hook se prop drilling ke baghair data share karna seekhein, React 19 ke Context as provider syntax ke saath, Roman Urdu mein.
+keywords:
+  - react usecontext
+  - react context api urdu
+  - prop drilling solution
+  - createcontext react 19
+---
+
+## 1. useContext kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**`useContext` ek hook hai jo component tree mein upar rakhi gayi value ko neeche kisi bhi component mein directly parhne deta hai.**
+
+</Callout>
+
+Normally data props ke zariye parent se child tak jata hai. Lekin agar ek value (jaise theme ya logged-in user) bohot saare components ko chahiye, to har level par props pass karna thaka dene wala kaam hai.
+
+Context ek "broadcast" jaisa hai. Upar ek jagah value rakh do, aur neeche jis component ko chahiye woh `useContext` se utha le.
+
+## 2. Kyun zaroori hai?
+
+Is problem ko **prop drilling** kehte hain: beech wale components woh props receive aur forward karte hain jo unhein khud chahiye hi nahi.
+
+<CompareTable leftTitle="Prop drilling" rightTitle="Context ke saath">
+
+App se Layout ko theme prop | App ek dafa Context mein theme rakhta hai
+Layout se Sidebar ko theme prop | Sidebar ko kuch pass nahi karna
+Sidebar se Button ko theme prop | Button khud useContext se theme parhta hai
+Naya level add karo to har jagah change | Beech ke components untouched rehte hain
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Use case | Context mein kya hota hai |
+| --- | --- |
+| **Theme** | `"light"` ya `"dark"` mode |
+| **Auth** | Current user aur logout function |
+| **Language** | Selected locale, jaise `"ur"` ya `"en"` |
+| **Design system** | Form ya table ka shared size aur variant |
+
+Context un values ke liye best hai jo **kam change hoti hain** aur **bohot jagah chahiye**. Har cheez ko Context mein daalna zaroori nahi.
+
+## 4. Kaise kaam karta hai?
+
+Teen steps hain: Context banao, value provide karo, aur neeche read karo.
+
+<Flow title="Context ka flow">
+
+createContext se ThemeContext banao
+↓
+Upar ThemeContext value ke saath wrap karo
+↓
+Neeche kisi bhi component mein useContext(ThemeContext)
+↓
+React sab se qareebi provider ki value deta hai
+
+</Flow>
+
+Jab provider ki value change hoti hai, to woh **tamam components re-render** hote hain jo us Context ko parh rahe hain. Isi liye value ko soch samajh kar design karein.
+
+<Callout variant="note" title="React 19 ka naya syntax">
+
+React 19 se aap Context ko directly provider ki tarah render kar sakte hain: `<ThemeContext value="dark">`. Purana tareeqa `<ThemeContext.Provider>` abhi bhi chalta hai, lekin aage deprecate hoga.
+
+</Callout>
+
+## 5. Code example
+
+### Theme Context
+
+```tsx
+import { createContext, useContext, useState } from "react";
+
+type Theme = "light" | "dark";
+
+const ThemeContext = createContext<Theme>("light");
+
+export default function App() {
+  const [theme, setTheme] = useState<Theme>("light");
+
+  return (
+    <ThemeContext value={theme}>
+      <button onClick={() => setTheme(theme === "light" ? "dark" : "light")}>
+        Theme badlo
+      </button>
+      <Toolbar />
+    </ThemeContext>
+  );
+}
+
+function Toolbar() {
+  return <SaveButton />;
+}
+
+function SaveButton() {
+  const theme = useContext(ThemeContext);
+  return <button className={`btn-${theme}`}>Save</button>;
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Line | Matlab |
+| --- | --- |
+| `createContext<Theme>("light")` | Context banaya, `"light"` default value hai |
+| `<ThemeContext value={theme}>` | Neeche ke tamam components ko `theme` mil gaya |
+| `Toolbar` | Beech wala component, isne koi prop pass nahi kiya |
+| `useContext(ThemeContext)` | `SaveButton` ne seedha theme parh li |
+
+### Custom hook ke saath clean pattern
+
+```tsx
+const AuthContext = createContext<{ user: string | null } | null>(null);
+
+export function useAuth() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) {
+    throw new Error("useAuth ko AuthProvider ke andar use karein");
+  }
+  return ctx;
+}
+```
+
+Yeh pattern galat jagah use hone par foran error deta hai, aur baqi code mein sirf `useAuth()` likhna parta hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Provider ke bahar useContext call karna"
+  why="Provider na mile to React default value deta hai, aur bug chupa rehta hai."
+  better="Component ko provider ke andar rakhein, ya custom hook mein null check karke error throw karein."
+/>
+
+<Mistake
+  title="Har render par naya object value mein dena"
+  why="Naya object har dafa different hota hai, is liye tamam consumers bina wajah re-render hote hain."
+  better="Value ko useMemo mein rakhein, ya React Compiler use karein jo yeh khud handle karta hai."
+/>
+
+<Mistake
+  title="Har state ko Context mein daal dena"
+  why="Tez change hone wali state se poora tree re-render hota hai aur app slow lagti hai."
+  better="Local state local rakhein. Context sirf shared, kam change hone wali values ke liye rakhein."
+/>
+
+### Interview tip
+
+Agar poocha jaye "Context Redux ki jagah le sakta hai?", to jawab: Context sirf **data pass karne** ka tareeqa hai, state management nahi. Bari, complex state ke liye `useReducer` + Context ya Zustand jaisi library behtar hai.
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Props](/courses/react/props), [Lifting State Up](/courses/react/lifting-state-up), [State with useState](/courses/react/state) |
+| **Saath** | [useReducer](/courses/react/use-reducer), [Custom Hooks](/courses/react/custom-hooks) |
+| **Baad mein** | [The use() API](/courses/react/use-hook), [State Management Libraries](/courses/react/state-management) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Kya hai | Tree mein upar wali value neeche directly parhna |
+| Problem | Prop drilling |
+| Banane ka tareeqa | `createContext(defaultValue)` |
+| Provide karna (React 19) | `<MyContext value={...}>` |
+| Parhna | `useContext(MyContext)` ya `use(MyContext)` |
+| Re-render | Value change hone par tamam consumers |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Context **data pass karne** ka shortcut hai. Value stable rakhein, aur sirf wohi cheezein daalein jo sach mein bohot components ko chahiye.
+
+</Callout>

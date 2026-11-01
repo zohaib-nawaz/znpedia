@@ -1,0 +1,185 @@
+---
+title: Naming Things
+description: Naming conventions clean code mein kaise kaam karti hain. Functions, booleans, hooks, files aur exports ke naam jo bina comment ke apna kaam batayein.
+keywords:
+  - naming conventions clean code
+  - variable naming best practices
+  - boolean naming is has
+  - function naming conventions
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Naam problem domain ke poore lafzon se banao, function ka naam batao woh kya karta ya deta hai, aur har qisam ki cheez ke liye ek pakka pattern rakho.**
+
+</Callout>
+
+Jab code mein comments nahi hote, to saara samjhane ka bojh naamon par hota hai. Achha naam aadhi documentation hai.
+
+| Cheez | Convention | Misaal |
+| --- | --- | --- |
+| Function | Ek chhota verb, module context deta hai | `invoices.create`, `dispatch`, `record` |
+| Boolean | `is`, `has`, `can`, `should` prefix | `isExpired`, `hasQuotaLeft` |
+| Production check | `ensure` ya `require`, `assert` sirf tests mein | `ensureOwner(caller, doc)` |
+| Custom hook | Named state object, tuple ya JSX nahi | `{ leads, isLoading, refresh }` |
+| Component file | PascalCase | `LeadTable.tsx` |
+| Hook ya module file | kebab-case | `use-lead-table.ts` |
+| Env variable | SCREAMING_SNAKE | `DATABASE_URL` |
+| Export | Named export, default sirf jahan framework maange | `export function price()` |
+
+Underscore se private dikhana (`_cache`) nahi. Visibility language se aati hai: module se export na karo, ya class mein `private` / `#field`.
+
+## 2. Kyun zaroori hai?
+
+Bura naam har parhne wale se thora waqt churata hai. 100 files mein yeh ghanton ban jata hai, aur galat naam seedha bug paida karta hai.
+
+<CompareTable leftTitle="Bure naam" rightTitle="Ache naam">
+
+data, temp, obj, x har jagah | invoice, overdueInvoices, customer
+flag ka matlab andaaza lagana parta hai | isArchived khud sawal ka jawab hai
+Hook ka tuple, order yaad rakhna parta hai | Named fields, order ka koi masla nahi
+Default export, har file mein alag naam se import | Named export, har jagah ek hi naam, search aasaan
+Ek folder mein PascalCase aur kebab-case mix | Import ka path andaaze ki bajaye pakka
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Bohat zaroori | Naming sab se sasti aur sab se zyada faida dene wali aadat hai |
+| **Production code** | Repo ki convention poori follow karo | Ek repo mein do styles search aur imports ko mushkil banate hain |
+| **Senior level** | Conventions likh kar lint se enforce karo | Jo rule likha na ho woh review mein behas banta hai |
+
+## 4. Bura vs acha code
+
+```tsx
+export default function useData(id: string) {
+  const [d, setD] = useState<any>(null);
+  const [l, setL] = useState(true);
+  const _load = () => fetchLeadsForCampaignById(id).then(setD).finally(() => setL(false));
+
+  useEffect(_load, [id]);
+
+  return [d, l, _load] as const;
+}
+
+const [leads, loading] = useData(campaignId);
+```
+
+```tsx
+export function useLeads(campaignId: string) {
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const refresh = useCallback(async () => {
+    setLeads(await campaigns.leads(campaignId));
+    setIsLoading(false);
+  }, [campaignId]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return { leads, isLoading, refresh };
+}
+
+const { leads, isLoading } = useLeads(campaignId);
+```
+
+| Farq kya hai? | Bura | Acha |
+| --- | --- | --- |
+| Hook naam | `useData`, kaunsa data? | `useLeads` saaf |
+| State naam | `d`, `l` | `leads`, `isLoading` |
+| Function naam | `fetchLeadsForCampaignById`, poora jumla | `campaigns.leads`, module context deta hai |
+| Private | `_load` | Bahar export hi nahi, underscore ki zaroorat nahi |
+| Return | Tuple, order galat to bug | Object, naam se lo |
+| Export | Default | Named |
+
+### Ek lafz wala verb
+
+Strict house style kehta hai function ka naam **ek chhota verb** ho: `create`, `cancel`, `record`. Context module ya class ke naam se aata hai, `invoices.cancel(id)` parhne mein jumla ban jata hai.
+
+```ts
+export const invoices = {
+  create,
+  cancel,
+  send,
+};
+```
+
+## 5. Kaise apply karein?
+
+<Flow title="Naam rakhne se pehle">
+
+Yeh cheez domain mein kya kehlati hai?
+↓
+Function hai to kya karta ya kya deta hai?
+↓
+Boolean hai to is, has, can ya should lagao
+↓
+Kya module ka naam context de raha hai? To naam chhota rakho
+↓
+Kya repo mein is qisam ka pattern pehle se hai? Wahi follow karo
+
+</Flow>
+
+## 6. Exceptions aur common mistakes
+
+Loop counter `i`, `j` aur coordinates `x`, `y` theek hain, sab jaante hain. Domain ke mashhoor abbreviations (`id`, `url`, `api`, `html`) bhi theek hain.
+
+React ka apna `useState` tuple deta hai, woh framework ka faisla hai. Named object wala rule aapke **custom** hooks ke liye hai.
+
+**Honest baat:** "ek lafz ka verb" ek sakht opinion hai. Bohat si teams `fetchUserProfile` ya `calculateInvoiceTotal` jaise lambe naam pasand karti hain, khaaskar jab functions alag alag files se import hote hain aur module ka context nazar nahi aata. Trade-off: chhota naam tab achha hai jab call site par `invoices.create` jaisa context ho. Bina context ke `create` akela mubham hai. Jo bhi chunein, poore repo mein ek hi rakhein.
+
+<Mistake
+  title="Generic naam jaise data, info, handle, manager"
+  why="Yeh lafz har cheez par fit hote hain is liye kuch nahi batate."
+  better="Domain ka asli lafz use karo, jaise invoice, overdueInvoices, ya sendReminder."
+/>
+
+<Mistake
+  title="Boolean ka naam jo sawal na lage"
+  why="status ya flag dekh kar pata nahi chalta ke true ka matlab kya hai."
+  better="isActive, hasPaid, canEdit jaisa naam jo haan ya na ka sawal ho."
+/>
+
+<Mistake
+  title="Production code mein assertX naam"
+  why="assert test ka lafz hai, parhne wala samajhta hai yeh sirf tests mein chalta hai."
+  better="Production checks ka naam ensureX ya requireX rakho."
+/>
+
+<Mistake
+  title="Hook se JSX return karna"
+  why="Hook ka kaam state aur logic dena hai, JSX dene se UI aur logic ek jagah phans jate hain."
+  better="Hook named state de, component us se JSX banaye."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Self-Documenting Code](/courses/best-practices/self-documenting-code), [Variables](/courses/javascript/variables) |
+| **Saath mein** | [Custom Hooks](/courses/react/custom-hooks), [Constants & Magic Values](/courses/best-practices/constants-and-magic-values) |
+| **Baad mein** | [Early Returns & Braces](/courses/best-practices/early-returns-and-braces), [Project Structure](/courses/best-practices/project-structure), [Database Naming & Design](/courses/best-practices/database-design) |
+
+## Final quick revision
+
+| Check | Sawal |
+| --- | --- |
+| Domain | Kya naam business ka asli lafz hai? |
+| Function | Kya naam batata hai yeh kya karta ya deta hai? |
+| Boolean | Kya is, has, can ya should se shuru hai? |
+| Hook | Kya named object deta hai, tuple ya JSX nahi? |
+| Private | Kya underscore ki bajaye export na kar ke chhupaya? |
+| Files | Kya folder mein ek hi naming style hai? |
+| Export | Kya named export hai? |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Naam aisa ho ke parhne wala bina file khole samajh jaye. Agar naam ke saath comment chahiye, to naam abhi theek nahi.
+
+</Callout>

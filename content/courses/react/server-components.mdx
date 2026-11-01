@@ -1,0 +1,179 @@
+---
+title: Server Components
+description: React server components Roman Urdu mein, server par render hone wale components, use client aur use server boundaries, aur kab kaunsa use karein.
+keywords:
+  - react server components
+  - use client directive
+  - use server directive
+  - rsc react
+---
+
+## 1. Server Components kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**Server Component aisa React component hai jo sirf server par (ya build time par) render hota hai, aur uska JavaScript code browser mein kabhi nahi jata.**
+
+</Callout>
+
+Server Components (RSC) mein aap seedha database ya file system se data parh sakte hain, `async` / `await` use kar sakte hain, aur result sirf rendered output ki shakal mein client tak jata hai.
+
+Interactivity ke liye **Client Components** hote hain, jinhein file ke upar `"use client"` likh kar mark kiya jata hai. Server Components ek framework ke zariye chalte hain, jaise Next.js App Router.
+
+## 2. Kyun zaroori hai?
+
+Traditional client side React mein data fetch karne ke liye pehle JavaScript download hoti hai, phir component mount hota hai, phir API call jati hai. Har library bhi bundle mein jati hai.
+
+<CompareTable leftTitle="Sirf Client Components" rightTitle="Server Components ke saath">
+
+Pehle JS, phir fetch, phir UI | Server par data ke saath UI tayyar
+Data ke liye alag API endpoint | Component seedha DB ya service se parhta hai
+Markdown ya date library bundle mein | Heavy libraries server par hi reh jati hain
+Secrets client par leak ka khatra | API keys server par mehfooz
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Component | Server ya Client | Kyun |
+| --- | --- | --- |
+| **Blog post page** | Server | Content parhna, koi interactivity nahi |
+| **Product list** | Server | DB se data, SEO friendly HTML |
+| **Like button** | Client | `onClick` aur `useState` chahiye |
+| **Search input** | Client | User typing par state badalti hai |
+| **Layout aur navbar shell** | Server | Static structure, andar chhote client parts |
+
+## 4. Kaise kaam karta hai?
+
+Default mein (framework jaise Next.js mein) har component Server Component hota hai. Jis file mein `"use client"` likha ho, woh aur uske imports client bundle ka hissa ban jate hain. Yeh line ek **boundary** hai.
+
+<Flow title="Request se screen tak">
+
+Request server par aati hai
+↓
+Server Components render, data fetch
+↓
+Output RSC payload mein serialize
++
+Client Components ka JS alag bundle
+↓
+Browser UI dikhata hai
+↓
+Client Components hydrate, interactive
+
+</Flow>
+
+Server se Client Component ko jo props jate hain, woh **serializable** hone chahiye: string, number, plain object, array, Date, Promise, JSX. Normal functions nahi ja sakte, sirf `"use server"` wali Server Functions.
+
+## 5. Code example
+
+### Example 1: Server Component jo Client Component use karta hai
+
+```tsx
+import { db } from "@/lib/db";
+import LikeButton from "./LikeButton";
+
+export default async function PostPage({ id }: { id: string }) {
+  const post = await db.post.findUnique({ where: { id } });
+
+  if (!post) {
+    return <p>Post nahi mila</p>;
+  }
+
+  return (
+    <article>
+      <h1>{post.title}</h1>
+      <p>{post.body}</p>
+      <LikeButton postId={post.id} initialLikes={post.likes} />
+    </article>
+  );
+}
+```
+
+```tsx
+"use client";
+
+import { useState } from "react";
+
+export default function LikeButton({ postId, initialLikes }: { postId: string; initialLikes: number }) {
+  const [likes, setLikes] = useState(initialLikes);
+  return <button onClick={() => setLikes(likes + 1)}>Like {likes}</button>;
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `async function PostPage` | Server Component `async` ho sakta hai |
+| `await db.post...` | Seedha DB call, koi API route nahi |
+| `"use client"` | `LikeButton` aur uske imports client bundle mein |
+| `postId`, `initialLikes` | Serializable props server se client tak |
+
+### Example 2: Server Function ("use server")
+
+```tsx
+"use server";
+
+import { db } from "@/lib/db";
+
+export async function addLike(postId: string) {
+  await db.post.update({ where: { id: postId }, data: { likes: { increment: 1 } } });
+}
+```
+
+Client Component `addLike` ko import karke call kar sakta hai, ya form ke `action` mein de sakta hai. React ise network request mein badal deta hai. Note: `"use server"` Server Components ke liye **nahi** hai, yeh sirf server functions mark karta hai.
+
+### Interview tip
+
+Do galat fehmiyan saaf rakhein: (1) Server Component ko koi directive nahi chahiye, woh default hai. (2) Client Components bhi pehli dafa server par HTML ke liye pre-render hote hain, "client" ka matlab hai ke unka JS browser mein bhi chalta hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Server Component mein useState ya onClick use karna"
+  why="Server Components hooks aur event handlers support nahi karte, kyun ke woh browser mein chalte hi nahi."
+  better="Interactive hissa chhote Client Component mein nikalo aur wahan use client lagao."
+/>
+
+<Mistake
+  title="Poori app ke root par use client laga dena"
+  why="Phir saara tree client bundle mein chala jata hai aur Server Components ke faide khatam."
+  better="use client ko jitna ho sake neeche, leaf components par rakho."
+/>
+
+<Mistake
+  title="Server se Client ko function prop pass karna"
+  why="Normal functions serialize nahi hote, is liye error aata hai."
+  better="Data pass karo, ya use server wali Server Function pass karo."
+/>
+
+<Mistake
+  title="Client Component mein Server Component import karna"
+  why="Import hote hi woh bhi client module ban jata hai aur server only code toot jata hai."
+  better="Server Component ko children ya prop ke tor par Client Component mein pass karo."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Async / Await](/courses/javascript/async-await), [Props](/courses/react/props), [Suspense & lazy()](/courses/react/suspense-and-lazy) |
+| **Saath mein** | [The use() API](/courses/react/use-hook), [Actions, useActionState & useOptimistic](/courses/react/actions-and-form-hooks) |
+| **Baad mein** | [Server & Client Components in Next.js](/courses/nextjs/server-and-client-components), [Server Actions](/courses/nextjs/server-actions), [Data Fetching](/courses/react/data-fetching) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Server Component | Server par render, JS client tak nahi jata |
+| Default | Framework mein har component server par, directive ki zaroorat nahi |
+| `"use client"` | Client boundary, hooks aur events yahan |
+| `"use server"` | Server Functions mark karta hai, components nahi |
+| Props | Server se client tak sirf serializable |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Data aur heavy kaam **server** par, interactivity **client** par. `"use client"` ko leaf ke qareeb rakhein taa ke bundle chhota rahe.
+
+</Callout>

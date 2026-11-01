@@ -1,0 +1,193 @@
+---
+title: Higher-Order Functions
+description: JavaScript higher order functions callbacks ke saath samjhein, functions ko argument banana, function return karna, aur map, filter jaise patterns Roman Urdu mein.
+keywords:
+  - javascript higher order functions callbacks
+  - higher order function urdu
+  - functions as values
+  - callback function javascript
+  - function composition
+---
+
+## 1. Higher-Order Functions kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Higher-order function woh function hai jo doosra function argument mein leta hai, ya function return karta hai, ya dono.**
+
+</Callout>
+
+JavaScript mein functions "first-class values" hain. Yani unhein variable mein rakh sakte ho, argument mein pass kar sakte ho aur return bhi kar sakte ho. Jo function argument mein diya jata hai usay **callback** kehte hain.
+
+`map`, `filter`, `setTimeout`, `addEventListener` sab higher-order functions hain jo aap roz use karte ho.
+
+## 2. Kyun zaroori hai?
+
+Bohot se kaam ka dhancha same hota hai, sirf beech ka ek step badalta hai. Higher-order functions us badalne wale step ko bahar nikal dete hain.
+
+<CompareTable leftTitle="Har kaam ka alag loop" rightTitle="Higher-order function ke saath">
+
+Har filter ke liye naya for loop | Ek filter, condition callback mein
+Same loop logic 10 jagah | Loop logic ek jagah, kaam callback mein
+Kya ho raha hai woh loop mein chhupa | Function ka naam kaam batata hai
+Reuse mushkil | Chhote callbacks mix aur reuse
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Area | Example |
+| --- | --- |
+| **Arrays** | `map`, `filter`, `reduce`, `find`, `some`, `toSorted` |
+| **Events** | `addEventListener("click", handler)` |
+| **Timers** | `setTimeout(callback, 1000)` |
+| **Async** | `promise.then(callback)` |
+| **Utilities** | `debounce(fn, 300)`, `once(fn)`, `memoize(fn)` |
+| **React** | `items.map((item) => ...)` se list render karna |
+
+## 4. Kaise kaam karta hai?
+
+Higher-order function do tareeqon se kaam karta hai:
+
+| Tareeqa | Kya hota hai | Example |
+| --- | --- | --- |
+| **Function leta hai** | Kaam ka ek hissa callback se poochta hai | `arr.filter(isActive)` |
+| **Function deta hai** | Setting yaad rakh kar naya function banata hai | `makeMultiplier(2)` |
+
+<Flow title="Callback wala flow">
+
+Higher-order function ko data aur callback diya
+↓
+Woh apna fixed kaam karta hai (jaise loop)
+↓
+Har step par callback ko call karta hai
+↓
+Callback ka jawab use karke result banata hai
+
+</Flow>
+
+Function return karne wale higher-order functions [Closures](/courses/javascript/closures) par chalte hain, kyunki naya function bahar ki settings yaad rakhta hai.
+
+<Callout variant="important" title="Mental model">
+
+**Fixed kaam higher-order function karta hai, badalne wala kaam callback batata hai.**
+
+</Callout>
+
+## 5. Code example
+
+### Function ko argument banana
+
+```js
+function repeat(times, action) {
+  for (let i = 0; i < times; i++) {
+    action(i);
+  }
+}
+
+repeat(3, (i) => console.log(`Step ${i + 1}`));
+
+const isAdult = (user) => user.age >= 18;
+const users = [
+  { name: "Ali", age: 22 },
+  { name: "Hina", age: 15 },
+];
+console.log(users.filter(isAdult).map((u) => u.name));
+```
+
+### Function return karna
+
+```js
+function once(fn) {
+  let called = false;
+  let result;
+  return (...args) => {
+    if (!called) {
+      called = true;
+      result = fn(...args);
+    }
+    return result;
+  };
+}
+
+const initApp = once(() => {
+  console.log("App initialized");
+  return "ready";
+});
+
+console.log(initApp());
+console.log(initApp());
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `repeat(3, ...)` | Loop `repeat` ka, kaam callback ka |
+| `isAdult` | Naam wala callback, reuse ho sakta hai |
+| `filter(isAdult).map(...)` | Do higher-order functions ki chain, `["Ali"]` |
+| `once(fn)` | `fn` leta hai aur naya function return karta hai |
+| `called` aur `result` | Closure mein yaad rehte hain |
+| Doosra `initApp()` | Message dobara print nahi hota, sirf `ready` milta hai |
+
+### Interview tip
+
+Callback do qisam ke hote hain: **synchronous** (jaise `map`, foran chalta hai) aur **asynchronous** (jaise `setTimeout`, baad mein chalta hai). Interview mein yeh farq zaroor batayein.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Callback ki jagah us ka result pass karna"
+  why="setTimeout(showToast(), 1000) mein showToast foran chal jata hai aur setTimeout ko undefined milta hai."
+  better="Function reference ya arrow do: setTimeout(showToast, 1000) ya setTimeout(() => showToast(msg), 1000)."
+/>
+
+<Mistake
+  title="map mein extra arguments ka khayal na rakhna"
+  why="map callback ko (value, index, array) deta hai. ['1','2','3'].map(parseInt) ganda result deta hai kyunki index radix ban jata hai."
+  better="Wazeh arrow likho: arr.map((s) => parseInt(s, 10)) ya arr.map(Number)."
+/>
+
+<Mistake
+  title="Callback mein return bhoolna"
+  why="Block body wale arrow mein return na ho to filter aur map ko undefined milta hai."
+  better="Ek expression ho to braces hata do, warna return khud likho."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Functions](/courses/javascript/functions), [Arrow Functions](/courses/javascript/arrow-functions), [Closures](/courses/javascript/closures) |
+| **Saath mein** | [Array Methods: map, filter, reduce](/courses/javascript/array-methods) |
+| **Baad mein** | [Callbacks](/courses/javascript/callbacks), [Promises](/courses/javascript/promises), [Debounce & Throttle](/courses/javascript/debounce-and-throttle) |
+
+<Flow title="Suggested order">
+
+Closures
+↓
+Higher-Order Functions
+↓
+Array Methods
+↓
+Callbacks
+↓
+Promises
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Higher-order function | Function leta ya deta hai |
+| Callback | Argument mein diya gaya function |
+| First-class functions | Functions values ki tarah treat hote hain |
+| Sync vs async callback | Foran vs baad mein chalta hai |
+| Function return karna | Closure se settings yaad rehti hain |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Callback pass karte waqt function ka **reference** do, us ka **result** nahi. Fixed logic ek jagah rakhein aur badalne wala hissa callback se lein.
+
+</Callout>

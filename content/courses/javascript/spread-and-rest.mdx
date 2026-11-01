@@ -1,0 +1,191 @@
+---
+title: Spread & Rest
+description: JavaScript spread rest operator ke teen dots ka farq, arrays aur objects copy aur merge karna, aur rest parameters, Roman Urdu mein simple examples ke saath.
+keywords:
+  - javascript spread rest operator
+  - spread operator urdu
+  - rest parameters javascript
+  - merge objects javascript
+---
+
+## 1. Spread & Rest kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Teen dots (`...`) do kaam karte hain: spread cheezon ko phela deta hai, rest bachi hui cheezon ko ek jagah ikattha karta hai.**
+
+</Callout>
+
+Syntax bilkul same hai, farq sirf **jagah** ka hai. Value wali jagah (right side, function call) par `...` **spread** hai. Variable ya parameter wali jagah (left side, function definition) par `...` **rest** hai.
+
+## 2. Kyun zaroori hai?
+
+Purane code mein arrays merge karne ke liye `concat`, objects ke liye `Object.assign`, aur arguments ke liye `arguments` object use hota tha. Spread aur rest yeh sab ek saaf syntax mein karte hain.
+
+<CompareTable leftTitle="Purana tareeqa" rightTitle="Spread aur rest">
+
+a.concat(b) | Array literal mein dono ko spread
+Object.assign khaali object ke saath | Object literal mein spread
+Math.max.apply(null, arr) | Math.max mein array spread
+arguments object, asal array nahi | Rest parameter, asal array
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Situation | Spread ya rest |
+| --- | --- |
+| React state update (naya array / object) | Spread |
+| Default settings ko user settings se merge | Spread |
+| Array ki shallow copy | Spread |
+| Function jo kitne bhi arguments le | Rest |
+| Object se ek field hata kar baqi rakhna | Rest (destructuring) |
+| String ko characters mein todna | Spread |
+
+## 4. Kaise kaam karta hai?
+
+| Jagah | Kya hai | Example |
+| --- | --- | --- |
+| Array literal mein | Spread | `[...a, ...b]` |
+| Object literal mein | Spread | `{ ...defaults, ...user }` |
+| Function call mein | Spread | `Math.max(...nums)` |
+| Function parameters mein | Rest | `function sum(...nums)` |
+| Destructuring mein | Rest | `const { id, ...rest } = obj` |
+
+<Flow title="Spread vs rest">
+
+Ek array ya object
+↓
+Spread: andar ki values bahar nikal kar phela do
+↓
+Kai alag values
+↓
+Rest: bachi hui values ko ek array ya object mein jama karo
+↓
+Ek array ya object
+
+</Flow>
+
+Object spread mein **baad wali** property jeet jati hai. Is liye `{ ...defaults, ...user }` mein user ki values defaults ko override karti hain.
+
+<Callout variant="important" title="Mental model">
+
+**Spread = kholna (unpack). Rest = sametna (pack).**
+
+</Callout>
+
+## 5. Code example
+
+### Spread
+
+```js
+const fruits = ["apple", "mango"];
+const more = [...fruits, "banana"];
+
+const defaults = { theme: "light", fontSize: 16, lang: "en" };
+const saved = { theme: "dark" };
+const settings = { ...defaults, ...saved, lang: "ur" };
+
+const scores = [40, 90, 75];
+
+console.log(more);
+console.log(settings);
+console.log(Math.max(...scores));
+console.log([..."Hi!"]);
+```
+
+### Rest
+
+```js
+function sum(label, ...nums) {
+  const total = nums.reduce((acc, n) => acc + n, 0);
+  return `${label}: ${total}`;
+}
+
+console.log(sum("Total", 10, 20, 30));
+
+const user = { id: 1, name: "Ali", password: "secret" };
+const { password, ...safeUser } = user;
+console.log(safeUser);
+
+const [winner, ...others] = ["Sara", "Ali", "Hina"];
+console.log(winner, others);
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `[...fruits, "banana"]` | Naya array, `fruits` wesa hi |
+| `{ ...defaults, ...saved, lang: "ur" }` | Merge, baad wali values jeetti hain: `dark`, `16`, `ur` |
+| `Math.max(...scores)` | Array ko alag arguments bana diya, `90` |
+| `[..."Hi!"]` | `["H", "i", "!"]` |
+| `...nums` | `10, 20, 30` ek array mein, total `60` |
+| `{ password, ...safeUser }` | `password` alag, baqi `{ id, name }` |
+| `[winner, ...others]` | `Sara` aur `["Ali", "Hina"]` |
+
+### Interview tip
+
+Spread **shallow copy** banata hai. Nested object ab bhi same reference share karta hai. Deep copy ke liye `structuredClone` use karein. Aur rest parameter hamesha **aakhri** parameter hona chahiye.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Spread ko deep copy samajhna"
+  why="Nested objects aur arrays copy nahi hote, copy badlo to original ka nested data bhi badal jata hai."
+  better="Nested data ke liye structuredClone use karo ya har level par spread karo."
+/>
+
+<Mistake
+  title="Merge mein galat order"
+  why="{ ...user, ...defaults } mein defaults ne user ki values overwrite kar din."
+  better="Jo value jeetni chahiye usay baad mein likho: { ...defaults, ...user }."
+/>
+
+<Mistake
+  title="Rest parameter ko beech mein rakhna"
+  why="function f(...args, last) SyntaxError deta hai."
+  better="Rest hamesha aakhri parameter ho: function f(first, ...others)."
+/>
+
+<Mistake
+  title="Bohot bare arrays ko function call mein spread karna"
+  why="Lakhon items Math.max(...arr) mein arguments limit cross karke RangeError de sakte hain."
+  better="Bohot bari lists ke liye reduce ya simple loop use karo."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Arrays](/courses/javascript/arrays), [Objects](/courses/javascript/objects), [Destructuring](/courses/javascript/destructuring) |
+| **Saath mein** | [Functions](/courses/javascript/functions), [call, apply & bind](/courses/javascript/call-apply-bind) |
+| **Baad mein** | [Optional Chaining & Nullish Coalescing](/courses/javascript/optional-chaining-and-nullish), [Map & Set](/courses/javascript/map-and-set) |
+
+<Flow title="Suggested order">
+
+Destructuring
+↓
+Spread & Rest
+↓
+Optional Chaining & Nullish
+↓
+Map & Set
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Spread | Values ko phelana (array, object, function call) |
+| Rest | Bachi values ko jama karna (parameters, destructuring) |
+| Object merge | Baad wali property jeetti hai |
+| Copy | Shallow, nested shared rehta hai |
+| Rest position | Hamesha aakhri |
+
+<Callout variant="important" title="Yaad rakhein">
+
+`...` value ki jagah par spread hai aur variable ki jagah par rest. Spread se bani copy shallow hoti hai, nested data ka khayal rakhein.
+
+</Callout>

@@ -1,0 +1,191 @@
+---
+title: Async / Await
+description: JavaScript async await se promises ko seedhe aur readable code mein likhna, try catch, parallel await aur top-level await, Roman Urdu mein.
+keywords:
+  - javascript async await
+  - async await in urdu
+  - await promise.all
+  - top level await
+---
+
+## 1. Async / Await kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**async / await promises ke upar syntax hai jo async code ko sync code jaisa seedha padhne layak bana deta hai.**
+
+</Callout>
+
+`async` function hamesha ek promise return karta hai. Uske andar `await` likh kar aap kisi promise ke settle hone ka intezar karte hain, aur result seedha variable mein mil jata hai.
+
+`await` sirf us function ko rokta hai, poore program ko nahi. Baqi page aur code chalta rehta hai.
+
+## 2. Kyun zaroori hai?
+
+`.then` chains lambi hon to padhna mushkil ho jata hai, khaas kar jab conditions aur loops hon. async / await wahi logic upar se neeche seedha likhne deta hai.
+
+<CompareTable leftTitle="then chain" rightTitle="async / await">
+
+then ke andar then | Upar se neeche seedhi lines
+Variables ek step se doosre mein le jana mushkil | Normal const variables
+catch alag method | Jana pehchana try catch
+Loops ke saath async mushkil | for...of ke andar await asaan
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Jagah | Example |
+| --- | --- |
+| **API calls** | `const res = await fetch(url)` |
+| **Form submit** | Submit handler ko `async` bana kar data bhejna |
+| **Node.js scripts** | Files padhna, database queries |
+| **Next.js / React Server Components** | `async` components mein data fetch |
+| **ES modules** | Top-level `await` config load karne ke liye |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="await par kya hota hai">
+
+async function chalna shuru
+↓
+await par promise milta hai
+↓
+Function pause, control caller ko wapas
+↓
+Promise settle hota hai
+↓
+Baqi function microtask ke roop mein resume
+
+</Flow>
+
+<Callout variant="important" title="Mental model">
+
+**`await` = "yahan ruk jao jab tak promise ka result na aa jaye", lekin sirf is function mein.**
+
+</Callout>
+
+| Agar promise | `await` kya karta hai |
+| --- | --- |
+| Fulfilled | Value return karta hai |
+| Rejected | Error throw karta hai, `try / catch` pakarta hai |
+
+## 5. Code example
+
+### Basic async function with try catch
+
+```js
+async function loadUser(id) {
+  try {
+    const res = await fetch(`https://jsonplaceholder.typicode.com/users/${id}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const user = await res.json();
+    return user.name;
+  } catch (error) {
+    console.error("Load fail:", error.message);
+    return null;
+  } finally {
+    console.log("Request khatam");
+  }
+}
+
+const name = await loadUser(1);
+console.log(name);
+```
+
+### Sequential vs parallel
+
+```js
+const slowA = () => new Promise((r) => setTimeout(() => r("A"), 1000));
+const slowB = () => new Promise((r) => setTimeout(() => r("B"), 1000));
+
+async function sequential() {
+  const a = await slowA();
+  const b = await slowB();
+  return [a, b];
+}
+
+async function parallel() {
+  const [a, b] = await Promise.all([slowA(), slowB()]);
+  return [a, b];
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Line | Kya ho raha hai |
+| --- | --- |
+| `async function loadUser` | Function ab promise return karta hai |
+| `await fetch(...)` | Response aane tak function ruka |
+| `if (!res.ok) throw` | HTTP error ko khud error banaya |
+| `catch (error)` | Network ya thrown error yahan aata hai |
+| `sequential()` | Takreeban 2 second, ek ke baad ek |
+| `parallel()` | Takreeban 1 second, dono saath |
+
+### Interview tip
+
+`async` function se return ki gayi value bhi promise mein lipat jati hai. Is liye `loadUser(1)` ka result string nahi, `Promise` hai, aur use `await` ya `.then` chahiye.
+
+## 6. Common mistakes
+
+<Mistake
+  title="await bhool jana"
+  why="Variable mein data ki jagah pending Promise aata hai aur user.name undefined hota hai."
+  better="Promise return karne wali har call ke aage await lagayein jab result chahiye."
+/>
+
+<Mistake
+  title="forEach ke andar await"
+  why="forEach async callback ka intezar nahi karta, code aage nikal jata hai."
+  better="Order chahiye to for...of loop, parallel chahiye to Promise.all with map."
+/>
+
+<Mistake
+  title="Independent awaits ko line se likhna"
+  why="Har request pichli ka intezar karti hai, page slow ho jata hai."
+  better="Jo kaam ek doosre par depend nahi karte unhein Promise.all mein chalayein."
+/>
+
+<Mistake
+  title="try catch ke bina await"
+  why="Rejected promise unhandled error ban jata hai."
+  better="await ko try catch mein rakhein ya caller par catch lagayein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Promises](/courses/javascript/promises), [Event Loop](/courses/javascript/event-loop) |
+| **Baad mein** | [Fetch API](/courses/javascript/fetch-api), [Error Handling](/courses/javascript/error-handling), [Modules](/courses/javascript/modules) |
+
+<Flow title="Suggested order">
+
+Callbacks
+↓
+Promises
+↓
+Async Await
+↓
+Fetch API
+↓
+Error Handling
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `async` | Function hamesha promise return karta hai |
+| `await` | Promise ka result nikalta hai, sirf us function ko rokta hai |
+| Errors | Rejected promise `throw` banta hai, `try / catch` se pakrein |
+| Parallel | `await Promise.all([...])` |
+| Loops | `for...of` ke saath await, `forEach` ke saath nahi |
+| Top-level await | ES modules mein function ke bina bhi chalta hai |
+
+<Callout variant="important" title="Yaad rakhein">
+
+async / await **promises hi hain**, sirf likhne ka saaf tareeqa. Errors ke liye `try / catch` aur speed ke liye `Promise.all`.
+
+</Callout>

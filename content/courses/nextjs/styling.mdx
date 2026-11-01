@@ -1,0 +1,208 @@
+---
+title: "Styling: CSS Modules & Tailwind"
+description: Next.js tailwind css modules ka setup, global CSS, Tailwind v4 aur scoped styles ka farq, Roman Urdu mein App Router examples ke saath.
+keywords:
+  - next.js tailwind css modules
+  - tailwind css v4 next.js
+  - css modules next.js
+  - global css next.js
+---
+
+## 1. Styling kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**Next.js mein styling ka matlab hai components ko CSS dena, mostly Tailwind CSS utility classes aur CSS Modules ke through.**
+
+</Callout>
+
+Next.js kai tareeqe support karta hai: Global CSS, CSS Modules, Tailwind CSS, Sass aur CSS-in-JS. Is chapter mein do sab se common tareeqe dekhenge.
+
+- **Tailwind CSS v4**: chhoti utility classes jaise `flex`, `p-4`, `text-xl` seedha `className` mein.
+- **CSS Modules**: `.module.css` file jiski classes sirf usi component tak scoped rehti hain.
+
+## 2. Kyun zaroori hai?
+
+Plain global CSS mein har class poori app mein shared hoti hai. Bari app mein `.button` naam do jagah use ho jaye to styles takra jati hain aur bug dhoondhna mushkil hota hai.
+
+<CompareTable leftTitle="Sirf global CSS" rightTitle="Tailwind + CSS Modules">
+
+Har class poori app mein global | Classes component tak scoped ya utility based
+Naam ke collisions aam hain | CSS Modules unique class names generate karte hain
+Unused CSS bundle mein reh jati hai | Tailwind sirf use hui classes generate karta hai
+Design values har file mein alag | Tailwind theme se consistent spacing aur colors
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Situation | Behtar choice |
+| --- | --- |
+| Layout, spacing, colors, responsive design | Tailwind utility classes |
+| Complex animation ya bohot specific CSS | CSS Module |
+| Reset, fonts, CSS variables, base styles | `app/globals.css` (Global CSS) |
+| Third party library ki CSS | Root layout mein import |
+
+Next.js team ki recommendation bhi yahi hai: zyada tar styling Tailwind se, aur jahan utilities kaafi na hon wahan CSS Modules.
+
+## 4. Kaise kaam karta hai?
+
+Tailwind v4 ek PostCSS plugin ke through chalta hai. Aap `globals.css` mein Tailwind import karte hain, aur build ke waqt Tailwind aap ki files scan kar ke sirf wohi classes banata hai jo use hui hain.
+
+<Flow title="Tailwind v4 ka flow">
+
+postcss.config.mjs mein @tailwindcss/postcss
+↓
+globals.css mein @import "tailwindcss"
+↓
+Root layout globals.css import karta hai
+↓
+Build scan karti hai kaun si classes use hui
+↓
+Chhoti, minified CSS file browser ko
+
+</Flow>
+
+CSS Modules mein `.card` class build ke baad kuch aisa naam ban jati hai: `page_card__x7a2b`. Is liye do alag files mein same naam ki class kabhi takrati nahi.
+
+## 5. Code example
+
+### Tailwind CSS v4 setup
+
+```bash
+npm install -D tailwindcss @tailwindcss/postcss
+```
+
+```js
+export default {
+  plugins: {
+    "@tailwindcss/postcss": {},
+  },
+};
+```
+
+Upar wala code `postcss.config.mjs` mein jata hai. Ab `app/globals.css` mein:
+
+```css
+@import "tailwindcss";
+
+@theme {
+  --color-brand: #0f766e;
+}
+```
+
+```tsx
+import "./globals.css";
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body className="bg-white text-slate-900">{children}</body>
+    </html>
+  );
+}
+```
+
+Ab kisi bhi component mein utility classes:
+
+```tsx
+export default function Hero() {
+  return (
+    <section className="mx-auto max-w-3xl px-4 py-16 text-center">
+      <h1 className="text-4xl font-bold text-brand md:text-5xl">ZnPedia</h1>
+    </section>
+  );
+}
+```
+
+### CSS Module example
+
+```css
+.card {
+  border-radius: 12px;
+  padding: 24px;
+  transition: transform 200ms ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+}
+```
+
+```tsx
+import styles from "./card.module.css";
+
+export function Card({ title }: { title: string }) {
+  return <article className={styles.card}>{title}</article>;
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `@tailwindcss/postcss` | Tailwind v4 ka PostCSS plugin, alag `tailwind.config.js` zaroori nahi |
+| `@import "tailwindcss"` | Tailwind ki base, components aur utilities load karta hai |
+| `@theme` | CSS ke andar hi design tokens, `--color-brand` se `text-brand` class banti hai |
+| `card.module.css` | `.module.css` extension hi file ko CSS Module banata hai |
+| `styles.card` | Generated unique class name ka reference |
+
+<Callout variant="note" title="Server Components ke saath">
+
+Tailwind aur CSS Modules dono Server Components mein bina kisi extra setup ke chalte hain, kyunke yeh build time par plain CSS ban jate hain. Runtime CSS-in-JS libraries ko aksar `"use client"` chahiye hota hai.
+
+</Callout>
+
+## 6. Common mistakes
+
+<Mistake
+  title="Tailwind v3 wala setup v4 mein copy karna"
+  why="v4 mein @tailwind base, components, utilities directives aur purana tailwindcss PostCSS plugin nahi chalta, styles load hi nahi hote."
+  better="Package @tailwindcss/postcss install karo aur globals.css mein sirf @import tailwindcss likho."
+/>
+
+<Mistake
+  title="Har component mein global CSS import karna"
+  why="Global styles navigation par remove nahi hote, is liye alag pages ki CSS aapas mein takra sakti hai."
+  better="Global CSS sirf root layout mein import karo, component specific styles ke liye CSS Module ya Tailwind use karo."
+/>
+
+<Mistake
+  title="Dynamic class names string jor kar banana"
+  why="Tailwind files ko text ki tarah scan karta hai, bg- aur variable jor kar bani class usay nazar nahi aati aur CSS generate nahi hoti."
+  better="Poori class names likho, jaise isActive ho to bg-teal-600 warna bg-slate-200, taake scanner unhein dhoond sake."
+/>
+
+<Mistake
+  title="CSS Module mein kebab-case class ko dot se access karna"
+  why="styles.my-card JavaScript mein minus operator ban jata hai aur undefined milta hai."
+  better="Class ka naam camelCase rakho jaise myCard, ya bracket syntax use karo."
+/>
+
+### Interview tip
+
+Agar poocha jaye "CSS Modules naming collision kaise rokte hain?" to jawab: build time par har class ko file path aur hash ke saath unique naam diya jata hai, aur import kiya hua object original naam ko generated naam se map karta hai.
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Chapters |
+| --- | --- |
+| Pehle | [Layouts & Templates](/courses/nextjs/layouts-and-templates), [Server & Client Components](/courses/nextjs/server-and-client-components) |
+| Saath mein | [Font Optimization](/courses/nextjs/font-optimization), [Image Optimization](/courses/nextjs/image-optimization) |
+| Baad mein | [Performance & Core Web Vitals](/courses/nextjs/performance) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Tailwind v4 install | `tailwindcss` aur `@tailwindcss/postcss` |
+| CSS entry | `globals.css` mein `@import "tailwindcss"` |
+| Theme tokens | `@theme` block CSS ke andar |
+| Scoped CSS | `.module.css` file aur `styles.className` |
+| Global CSS | Sirf root layout mein import |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Zyada tar styling Tailwind utilities se karo, khaas aur complex CSS ke liye CSS Modules rakho, aur global CSS ko sirf truly global cheezon tak mehdood rakho.
+
+</Callout>

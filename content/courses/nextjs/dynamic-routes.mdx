@@ -1,0 +1,180 @@
+---
+title: "Dynamic Routes"
+description: "Next.js dynamic routes params: [slug] folders, catch-all segments, async params ko await karna, PageProps helper aur generateStaticParams Roman Urdu mein."
+keywords:
+  - next.js dynamic routes params
+  - next.js slug page
+  - next.js catch all routes
+  - generatestaticparams
+  - next.js async params
+---
+
+## 1. Dynamic routes kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Dynamic route woh route hai jis ka ek segment square brackets mein hota hai, jaise `[slug]`, aur URL ki value `params` prop ke zariye page ko milti hai.**
+
+</Callout>
+
+Blog ke 500 posts ke liye 500 folders nahi banaye ja sakte. Aap ek folder `app/blog/[slug]` banate hain aur `/blog/hello`, `/blog/nextjs-16` sab isi page se render hote hain.
+
+## 2. Kyun zaroori hai?
+
+<CompareTable leftTitle="Static folders" rightTitle="Dynamic segment">
+
+Har post ka alag folder | Ek [slug] folder sab ke liye
+Naya post = naya code | Naya post = sirf database entry
+URL value hardcoded | URL value params se milti hai
+Hazaron files | Ek page.tsx
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Route | Example URL | `params` |
+| --- | --- | --- |
+| `app/blog/[slug]/page.tsx` | `/blog/hello` | `{ slug: "hello" }` |
+| `app/shop/[category]/[id]/page.tsx` | `/shop/shoes/42` | `{ category: "shoes", id: "42" }` |
+| `app/docs/[...slug]/page.tsx` | `/docs/a/b` | `{ slug: ["a", "b"] }` |
+| `app/docs/[[...slug]]/page.tsx` | `/docs` | `{ slug: undefined }` |
+
+`[...slug]` **catch-all** hai (ek ya zyada segments). `[[...slug]]` **optional catch-all** hai, yeh khaali `/docs` ko bhi match karta hai.
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="/blog/nextjs-16 request">
+
+URL: /blog/nextjs-16
+   ↓
+Next.js app/blog/[slug] match karta hai
+   ↓
+params = Promise of slug nextjs-16
+   ↓
+Page await params karta hai
+   ↓
+slug se post fetch
+   ↓
+Post render
+
+</Flow>
+
+Next.js 16 mein `params` ek **Promise** hai. Server Component mein `await params`, Client Component page mein React ka `use(params)`, aur kisi bhi Client Component mein `useParams()` hook.
+
+Agar aap build time par maloom slugs de dein to `generateStaticParams` un pages ko pehle se **prerender** kar deta hai.
+
+## 5. Code example
+
+### Blog post page
+
+```tsx
+import { notFound } from "next/navigation";
+
+type Post = { slug: string; title: string; body: string };
+
+async function getPost(slug: string): Promise<Post | null> {
+  const res = await fetch(`https://api.example.com/posts/${slug}`);
+  if (!res.ok) return null;
+  return res.json();
+}
+
+export async function generateStaticParams() {
+  const posts: Post[] = await fetch("https://api.example.com/posts").then((r) =>
+    r.json()
+  );
+  return posts.map((post) => ({ slug: post.slug }));
+}
+
+export default async function PostPage({ params }: PageProps<"/blog/[slug]">) {
+  const { slug } = await params;
+  const post = await getPost(slug);
+
+  if (!post) notFound();
+
+  return (
+    <article>
+      <h1>{post.title}</h1>
+      <p>{post.body}</p>
+    </article>
+  );
+}
+```
+
+### Client Component mein params
+
+```tsx
+"use client";
+
+import { useParams } from "next/navigation";
+
+export function ShareButton() {
+  const { slug } = useParams<{ slug: string }>();
+  return <button>Share {slug}</button>;
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `[slug]` folder | URL ka yeh hissa variable ban jata hai |
+| `PageProps<"/blog/[slug]">` | Global helper, `params` ka type khud banata hai |
+| `await params` | Next.js 16 mein params Promise hai |
+| `generateStaticParams` | Build par kaunse slugs prerender karne hain |
+| `notFound()` | Post na mile to `not-found.tsx` UI dikhata hai |
+| `useParams()` | Client Component mein current params |
+
+<Callout variant="tip" title="Type helpers kahan se aate hain?">
+
+`PageProps`, `LayoutProps` aur `RouteContext` global types hain jo `next dev`, `next build` ya `next typegen` chalne par aap ke routes se generate hote hain. Import ki zaroorat nahi.
+
+</Callout>
+
+### Interview tip
+
+"Catch-all aur optional catch-all mein farq?" `[...slug]` ko kam se kam ek segment chahiye, `[[...slug]]` base path (`/docs`) bhi match karta hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="params.slug seedha parhna"
+  why="Next.js 16 mein params Promise hai, seedha access undefined deta hai aur sync access hata diya gaya hai."
+  better="const slug = (await params).slug likhein, ya destructure karein."
+/>
+
+<Mistake
+  title="Post na milne par khaali page dikhana"
+  why="User ko confusing page milta hai aur search engines ko 200 status jata hai."
+  better="Data na mile to notFound() call karein taake 404 UI aur sahi status mile."
+/>
+
+<Mistake
+  title="params ko number samajhna"
+  why="URL se aane wali har value string hoti hai, catch-all mein string array."
+  better="Zaroorat ho to Number(id) se convert karein aur invalid value par notFound() karein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Routing & Pages](/courses/nextjs/routing-and-pages), [JavaScript async/await](/courses/javascript/async-await) |
+| **Saath** | [Loading, Error & Not Found UI](/courses/nextjs/loading-and-error-ui), [React use hook](/courses/react/use-hook) |
+| **Baad mein** | [Rendering Strategies](/courses/nextjs/rendering-strategies), [Data Fetching](/courses/nextjs/data-fetching), [Metadata & SEO](/courses/nextjs/metadata-and-seo) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Syntax | `[slug]`, `[...slug]`, `[[...slug]]` |
+| Value kahan | `params` prop (Promise) |
+| Server mein | `await params` |
+| Client mein | `use(params)` ya `useParams()` |
+| Prerender | `generateStaticParams` |
+| Na mile | `notFound()` |
+
+<Callout variant="important" title="Yaad rakhein">
+
+**Square brackets = dynamic segment.** Next.js 16 mein `params` hamesha await karein.
+
+</Callout>

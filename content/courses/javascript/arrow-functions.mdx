@@ -1,0 +1,185 @@
+---
+title: Arrow Functions
+description: JavaScript arrow functions ka short syntax, implicit return, aur normal function se farq, khaas taur par this ka behavior, Roman Urdu mein seekhein.
+keywords:
+  - javascript arrow functions
+  - arrow function urdu
+  - implicit return javascript
+  - arrow function vs normal function
+---
+
+## 1. Arrow Functions kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Arrow function `=>` syntax wala chhota function hai jo apna `this` nahi banata, bahar wala `this` use karta hai.**
+
+</Callout>
+
+ES2015 mein arrow functions aaye taake chhote functions, khaas taur par callbacks, kam lafzon mein likhe ja saken. Inhein hamesha variable mein store karte hain, jaise `const add = (a, b) => a + b`.
+
+## 2. Kyun zaroori hai?
+
+Callbacks mein `function` keyword aur `return` baar baar likhna code ko lamba kar deta hai. Upar se purane code mein `this` ka masla alag tha.
+
+<CompareTable leftTitle="Normal function callback" rightTitle="Arrow function callback">
+
+function keyword aur return har baar | Ek line, implicit return
+Callback ke andar this badal jata tha | Bahar wala this hi milta hai
+const self = this jaisa jugaar | Kisi jugaar ki zaroorat nahi
+map aur filter chains lambi | Chains saaf aur chhoti
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Area | Example |
+| --- | --- |
+| **Array methods** | `prices.map((p) => p * 2)` |
+| **Event handlers** | `button.addEventListener("click", () => save())` |
+| **Promises** | `fetch(url).then((res) => res.json())` |
+| **React** | `onClick={() => setCount(count + 1)}` |
+| **Timers** | `setTimeout(() => showToast(), 2000)` |
+
+## 4. Kaise kaam karta hai?
+
+Arrow function ka syntax teen cheezon par chalta hai: parameters, `=>`, aur body. Body agar ek expression hai to woh khud return ho jati hai.
+
+<Flow title="Normal function se arrow tak">
+
+function (a, b) return a + b
+↓
+function keyword hatao, beech mein arrow lagao
+↓
+(a, b) arrow, curly braces mein return a + b
+↓
+Ek expression hai to braces aur return bhi hatao
+↓
+(a, b) arrow a + b
+
+</Flow>
+
+| Shakal | Matlab |
+| --- | --- |
+| `() => 42` | Koi parameter nahi, parentheses zaroori |
+| `n => n * 2` | Ek parameter, parentheses optional |
+| `(a, b) => a + b` | Kayi parameters, implicit return |
+| `(a, b) => { return a + b; }` | Block body, `return` khud likhna hoga |
+| `() => ({ id: 1 })` | Object return karne ke liye parentheses |
+
+<Callout variant="important" title="Mental model">
+
+**Arrow function ka `this` wahi hai jo us jagah ka `this` hai jahan arrow likha gaya.**
+
+</Callout>
+
+## 5. Code example
+
+### Short syntax aur implicit return
+
+```js
+const add = (a, b) => a + b;
+const double = (n) => n * 2;
+const toUser = (name) => ({ name, createdAt: Date.now() });
+
+const prices = [100, 250, 400];
+const withTax = prices.map((p) => Math.round(p * 1.17));
+
+console.log(add(2, 3));
+console.log(withTax);
+console.log(toUser("Ali").name);
+```
+
+### `this` ka farq
+
+```js
+const timer = {
+  seconds: 0,
+  start() {
+    setInterval(() => {
+      this.seconds += 1;
+      console.log(this.seconds);
+    }, 1000);
+  },
+};
+
+timer.start();
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `(a, b) => a + b` | Expression body, `a + b` khud return hota hai |
+| `({ name, ... })` | Parentheses ke bina braces ko block samjha jata |
+| `prices.map((p) => ...)` | Har price par arrow callback chalta hai |
+| `start()` | Normal method, is ka `this` `timer` object hai |
+| `setInterval(() => ...)` | Arrow ne `start` ka `this` le liya, is liye `this.seconds` kaam karta hai |
+
+### Interview tip
+
+Arrow functions ke paas apna `this`, `arguments` aur `prototype` nahi hota, aur inhein `new` ke saath call nahi kar sakte. Is liye object methods aur constructors ke liye normal function ya method syntax use karein. Detail: [The this Keyword](/courses/javascript/this-keyword).
+
+## 6. Common mistakes
+
+<Mistake
+  title="Object method ko arrow function banana"
+  why="Arrow ka this bahar wala hota hai, is liye this.name undefined aata hai, object nahi milta."
+  better="Object methods ke liye method syntax likho, jaise greet() aur andar this use karo."
+/>
+
+<Mistake
+  title="Object return karte waqt parentheses bhoolna"
+  why="() => { id: 1 } mein braces ko function body samjha jata hai, result undefined aata hai."
+  better="Object ko parentheses mein lapeto: () => ({ id: 1 })."
+/>
+
+<Mistake
+  title="Block body mein return na likhna"
+  why="Curly braces lagate hi implicit return khatam ho jata hai, map ka result undefined values se bhar jata hai."
+  better="Braces lagao to return khud likho, warna braces hata kar ek expression rakho."
+/>
+
+<Mistake
+  title="Har jagah arrow function zabardasti"
+  why="Event listener mein this se element chahiye ho ya constructor chahiye ho to arrow kaam nahi karta."
+  better="Callbacks ke liye arrow, methods aur this ki zaroorat wali jagah normal function."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Functions](/courses/javascript/functions) |
+| **Saath mein** | [The this Keyword](/courses/javascript/this-keyword), [Array Methods](/courses/javascript/array-methods) |
+| **Baad mein** | [Higher-Order Functions](/courses/javascript/higher-order-functions), [Promises](/courses/javascript/promises) |
+
+<Flow title="Suggested order">
+
+Functions
+↓
+Arrow Functions
+↓
+Scope & Hoisting
+↓
+The this Keyword
+↓
+Array Methods
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Syntax | `(params) => expression` |
+| Implicit return | Sirf bina braces wali body mein |
+| Object return | `() => ({ ... })` |
+| `this` | Bahar wale scope se aata hai |
+| Kab na use karein | Object methods, constructors, `arguments` ki zaroorat |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Arrow functions callbacks ke liye behtareen hain. Lekin yeh apna `this` nahi banate, is liye object ke methods ke liye normal method syntax hi rakhein.
+
+</Callout>

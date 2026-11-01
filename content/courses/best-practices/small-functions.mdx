@@ -1,0 +1,183 @@
+---
+title: Small Functions & Single Responsibility
+description: Single responsibility principle functions par kaise lagta hai. Chhote functions, ek kaam, ek level of abstraction aur side effects ko alag rakhna.
+keywords:
+  - single responsibility principle functions
+  - small functions clean code
+  - function length best practice
+  - pure functions side effects
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Har function ek kaam kare. Function 40 lines se chhota ho, aur jahan logic ijazat de wahan 20 se chhota. Agar function ko describe karne mein "aur" aaye, to woh do function hain.**
+
+</Callout>
+
+Single Responsibility ka matlab: function ke badalne ki **ek hi wajah** ho. Agar email ka format badle aur discount ka hisaab bhi badle, aur dono ek hi function chhedein, to us function ki do zimmedariyan hain.
+
+| Hissa | Matlab |
+| --- | --- |
+| **Ek kaam** | Naam ek verb, jumla mein "aur" nahi |
+| **Size** | 40 lines max, 20 target |
+| **Ek level of abstraction** | High level steps aur low level details ek hi function mein mix na hon |
+| **Pure jahan mumkin** | Data badalna ek function, database ya network doosra |
+| **Parameters** | 3 se zyada related values ho to ek object |
+
+## 2. Kyun zaroori hai?
+
+Lamba function ek kamra hai jis mein sab kuch bikhra hai. Ek cheez dhoondne ke liye poora kamra dekhna parta hai, aur kuch hilao to doosri cheez gir jati hai.
+
+<CompareTable leftTitle="Ek bara function" rightTitle="Chhote focused functions">
+
+150 lines, poora parhe bina kuch badalna khatarnak | 15 lines, ek nazar mein samajh
+Test karne ke liye database aur email dono mock | Pure hisaab bina mock ke test
+Bug kahan hai, poora function debug karo | Naam se pata chalta hai kahan dekhna hai
+Ek hissa reuse karna ho to copy paste | Chhota function seedha import
+Do log ek hi function mein alag cheez badlein, merge conflict | Alag functions, alag changes
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Zaroori, line count se zyada "ek kaam" par focus | Function todna seekhna programming ki bunyad hai |
+| **Production code** | 40 line limit review mein check | Lamba function bugs ka ghar aur test ka dushman hai |
+| **Senior level** | Pehchano kab todna aur kab nahi | Zabardasti todne se bhi coupling paida hoti hai |
+
+## 4. Bura vs acha code
+
+```ts
+export async function checkout(cartId: string, userId: string, couponCode?: string) {
+  const cart = await db.cart.findUnique({ where: { id: cartId }, include: { items: true } });
+  if (!cart) throw new Error("no cart");
+  let total = 0;
+  for (const item of cart.items) {
+    total += item.price * item.quantity;
+  }
+  if (couponCode) {
+    const coupon = await db.coupon.findUnique({ where: { code: couponCode } });
+    if (coupon && coupon.expiresAt > new Date()) {
+      total = total - total * coupon.percent / 100;
+    }
+  }
+  const order = await db.order.create({ data: { userId, total, cartId } });
+  const user = await db.user.findUnique({ where: { id: userId } });
+  await mailer.send(user!.email, `Order ${order.id} confirmed, total ${total}`);
+  return order;
+}
+```
+
+```ts
+export async function checkout(input: CheckoutInput) {
+  const cart = await carts.require(input.cartId);
+  const coupon = await coupons.find(input.couponCode);
+  const order = await orders.create(input.userId, cart, total(cart.items, coupon));
+
+  await notify(order);
+
+  return order;
+}
+```
+
+```ts
+function subtotal(items: CartItem[]) {
+  return items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+}
+
+function total(items: CartItem[], coupon: Coupon | null) {
+  if (!coupon || isCouponExpired(coupon)) {
+    return subtotal(items);
+  }
+
+  return subtotal(items) * (1 - coupon.percent / 100);
+}
+```
+
+| Farq kya hai? | Bura | Acha |
+| --- | --- | --- |
+| Zimmedariyan | Load, hisaab, coupon, save, email sab ek jagah | `checkout` sirf steps ki tarteeb |
+| Abstraction | `for` loop aur business flow mix | Upar flow, neeche details |
+| Testing | Hisaab test karne ke liye database chahiye | `total` pure hai, seedha test |
+| Parameters | 3 positional, order yaad rakho | Ek `CheckoutInput` object |
+| Parhna | 20 dense lines | Har function 10 se kam lines |
+
+`checkout` ab ek kahani ki tarah parhta hai: cart lo, coupon lo, order banao, batao.
+
+## 5. Kaise apply karein?
+
+<Flow title="Bare function ko todna">
+
+Function ko ek jumla mein describe karo
+↓
+Har "aur" ek alag function ka nishan hai
+↓
+Pure hisaab ko side effects se alag nikalo
+↓
+Har nikle hisse ko kaam ke mutabiq naam do
+↓
+Bahar wala function sirf steps call kare
+↓
+Tests chalao, behaviour same hona chahiye
+
+</Flow>
+
+React component par bhi yahi lagta hai. Jo component data **fetch** kare, use **transform** kare aur **render** kare, woh teen kaam hai: hook fetch kare, pure function transform kare, component render kare.
+
+## 6. Exceptions aur common mistakes
+
+Line count rule ka nishana hai, khud rule nahi. **Logic decide kare:** 25 fields ki ek seedhi mapping ek hi idea hai aur poori reh sakti hai. Lekin 8 lines ka function jo do alag kaam kare, use do functions banna chahiye.
+
+Ek mukammal domain flow ko zabardasti 10 tukron mein todna bhi galat hai. Agar har tukra sirf ek jagah se call ho aur doosre ke andar ki details jaane bina samajh na aaye, to aap ne coupling barhayi hai, ghatayi nahi.
+
+<Mistake
+  title="Function ko sirf line count ke liye todna"
+  why="part1, part2 jaise tukre koi alag kaam nahi karte, parhne wala ab teen jagah jump karta hai."
+  better="Tab todo jab hissa apna alag naam aur alag wajah-e-badlav rakhta ho."
+/>
+
+<Mistake
+  title="Hisaab ke beech mein database ya network call"
+  why="Pure logic test karne ke liye ab mock chahiye, aur hisaab ki galti side effect se chhup jati hai."
+  better="Pehle data lao, phir pure function se hisaab karo, phir result save karo."
+/>
+
+<Mistake
+  title="Boolean parameter se do kaam"
+  why="send(order, true) dekh kar pata nahi chalta true kya karta hai, function do raaston wala ban jata hai."
+  better="Do alag functions banao jin ke naam farq batayein."
+/>
+
+<Mistake
+  title="Bohat saare positional parameters"
+  why="create(a, b, c, d, e) mein order galat hua to TypeScript bhi nahi pakar sakta agar types same hon."
+  better="Related values ko ek typed object mein do."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Functions](/courses/javascript/functions), [Naming Things](/courses/best-practices/naming) |
+| **Saath mein** | [Early Returns & Braces](/courses/best-practices/early-returns-and-braces), [Breathing Room & Transient Locals](/courses/best-practices/readable-formatting) |
+| **Baad mein** | [File Size & Organization](/courses/best-practices/file-size-and-organization), [Service Layer](/courses/best-practices/service-layer), [Separation of Concerns](/courses/best-practices/separation-of-concerns) |
+
+## Final quick revision
+
+| Check | Sawal |
+| --- | --- |
+| Ek kaam | Kya function ek jumla mein bina "aur" ke describe hota hai? |
+| Size | Kya 40 se kam, behtar 20 se kam lines? |
+| Abstraction | Kya flow aur details alag levels par hain? |
+| Pure | Kya hisaab side effects se alag hai? |
+| Parameters | Kya 3 se zyada related values object mein hain? |
+| Zabardasti | Kya koi tukra bina wajah ke bana? |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Function ka naam ek verb ho aur kaam bhi ek. Jab aap "yeh function yeh karta hai aur..." kehne lagein, wahin se tod do.
+
+</Callout>

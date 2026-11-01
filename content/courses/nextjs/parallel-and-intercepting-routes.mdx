@@ -1,0 +1,217 @@
+---
+title: "Parallel & Intercepting Routes"
+description: "Next.js parallel intercepting routes: @slot se ek layout mein kai pages, (.) se modal routes, aur Next.js 16 mein har slot ke liye zaroori default.tsx."
+keywords:
+  - next.js parallel intercepting routes
+  - next.js parallel routes
+  - next.js intercepting routes modal
+  - next.js default.js
+  - next.js slots
+---
+
+## 1. Parallel aur intercepting routes kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Parallel routes `@slot` folders se ek hi layout mein kai pages saath render karte hain. Intercepting routes `(.)` jaise folders se kisi route ko current page ke upar (jaise modal mein) dikhate hain.**
+
+</Callout>
+
+Dono advanced routing patterns hain aur aksar saath use hote hain. Sab se mashhoor misaal: Instagram jaisi gallery jahan photo par click se modal khulta hai, lekin URL badal jata hai aur refresh par poora photo page aata hai.
+
+## 2. Kyun zaroori hai?
+
+<CompareTable leftTitle="Normal routing" rightTitle="Parallel + intercepting">
+
+Ek layout mein ek page | Ek layout mein kai independent slots
+Modal ka URL nahi hota | Modal ka apna shareable URL
+Refresh par modal gayab | Refresh par full page khulta hai
+Dashboard sections ek loading state | Har slot ka apna loading aur error
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Use case | Pattern |
+| --- | --- |
+| **Dashboard mein analytics aur team panels** | `@analytics`, `@team` parallel slots |
+| **Photo gallery modal** | `@modal` + `(.)photo/[id]` |
+| **Login modal header se** | `@auth` + `(.)login` |
+| **Role ke hisaab se alag panel** | Layout mein condition se slot choose |
+| **Cart drawer shareable URL ke saath** | Intercepted `/cart` route |
+
+## 4. Kaise kaam karta hai?
+
+### Parallel routes
+
+`@name` folder ek **slot** hai. Slot URL ka hissa nahi banta, balki parent layout ko us naam ka prop milta hai.
+
+<Flow title="Slots layout tak">
+
+app/dashboard/@analytics/page.tsx
+   +
+app/dashboard/@team/page.tsx
+   +
+app/dashboard/page.tsx (children)
+   ↓
+app/dashboard/layout.tsx ko analytics, team aur children props
+   ↓
+Teeno ek saath render
+
+</Flow>
+
+Next.js 16 mein **har slot ko `default.tsx` chahiye**. Hard navigation (refresh) par jab Next.js kisi slot ki current state nahi jaanta, to `default.tsx` dikhata hai. Iske baghair build fail hota hai.
+
+### Intercepting routes
+
+| Convention | Matlab |
+| --- | --- |
+| `(.)folder` | Same level ka segment intercept |
+| `(..)folder` | Ek level upar ka segment |
+| `(..)(..)folder` | Do level upar |
+| `(...)folder` | `app` root se |
+
+Yeh levels **route segments** par based hain, file system par nahi. `@modal` jaisa slot level mein count nahi hota.
+
+<Flow title="Photo modal ka flow">
+
+Gallery par photo link click (soft navigation)
+   ↓
+@modal/(.)photo/[id] intercept karta hai
+   ↓
+Gallery ke upar modal, URL /photo/7
+   ↓
+Refresh ya direct link
+   ↓
+Asal app/photo/[id]/page.tsx full page
+
+</Flow>
+
+## 5. Code example
+
+### Folder structure
+
+```bash
+app/
+  layout.tsx
+  page.tsx
+  @modal/
+    default.tsx
+    (.)photo/[id]/page.tsx
+  photo/[id]/page.tsx
+```
+
+### Root layout mein slot
+
+```tsx
+export default function RootLayout({ children, modal }: LayoutProps<"/">) {
+  return (
+    <html lang="en">
+      <body>
+        {children}
+        {modal}
+      </body>
+    </html>
+  );
+}
+```
+
+### default.tsx aur modal page
+
+```tsx
+export default function Default() {
+  return null;
+}
+```
+
+```tsx
+import { Modal } from "@/components/modal";
+
+export default async function PhotoModal({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  return (
+    <Modal>
+      <img src={`/photos/${id}.jpg`} alt={`Photo ${id}`} />
+    </Modal>
+  );
+}
+```
+
+```tsx
+"use client";
+
+import { useRouter } from "next/navigation";
+
+export function Modal({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  return (
+    <div className="fixed inset-0 bg-black/60" onClick={() => router.back()}>
+      <div onClick={(e) => e.stopPropagation()}>{children}</div>
+    </div>
+  );
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `@modal` | Slot, layout ko `modal` prop milta hai |
+| `LayoutProps<"/">` | Type helper jo slots ke props bhi type karta hai |
+| `@modal/default.tsx` | Jab modal active nahi, `null` render |
+| `(.)photo/[id]` | Same level ka `/photo/[id]` intercept |
+| `router.back()` | Modal band, pichla URL wapas |
+| `app/photo/[id]/page.tsx` | Refresh ya direct visit par full page |
+
+### Interview tip
+
+"Modal ka URL kyun ho?" Taake user link share kar sake, refresh par content na khoye, aur back button se modal band ho. Parallel + intercepting routes yahi dete hain.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Slot ka default.tsx na banana"
+  why="Next.js 16 mein default file ke baghair build fail hota hai."
+  better="Har slot mein default.tsx rakhein jo null return kare ya notFound() call kare."
+/>
+
+<Mistake
+  title="Intercept level file system se ginna"
+  why="Levels route segments se gine jate hain, @slot folder level nahi hota."
+  better="@modal ke andar same URL level ke liye (.) use karein, slot ko count na karein."
+/>
+
+<Mistake
+  title="Modal band karne ke liye router.push use karna"
+  why="Is se history mein extra entry banti hai aur back button par modal dobara khulta hai."
+  better="Modal band karne ke liye router.back() use karein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Layouts & Templates](/courses/nextjs/layouts-and-templates), [Route Groups](/courses/nextjs/route-groups-and-private-folders), [Dynamic Routes](/courses/nextjs/dynamic-routes) |
+| **Saath** | [Linking & Navigation](/courses/nextjs/linking-and-navigation), [React portals](/courses/react/portals) |
+| **Baad mein** | [Loading, Error & Not Found UI](/courses/nextjs/loading-and-error-ui), [Streaming & Suspense](/courses/nextjs/streaming-and-suspense) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Parallel slot | `@name` folder, layout ko prop |
+| URL par asar | Slot URL mein nahi aata |
+| default.tsx | Next.js 16 mein har slot ke liye zaroori |
+| Intercept | `(.)`, `(..)`, `(...)` |
+| Soft navigation | Intercepted UI (modal) |
+| Refresh | Asal full page |
+
+<Callout variant="important" title="Yaad rakhein">
+
+**`@slot` = ek layout mein kai pages, `(.)` = route ko modal mein pakarna, aur har slot ka `default.tsx` zaroori.**
+
+</Callout>

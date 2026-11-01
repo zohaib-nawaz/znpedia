@@ -1,0 +1,204 @@
+---
+title: Deployment
+description: Next.js deployment Vercel, Docker aur apne server par, output standalone, next start aur production checklist, Roman Urdu mein step by step samjhein.
+keywords:
+  - next.js deployment vercel docker
+  - next.js docker standalone
+  - next.js self hosting
+  - deploy next.js vercel
+---
+
+## 1. Deployment kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**Deployment ka matlab hai app ka production build bana kar use kisi server ya platform par chalana taake log internet se use khol sakein.**
+
+</Callout>
+
+Next.js ke chaar bare raste hain:
+
+| Option | Feature support |
+| --- | --- |
+| **Vercel** (verified adapter) | Saare features, zero config |
+| **Node.js server** (`next start`) | Saare features |
+| **Docker container** | Saare features |
+| **Static export** (`output: "export"`) | Limited, server wale features nahi |
+
+## 2. Kyun zaroori hai?
+
+`next dev` sirf development ke liye hai: slow, unoptimized aur debugging tools ke saath. Production mein optimized build, caching aur sahi environment variables chahiye.
+
+<CompareTable leftTitle="next dev" rightTitle="Production deployment">
+
+Har request par on demand compile | Pehle se optimized build
+Unminified code aur dev warnings | Minified, code split bundles
+Local machine par chalta hai | Server ya platform par 24/7
+Local env files | Platform ke secure environment variables
+Ek user, aap khud | Hazaron users, scaling aur caching
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Situation | Behtar choice |
+| --- | --- |
+| Personal project, startup, fast launch | Vercel |
+| Apna VPS (Hostinger, DigitalOcean) | `next build` + `next start`, PM2 ya systemd ke saath |
+| Kubernetes, Cloud Run, Fly.io | Docker + `output: "standalone"` |
+| Sirf static marketing site | `output: "export"`, kisi bhi static host par |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Code se production tak">
+
+git push
+↓
+next build (Turbopack) optimized output banata hai
+↓
+Static pages, server code aur assets alag hote hain
+↓
+Platform ya server next start chalata hai
+↓
+Users ko production app milti hai
+
+</Flow>
+
+Vercel par yeh sab khud hota hai: GitHub repo connect karein, har push par preview deployment aur `main` branch par production deployment banta hai.
+
+## 5. Code example
+
+### Self-hosting: Node.js server
+
+```json
+{
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  }
+}
+```
+
+```bash
+npm ci
+npm run build
+PORT=3000 npm run start
+```
+
+### Docker ke liye standalone output
+
+```ts
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  output: "standalone",
+};
+
+export default nextConfig;
+```
+
+```bash
+FROM node:22-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+FROM node:22-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+EXPOSE 3000
+CMD ["node", "server.js"]
+```
+
+Upar wala `Dockerfile` hai. Build aur run:
+
+```bash
+docker build -t znpedia .
+docker run -p 3000:3000 --env-file .env.production znpedia
+```
+
+### Vercel CLI se deploy
+
+```bash
+npm i -g vercel
+vercel
+vercel --prod
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `next build` | Production build `.next` folder mein |
+| `next start` | Production server, default port 3000 |
+| `output: "standalone"` | `.next/standalone` mein sirf zaroori files aur `server.js` |
+| `.next/static` aur `public` copy | Standalone inhein khud copy nahi karta, Dockerfile mein karna padta hai |
+| Multi-stage build | Builder ki bhaari dependencies final image mein nahi aati |
+| `--env-file` | Secrets image mein bake nahi hote, runtime par aate hain |
+| `vercel --prod` | Production deployment, bina flag ke preview |
+
+<Callout variant="note" title="Self-hosting mein dhyan rakhein">
+
+Kai containers chalayein to har instance ka apna cache hota hai. Bare setups mein shared cache handler aur sab instances ke liye same build ID chahiye. Image optimization ke liye server par `sharp` ka sahi install bhi zaroori hai.
+
+</Callout>
+
+## 6. Common mistakes
+
+<Mistake
+  title="Production server par next dev chalana"
+  why="Dev mode slow hai, har request par compile karta hai aur production optimizations band hoti hain."
+  better="Server par hamesha next build ke baad next start chalao."
+/>
+
+<Mistake
+  title="Standalone output mein static aur public copy na karna"
+  why="Page khulta hai lekin CSS, JS chunks aur images 404 dete hain."
+  better="Dockerfile mein .next/static aur public folders standalone ke saath copy karo, ya unhein CDN se serve karo."
+/>
+
+<Mistake
+  title="NEXT_PUBLIC variables runtime par badalne ki koshish"
+  why="NEXT_PUBLIC_ wali values build ke waqt client bundle mein likh di jati hain, baad mein badalne se asar nahi hota."
+  better="Public values build se pehle set karo, aur jo values runtime par chahiye unhein server par process.env se parho."
+/>
+
+<Mistake
+  title="Secrets Docker image mein COPY kar dena"
+  why="Image share ya push hote hi .env ke secrets bhi leak ho jate hain."
+  better="Secrets .dockerignore mein rakho aur runtime par env vars ya platform secrets se do."
+/>
+
+### Interview tip
+
+"`output: "standalone"` kya karta hai?" Build ke dauran Next.js trace karta hai ke runtime par kaun si files aur `node_modules` packages chahiye, aur sirf woh `.next/standalone` mein ek `server.js` ke saath rakhta hai. Is se Docker image bohot chhoti ban jati hai.
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Chapters |
+| --- | --- |
+| Pehle | [Environment Variables](/courses/nextjs/environment-variables), [next.config & Turbopack](/courses/nextjs/next-config-and-turbopack), [Testing Next.js Apps](/courses/nextjs/testing) |
+| Saath mein | [Performance & Core Web Vitals](/courses/nextjs/performance), [Sitemap, Robots & OG Images](/courses/nextjs/sitemap-and-robots) |
+| Baad mein | [Database Integration](/courses/nextjs/database-integration), [Authentication](/courses/nextjs/authentication) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Sab se aasaan | Vercel, Git connect aur deploy |
+| Apna server | `next build` phir `next start` |
+| Docker | `output: "standalone"` aur `node server.js` |
+| Standalone ke saath copy | `.next/static` aur `public` |
+| Static site | `output: "export"`, limited features |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Production mein hamesha `next build` aur `next start` (ya Vercel) use karo. Docker ke liye `standalone` output lo, static aur public folders copy karo, aur secrets kabhi image mein mat daalo.
+
+</Callout>

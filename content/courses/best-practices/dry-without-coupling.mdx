@@ -1,0 +1,221 @@
+---
+title: DRY Without Tight Coupling
+description: DRY principle wrong abstraction se kaise bachayein. Duplication kab nikalni hai, kab chhorni hai, aur flags wali shared function kyun nuqsaan deti hai.
+keywords:
+  - dry principle wrong abstraction
+  - dont repeat yourself
+  - duplication vs abstraction
+  - rule of three refactoring
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Duplication tab nikalo jab dohraya hua code ek hi idea ho jo ek hi jagah se badlega. Jo code sirf aaj milta julta dikhta hai, use alag rehne do.**
+
+</Callout>
+
+DRY ka matlab "Don't Repeat Yourself". Lekin DRY code ki lines ke baare mein nahi, **knowledge** ke baare mein hai. Ek business rule (jaise "free plan mein 3 projects") ka ek hi ghar hona chahiye.
+
+| Hissa | Matlab |
+| --- | --- |
+| **Doosri dafa par nikalo** | Strict house rule: jab same idea doosri dafa likhna pare, tab shared function banao |
+| **Milta julta nahi, ek jaisa** | Do cheezein jo alag wajah se badlengi, unhe merge mat karo |
+| **Chhota shared hissa** | Flags wali bari abstraction ki jagah chhota function ya constant |
+| **Pehle dhoondo** | Naya function likhne se pehle dekho kya pehle se maujood hai |
+
+## 2. Kyun zaroori hai?
+
+Duplication ka asli nuqsaan: rule badla, ek jagah update hua, doosri jagah bhool gaye. Ab app do alag jawab deti hai. Lekin galat abstraction ka nuqsaan bhi utna hi bara hai.
+
+<CompareTable leftTitle="Ghalat DRY: sab kuch merge" rightTitle="Sahi DRY: sirf ek idea merge">
+
+Do alag screens ek shared component mein, 6 boolean props | Har screen apna component, sirf asli shared hissa alag
+Ek change ke liye sab callers check karne parte hain | Har caller apne raaste par azaad
+Function mein if (mode === a) aur if (mode === b) | Do saaf functions, ek chhota shared helper
+Naya caller aaya, ek aur flag | Naya caller apni zaroorat ka code likhta hai
+
+</CompareTable>
+
+Seedha duplication bhi masla hai:
+
+<CompareTable leftTitle="Ek rule teen jagah" rightTitle="Ek rule ek jagah">
+
+Limit 3 se 5 hui, do jagah update, ek bhool gaye | Ek constant badla, sab jagah asar
+UI kehta hai project bana sakte ho, API mana karti hai | UI aur API ek hi function se poochte hain
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Copy paste dekho to sochna shuru karo | DRY ka idea seekho, lekin abhi bari abstractions mat banao |
+| **Production code** | Business rules ka duplication kabhi nahi | Do jagah rule matlab do jawab, yani bug |
+| **Senior level** | Pehchano kya ek idea hai aur kya ittefaq | Galat merge ka nuqsaan saalon tak rehta hai |
+
+## 4. Bura vs acha code
+
+**Bura 1: business rule ka duplication**
+
+```ts
+function NewProjectButton({ user }: { user: User }) {
+  if (user.plan === "free" && user.projectCount >= 3) {
+    return <UpgradePrompt />;
+  }
+
+  return <CreateButton />;
+}
+
+export async function POST(request: Request) {
+  const user = await session.require(request);
+
+  if (user.plan === "free" && user.projectCount >= 3) {
+    return Response.json({ error: "limit" }, { status: 403 });
+  }
+
+  return Response.json(await projects.create(user, await request.json()));
+}
+```
+
+**Acha 1: rule ka ek ghar**
+
+```ts
+const FREE_PROJECT_LIMIT = 3;
+
+export function canCreateProject(user: User) {
+  if (user.plan !== "free") {
+    return true;
+  }
+
+  return user.projectCount < FREE_PROJECT_LIMIT;
+}
+```
+
+Ab button aur API dono `canCreateProject(user)` poochte hain.
+
+**Bura 2: flags wali abstraction**
+
+```tsx
+function Card({ item, isProduct, isUser, showPrice, compact }: CardProps) {
+  if (isProduct) {
+    return <div>{item.title} {renderPrice(item, showPrice)}</div>;
+  }
+
+  if (isUser) {
+    return <div className={cardClass(compact)}>{item.name}</div>;
+  }
+
+  return null;
+}
+```
+
+**Acha 2: alag cheezein alag, chhota shared hissa**
+
+```tsx
+function ProductCard({ product }: { product: Product }) {
+  return <CardShell title={product.title} footer={<Price amount={product.price} />} />;
+}
+
+function UserCard({ user }: { user: User }) {
+  return <CardShell title={user.name} />;
+}
+```
+
+| Farq kya hai? | Bura | Acha |
+| --- | --- | --- |
+| Business rule | Do jagah, ek din alag ho jayenge | Ek function, ek constant |
+| Abstraction | Ek `Card` jo har cheez banne ki koshish kare | `CardShell` sirf layout share karta hai |
+| Flags | `isProduct`, `isUser`, `compact` | Koi flag nahi |
+| Badlav | Product card badlo, user card toot sakta hai | Har card azaad |
+
+### Construction bhi ek jagah: `Foo.make()`
+
+Strict house style ek aur jagah DRY lagata hai: object banane ka tareeqa. Har call site par `new Mailer(apiKey, region, retries)` likhne ki bajaye ek static factory:
+
+```ts
+export class Mailer {
+  static make() {
+    return new Mailer(env.MAIL_API_KEY, env.MAIL_REGION, MAIL_RETRIES);
+  }
+
+  private constructor(
+    private readonly apiKey: string,
+    private readonly region: string,
+    private readonly retries: number,
+  ) {}
+}
+
+const mailer = Mailer.make();
+```
+
+Ab region ya retries ka rule badle to sirf `make()` badalta hai. Bohat si teams seedha `new Foo()` ya ek plain `createMailer()` function use karti hain, aur woh bhi theek hai. Asli baat yeh hai ke banane ka rule ek jagah ho, chahe naam kuch bhi ho.
+
+## 5. Kaise apply karein?
+
+<Flow title="Duplication dekh kar faisla">
+
+Same jaisa code doosri dafa nazar aaya
+↓
+Poocho: kya yeh ek hi idea hai ya bas milta julta?
+↓
+Kya dono hamesha ek saath aur ek wajah se badlenge?
+↓
+Haan: chhota shared function ya constant nikalo
+↓
+Nahi: alag rehne do, ittefaq hai
+↓
+Shared function ko flag chahiye? Ruk jao, yeh do functions hain
+
+</Flow>
+
+Naya function likhne se pehle **search karo**. Usi module mein same verb aur same entity wala function, ya koi helper jo 80 percent kaam karta ho. Doosri copy banana sab se tez lagta hai aur sab se mehenga parta hai.
+
+## 6. Exceptions aur common mistakes
+
+**Honest baat:** "doosri dafa par nikalo" ek sakht rule hai. Bohat si teams **Rule of Three** follow karti hain: teesri dafa tak ruko, taake pattern saaf ho jaye. Trade-off: doosri dafa par nikalne se rule ke do ghar kabhi nahi bante, lekin ghalat abstraction ka khatra barhta hai. Teesri dafa tak rukne se abstraction behtar hoti hai, lekin beech mein ek copy bhool jane ka khatra hai. Business rules aur constants ke liye doosri dafa wala rule taqreeban hamesha sahi hai. UI aur flows ke liye zara ruk kar sochein.
+
+Tests mein thori duplication aksar theek hai. Har test apne aap mein parhne layak ho, yeh zyada ahem hai.
+
+<Mistake
+  title="Shakal dekh kar merge karna"
+  why="Do functions aaj same lagte hain lekin alag business ke liye hain, kal alag honge aur merge kiya hua code flags se bhar jayega."
+  better="Sirf woh merge karo jo ek hi wajah se badle."
+/>
+
+<Mistake
+  title="Shared function mein mode ya type flag add karte rehna"
+  why="Har flag code ke raaste double karta hai aur har caller ko doosre callers ka bojh uthana parta hai."
+  better="Abstraction ko tor kar wapas alag functions banao, sirf asli common hissa share karo."
+/>
+
+<Mistake
+  title="Bina dhoonde naya helper likhna"
+  why="Codebase mein ek hi kaam ke teen functions ban jate hain jo dheere dheere alag jawab dene lagte hain."
+  better="Pehle module aur us ke aas paas search karo, mile to extend karo."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Small Functions](/courses/best-practices/small-functions), [Constants & Magic Values](/courses/best-practices/constants-and-magic-values) |
+| **Saath mein** | [Refactoring Safely](/courses/best-practices/refactoring-safely) |
+| **Baad mein** | [Service Layer](/courses/best-practices/service-layer), [Loose Coupling & Dependency Injection](/courses/best-practices/dependency-injection), [Following Existing Patterns](/courses/best-practices/following-existing-patterns) |
+
+## Final quick revision
+
+| Check | Sawal |
+| --- | --- |
+| Knowledge | Kya ek business rule ek se zyada jagah likha hai? |
+| Ek idea | Kya dono jagah ek hi wajah se badlengi? |
+| Flags | Kya shared function mein mode ya boolean flags hain? |
+| Size | Kya shared hissa chhota function ya constant hai? |
+| Search | Kya naya likhne se pehle dhoonda? |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Duplication sasta hai, ghalat abstraction mehengi. Ek idea ko ek jagah rakho, lekin do ideas ko sirf is liye mat jodo ke woh aaj ek jaise dikhte hain.
+
+</Callout>

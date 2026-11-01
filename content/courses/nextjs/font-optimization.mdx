@@ -1,0 +1,184 @@
+---
+title: Font Optimization
+description: Next.js next/font se Google aur local fonts self-host karna, layout shift rokna aur Tailwind ke saath CSS variables use karna, Roman Urdu mein.
+keywords:
+  - next.js next/font
+  - next/font/google
+  - next/font/local
+  - next.js custom font
+---
+
+## 1. Font Optimization kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**`next/font` fonts ko build time par download kar ke aap ki app ke saath self-host karta hai, taake page bina layout shift ke aur bina external request ke load ho.**
+
+</Callout>
+
+Is ke do hisse hain:
+
+- `next/font/google`: Google Fonts ka koi bhi font, lekin request Google ko browser se nahi jati.
+- `next/font/local`: Aap ki apni `.woff2` files.
+
+## 2. Kyun zaroori hai?
+
+Normal tareeqe mein `link` tag se Google Fonts load hota hai. Browser pehle HTML parhta hai, phir CSS, phir font file. Jab tak font aaye, text fallback font mein dikhta hai aur phir achanak badal jata hai.
+
+<CompareTable leftTitle="link tag se Google Fonts" rightTitle="next/font">
+
+Browser se Google ke server ko extra request | Font aap ke domain se serve hota hai
+Font aane par text jhatke se badalta hai | size-adjust wala fallback, layout shift kam
+User ka IP Google ko jata hai | Koi third party request nahi
+Saare weights aur subsets load | Sirf chune hue subsets aur weights
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Situation | Approach |
+| --- | --- |
+| Poori site ka main font | Root layout mein `next/font/google` |
+| Brand ka custom paid font | `next/font/local` |
+| Headings aur body ke alag fonts | Do fonts, dono ke CSS variables |
+| Code blocks ke liye monospace | `Geist_Mono` ya `JetBrains_Mono` variable ke saath |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="next/font ka flow">
+
+Layout mein font function call
+↓
+next build font files download karta hai
+↓
+Files static assets ke saath bundle hoti hain
+↓
+Unique className ya CSS variable generate
+↓
+Browser font aap ke domain se hi load karta hai
+
+</Flow>
+
+Font function module ke top level par call hota hai. Jo object milta hai us mein `className`, `style` aur (agar `variable` diya ho) `variable` hota hai. Inhein aap `html` ya kisi element par laga dete hain.
+
+## 5. Code example
+
+### Google font root layout mein
+
+```tsx
+import { Inter, Roboto_Mono } from "next/font/google";
+import "./globals.css";
+
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+});
+
+const robotoMono = Roboto_Mono({
+  subsets: ["latin"],
+  variable: "--font-roboto-mono",
+});
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en" className={`${inter.variable} ${robotoMono.variable}`}>
+      <body className="font-sans">{children}</body>
+    </html>
+  );
+}
+```
+
+### Tailwind v4 mein variable connect karna
+
+```css
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-roboto-mono);
+}
+```
+
+### Local font
+
+```tsx
+import localFont from "next/font/local";
+
+const brand = localFont({
+  src: [
+    { path: "./fonts/Brand-Regular.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/Brand-Bold.woff2", weight: "700", style: "normal" },
+  ],
+  variable: "--font-brand",
+});
+
+export default function Heading({ text }: { text: string }) {
+  return <h1 className={brand.className}>{text}</h1>;
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `Inter(...)` | Google font loader, naam mein space ho to underscore (`Roboto_Mono`) |
+| `subsets` | Sirf zaroori characters (jaise `latin`) preload hote hain |
+| `variable` | CSS variable banata hai jo Tailwind ya CSS mein use ho sake |
+| `display: "swap"` | Font aane tak fallback text dikhta hai (default bhi yahi hai) |
+| `@theme inline` | Tailwind ki `font-sans` utility ko font variable se jorta hai |
+| `localFont` | Apni files, `src` path font loader file ke relative |
+
+<Callout variant="note" title="Variable fonts">
+
+`Inter` jaise variable fonts ke liye `weight` dena zaroori nahi, saare weights ek hi file mein hote hain. Non-variable font ke liye `weight: ["400", "700"]` jaisi list dena padti hai.
+
+</Callout>
+
+## 6. Common mistakes
+
+<Mistake
+  title="Font function component ke andar call karna"
+  why="Font loaders module scope mein call hone chahiye, warna har render par naya instance banta hai aur build error aata hai."
+  better="Font ko file ke top par const mein define karo aur component mein sirf className ya variable use karo."
+/>
+
+<Mistake
+  title="Har page mein alag se same font load karna"
+  why="Ek hi font ke kai instances ban jate hain aur extra CSS aur font files load hoti hain."
+  better="Font ko ek shared file jaise app/fonts.ts mein define karo ya root layout mein lagao, phir wahin se import karo."
+/>
+
+<Mistake
+  title="Layout mein Google Fonts ka link tag bhi rakhna"
+  why="Font do baar load hota hai aur third party request wapas aa jati hai, next/font ka faida khatam."
+  better="Purana link tag hata do, sirf next/font use karo."
+/>
+
+### Interview tip
+
+"`next/font` CLS kaise kam karta hai?" Jawab: yeh fallback font par `size-adjust` jaisi properties automatically set karta hai taake fallback aur asal font ka size qareeb qareeb same ho, is liye font swap par text nahi khiskta.
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Chapters |
+| --- | --- |
+| Pehle | [Layouts & Templates](/courses/nextjs/layouts-and-templates), [Styling: CSS Modules & Tailwind](/courses/nextjs/styling) |
+| Saath mein | [Image Optimization](/courses/nextjs/image-optimization) |
+| Baad mein | [Metadata & SEO](/courses/nextjs/metadata-and-seo), [Performance & Core Web Vitals](/courses/nextjs/performance) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Google fonts | `next/font/google`, self-hosted at build time |
+| Apni files | `next/font/local` aur `src` |
+| Tailwind ke saath | `variable` option aur `@theme inline` |
+| Kahan define | Module scope, aksar root layout |
+| Faida | No external request, kam CLS |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Font ko ek dafa module scope mein define karo, `variable` se CSS variable banao, aur use root layout ke `html` par laga do. Baqi kaam Next.js build time par kar leta hai.
+
+</Callout>

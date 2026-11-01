@@ -1,0 +1,195 @@
+---
+title: "Fix Root Causes, Remove Don't Gate"
+description: Root cause analysis aur feature flags ka sahi use, ghalat null ko producer par theek karna aur unwanted code ko flag ke peeche chhupane ke bajaye delete karna.
+keywords:
+  - root cause analysis feature flags
+  - fix root cause not symptom
+  - remove dead code instead of flag
+  - defensive fallback anti pattern
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Ghalat value jahan nazar aaye wahan chhupao mat, jahan paida hui wahan theek karo. Aur jo code path nahi chahiye use flag ke peeche band mat karo, delete karo.**
+
+</Callout>
+
+Is practice ke do hisse hain:
+
+- **Fix root causes:** frontend par `undefined` aaya to masla aksar frontend ka nahi. Backend ki query, mapping ya contract mein hai. Wahan tak trace karo.
+- **Remove, don't gate:** purana checkout, purana pricing rule, aadha bana feature. Inhe `if (flag)` ke peeche chhorne ke bajaye nikal do. Flag sirf us rawayye ke liye hai jo waqai runtime par badalta hai.
+
+## 2. Kyun zaroori hai?
+
+Asli kahani: profile page par kuch users ka naam `"Unknown"` dikhta tha kyunki kisi ne `user.name ?? "Unknown"` likh diya tha. Mahino baad pata chala ke signup ki ek query naam save hi nahi kar rahi thi. Hazaron users ka data adhoora, emails "Hi Unknown" se ja rahi thin. Fallback ne bug ko chhupa diya tha.
+
+Flags ki kahani: `legacyPricing` flag ek saal se `false` tha. Kisi ne config copy karte hue ghalti se `true` kar diya. Woh purana code jo koi test nahi karta tha, production mein chal para aur ghalat prices lag gayin.
+
+<CompareTable leftTitle="Symptom chhupana aur gate karna" rightTitle="Root cause theek, dead path delete">
+
+Fallback se screen theek dikhti hai, data kharab rehta hai | Producer theek, data sahi, screen bhi sahi
+Har naye consumer ko wahi guard likhna parta hai | Ek fix, sab consumers ko faida
+Bug mahino chhupa rehta hai | Bug pehli baar par hi saamne aata hai
+Do code paths, dono test karne parte hain | Ek path, ek test
+Band flag kabhi bhi ghalti se on ho sakta hai | Code hai hi nahi, on kya hoga
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Error aaye to wajah dhoondhne ki aadat, `?.` se chhupane ki nahi | Debugging ka asal hunar yahi hai |
+| **Production code** | Lazmi. Internal data par defensive fallback aur bekar flags review mein rukte hain | Chhupe bugs data kharab karte hain jo baad mein theek karna mehenga hai |
+| **Senior level** | Team mein producer tak trace karne ka culture, aur flags ki expiry | Senior hi doosri team ke code tak masla le jata hai |
+
+## 4. Bura vs acha code
+
+### Bura: consumer par guard
+
+```tsx
+export function AuthorName({ post }: AuthorNameProps) {
+  return <span>{post.author?.name ?? "Unknown"}</span>;
+}
+```
+
+Masla yeh tha ke service ki query author ko include hi nahi kar rahi thi:
+
+```ts
+export function list() {
+  return db.post.findMany({ select: { id: true, title: true } });
+}
+```
+
+### Acha: producer theek, contract sakht
+
+```ts
+export function list() {
+  return db.post.findMany({
+    select: { id: true, title: true, author: { select: { name: true } } },
+  });
+}
+```
+
+```ts
+export type PostWithAuthor = Awaited<ReturnType<typeof list>>[number];
+```
+
+```tsx
+export function AuthorName({ post }: AuthorNameProps) {
+  return <span>{post.author.name}</span>;
+}
+```
+
+Ab type khud batata hai ke `author.name` hamesha hai. Agar kabhi query se author hata to build toot jayega, screen par `"Unknown"` nahi aayega.
+
+### Bura: flag ke peeche purana path
+
+```ts
+export function total(cart: Cart) {
+  if (flags.legacyPricing) {
+    return legacyTotal(cart);
+  }
+
+  return currentTotal(cart);
+}
+```
+
+### Acha: purana path delete
+
+```ts
+export function total(cart: Cart) {
+  return currentTotal(cart);
+}
+```
+
+`legacyTotal`, flag aur us ke tests teeno delete. Purana code chahiye ho to git history mein hai.
+
+### Farq kya hai?
+
+| Cheez | Bura | Acha |
+| --- | --- | --- |
+| Missing author | UI mein `"Unknown"` | Query mein include, type non-null |
+| Bug kab dikhta | Mahino baad | Build ya pehle test par |
+| Purana pricing | Flag ke peeche zinda | Delete |
+| Test surface | Do paths | Ek path |
+
+## 5. Kaise apply karein?
+
+<Flow title="Root cause tak pohanchna">
+
+Bug ko reproduce karo
+↓
+Ghalat value peeche ki taraf trace karo: component, hook, client, route, service, query
+↓
+Jahan value pehli dafa ghalat bani, wahan theek karo
+↓
+Wahan test likho jo yeh bug pakre
+↓
+Neeche ke bekar guards hatao
+
+</Flow>
+
+Flag lagane se pehle poocho: kya yeh rawayya runtime par asal mein badalta hai? Jaise gradual rollout, A/B test, ya kill switch. Agar haan, flag theek hai, magar us ki khatam hone ki tareekh bhi likho. Agar jawab hai "shayad baad mein zaroorat pare", to delete karo.
+
+## 6. Exceptions aur common mistakes
+
+Bahar ka data jo aap ke control mein nahi (third-party API, user input) us ko boundary par validate karna defensive fallback nahi, zaroori hai. Rule internal contracts ke baare mein hai, jahan producer aap ka apna code hai.
+
+Production jal raha ho to temporary guard lagana theek hai, magar saath hi root fix ka task bane aur guard us fix ke saath hate. Feature flags bohat si teams ka bunyadi tool hain (rollouts, experiments) aur yeh rule unke khilaf nahi. Yeh sirf "delete karne se darr" wale flags ke khilaf hai.
+
+<Mistake
+  title="Required data par ?? [] ya ?? {} lagana"
+  why="Contract kehta hai value hogi. Agar nahi aayi to producer mein bug hai, aur fallback us bug ko gum kar deta hai."
+  better="Value missing ho to wazeh error throw karo aur producer tak trace karo."
+/>
+
+<Mistake
+  title="Backend doosri team ka hai, is liye frontend par guard"
+  why="Har consumer apna guard likhta hai aur asal masla kabhi theek nahi hota."
+  better="Backend mein producer dhoondo, issue ya PR kholo, aur tab tak guard ko temporary mark karo."
+/>
+
+<Mistake
+  title="Purana feature flag ke peeche rakhna, shayad kaam aaye"
+  why="Band code test nahi hota, sarta rehta hai, aur ghalti se on ho kar production bigar sakta hai."
+  better="Delete karo. Version control mein purana code hamesha mil jata hai."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Debugging JavaScript](/courses/javascript/debugging), [Fail Fast, No Defensive Fallbacks](/courses/best-practices/fail-fast-and-no-fallbacks) |
+| **Saath mein** | [Strict Typing](/courses/best-practices/strict-typing), [Generated Database Types](/courses/best-practices/generated-types) |
+| **Baad mein** | [Refactoring Safely](/courses/best-practices/refactoring-safely), [Logging](/courses/best-practices/logging) |
+
+<Flow title="Suggested order">
+
+Fail Fast, No Defensive Fallbacks
+↓
+Fix Root Causes, Remove Don't Gate
+↓
+Generated Database Types
+↓
+Logging
+
+</Flow>
+
+## Final quick revision
+
+| Check | Haan / Nahi |
+| --- | --- |
+| Ghalat value ko producer tak trace kiya | Haan |
+| Internal data par `?? "Unknown"` jaisa fallback | Nahi |
+| Fix ke saath producer par test | Haan |
+| Unwanted code flag ke peeche | Nahi, delete |
+| Har zaroori flag ki expiry likhi | Haan |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Symptom ki dawa bug ko lamba karti hai. Wahan jao jahan value bigri, wahan theek karo. Aur jo code nahi chahiye, use band nahi, khatam karo.
+
+</Callout>

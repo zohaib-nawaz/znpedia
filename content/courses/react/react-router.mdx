@@ -1,0 +1,192 @@
+---
+title: Routing with React Router
+description: React router v7 Roman Urdu mein, BrowserRouter, Routes, Link, nested routes, Outlet aur useParams se single page app mein pages banana seekhein.
+keywords:
+  - react router
+  - react router v7
+  - react router dom routes
+  - useparams usenavigate
+---
+
+## 1. Routing with React Router kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**React Router ek library hai jo URL ke mutabiq sahi component dikhati hai, bina poora page reload kiye.**
+
+</Callout>
+
+Single page app (SPA) mein sirf ek HTML page hota hai. React Router browser ka URL padhta hai aur decide karta hai ke `/about` par kaunsa component aur `/products/5` par kaunsa component render ho.
+
+Version 7 mein sab kuch ek package `react-router` se import hota hai. Purana `react-router-dom` package ab sirf re-export karta hai. Is chapter mein hum **declarative mode** dekhenge jo Vite wali React app ke liye sab se simple hai.
+
+## 2. Kyun zaroori hai?
+
+Bina router ke aapko khud `window.location` padhna, `if` conditions se pages dikhana, aur back button handle karna parta.
+
+<CompareTable leftTitle="Bina router" rightTitle="React Router ke saath">
+
+Har link par full page reload | Client side navigation, turant
+URL aur UI sync manual | URL hi UI ka source of truth
+Back button ka kaam khud | Browser history automatic
+Dynamic id nikalna mushkil | useParams se seedha milta hai
+Layout har page mein copy | Nested routes aur Outlet
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Use case | Feature |
+| --- | --- |
+| **Multi page SPA** | `Routes` aur `Route` |
+| **Product detail page** | Dynamic segment `:id` aur `useParams` |
+| **Dashboard layout** | Nested routes aur `Outlet` |
+| **Login ke baad redirect** | `useNavigate` ya `Navigate` |
+| **Active menu item** | `NavLink` |
+| **404 page** | `path="*"` |
+
+## 4. Kaise kaam karta hai?
+
+`BrowserRouter` browser history ko sunta hai. `Routes` saare `Route` children mein se woh dhoondta hai jo current URL se best match kare, aur sirf uska `element` render karta hai.
+
+<Flow title="Link click se naye page tak">
+
+User Link par click karta hai
+↓
+URL badalta hai, page reload nahi
+↓
+Routes current URL match karta hai
+↓
+Parent route ka layout render
++
+Child route Outlet ki jagah render
+
+</Flow>
+
+## 5. Code example
+
+### Setup
+
+```bash
+npm install react-router
+```
+
+### Example 1: Routes, layout aur dynamic page
+
+```jsx
+import { createRoot } from "react-dom/client";
+import { BrowserRouter, Routes, Route, NavLink, Outlet } from "react-router";
+import Home from "./Home";
+import Products from "./Products";
+import ProductDetail from "./ProductDetail";
+
+function Layout() {
+  return (
+    <div>
+      <nav>
+        <NavLink to="/">Home</NavLink>
+        <NavLink to="/products">Products</NavLink>
+      </nav>
+      <Outlet />
+    </div>
+  );
+}
+
+createRoot(document.getElementById("root")).render(
+  <BrowserRouter>
+    <Routes>
+      <Route element={<Layout />}>
+        <Route index element={<Home />} />
+        <Route path="products" element={<Products />} />
+        <Route path="products/:id" element={<ProductDetail />} />
+        <Route path="*" element={<p>Page nahi mila</p>} />
+      </Route>
+    </Routes>
+  </BrowserRouter>
+);
+```
+
+### Example 2: useParams aur useNavigate
+
+```jsx
+import { useParams, useNavigate } from "react-router";
+
+export default function ProductDetail() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+
+  return (
+    <section>
+      <h1>Product number {id}</h1>
+      <button onClick={() => navigate("/products")}>Wapas list par</button>
+    </section>
+  );
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `BrowserRouter` | App ko browser URL aur history se jodta hai |
+| `Route element={<Layout />}` | Bina `path` ka layout route, sab children isi mein |
+| `index` | Parent ke exact URL (`/`) par yeh dikhta hai |
+| `products/:id` | `:id` dynamic hissa, `useParams` se milta hai |
+| `Outlet` | Child route yahan render hota hai |
+| `NavLink` | Active link par `active` class khud lagti hai |
+| `path="*"` | Koi match na ho to 404 UI |
+
+### Interview tip
+
+React Router v7 ke teen modes hain: **declarative** (`BrowserRouter`), **data** (`createBrowserRouter` ke saath loaders aur actions), aur **framework** (Vite plugin, file based routes, SSR). Interview mein yeh batana ke project ki zaroorat ke hisaab se mode choose hota hai, ek strong point hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Navigation ke liye a tag use karna"
+  why="Normal anchor tag poora page reload karta hai aur app ki state khatam ho jati hai."
+  better="Andar ke pages ke liye Link ya NavLink use karo, bahar ki websites ke liye a tag."
+/>
+
+<Mistake
+  title="Nested route banana lekin Outlet bhool jana"
+  why="Parent render hota hai lekin child ki jagah nahi hoti, is liye child page khali dikhta hai."
+  better="Har layout route ke component mein Outlet rakho jahan child dikhna chahiye."
+/>
+
+<Mistake
+  title="Render ke dauran navigate() call karna"
+  why="Render pure hona chahiye, side effect se warnings aur loops aate hain."
+  better="Event handler mein navigate() call karo, ya render mein Navigate component return karo."
+/>
+
+<Mistake
+  title="useParams ki value ko number samajhna"
+  why="URL params hamesha string hote hain, is liye comparison aur math galat ho jata hai."
+  better="Zaroorat ho to Number(id) se convert karo aur invalid value handle karo."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Setup with Vite](/courses/react/setup-with-vite), [Components](/courses/react/components), [Children & Composition](/courses/react/children-and-composition) |
+| **Saath mein** | [Suspense & lazy()](/courses/react/suspense-and-lazy), [Data Fetching](/courses/react/data-fetching) |
+| **Baad mein** | [Next.js Routing & Pages](/courses/nextjs/routing-and-pages), [Dynamic Routes](/courses/nextjs/dynamic-routes) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Package | `react-router` (v7) |
+| Setup | `BrowserRouter` ke andar `Routes` aur `Route` |
+| Links | `Link` aur `NavLink`, page reload nahi |
+| Dynamic | `:id` aur `useParams()` |
+| Layout | Nested `Route` aur `Outlet` |
+| Code se navigation | `useNavigate()` |
+
+<Callout variant="important" title="Yaad rakhein">
+
+React Router mein **URL hi UI ka source of truth** hai. Layout ke liye nested routes aur `Outlet`, dynamic pages ke liye `:param`, aur andar ki navigation ke liye hamesha `Link`.
+
+</Callout>

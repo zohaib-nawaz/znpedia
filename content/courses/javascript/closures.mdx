@@ -1,0 +1,190 @@
+---
+title: Closures
+description: JavaScript closures kya hain, inner function bahar ke variables kaise yaad rakhta hai, aur counters, private data aur factories mein inka use, Roman Urdu mein.
+keywords:
+  - javascript closures
+  - closure in javascript urdu
+  - lexical scope
+  - private variables javascript
+  - function factory
+---
+
+## 1. Closures kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Closure woh function hai jo apne bahar wale scope ke variables ko yaad rakhta hai, chahe bahar wala function chal kar khatam ho chuka ho.**
+
+</Callout>
+
+JavaScript mein jab bhi ek function doosre function ke andar banta hai, woh apne aas paas ke variables ka reference saath le jata hai. Yeh "backpack" hi closure hai.
+
+Closure koi khaas syntax nahi. Har function closure banata hai, bas fark tab nazar aata hai jab inner function bahar return ho kar baad mein chale.
+
+## 2. Kyun zaroori hai?
+
+Closures ke bina data ko private rakhna aur state ko function calls ke darmiyan yaad rakhna mushkil hota hai. Global variables us kaam ke liye khatarnak hain.
+
+<CompareTable leftTitle="Global variable se state" rightTitle="Closure se state">
+
+Koi bhi file value badal sakti hai | Sirf andar ke functions badal sakte hain
+Naam collision ka khatra | Har instance ka apna private data
+Do counters ek hi value share karte | Har counter alag value rakhta hai
+Testing mushkil | State encapsulated aur predictable
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Area | Closure ka kaam |
+| --- | --- |
+| **Counters aur state** | `createCounter()` har call ki ginti yaad rakhta hai |
+| **Private data** | Bank balance jaisa data bahar se direct change nahi hota |
+| **Function factories** | `makeMultiplier(2)` se `double` function banana |
+| **Event handlers** | Handler ko click par apna `id` yaad rehta hai |
+| **Debounce / throttle** | Timer id calls ke darmiyan yaad rakhna |
+| **React hooks** | `useState` aur handlers closures par chalte hain |
+
+## 4. Kaise kaam karta hai?
+
+Closure **lexical scope** par khara hai. Function jahan likha gaya, wahan ke variables us ke scope chain mein shamil ho jate hain.
+
+<Flow title="Closure kaise banta hai">
+
+Outer function chala aur variable banaya
+↓
+Andar ek inner function bana
+↓
+Outer ne inner function return kar diya
+↓
+Outer khatam, lekin variable zinda raha
+↓
+Inner function baad mein bhi us variable ko use karta hai
+
+</Flow>
+
+Ahem baat: closure variable ki **copy** nahi, **live reference** rakhta hai. Variable badlega to closure ko nayi value nazar aayegi.
+
+<Callout variant="important" title="Mental model">
+
+**Function + us ke paida hone wali jagah ke variables = closure**
+
+</Callout>
+
+## 5. Code example
+
+### Counter with private state
+
+```js
+function createCounter(start = 0) {
+  let count = start;
+
+  return {
+    increment: () => ++count,
+    decrement: () => --count,
+    value: () => count,
+  };
+}
+
+const a = createCounter();
+const b = createCounter(10);
+
+a.increment();
+a.increment();
+b.decrement();
+
+console.log(a.value());
+console.log(b.value());
+console.log(a.count);
+```
+
+### Function factory
+
+```js
+function makeMultiplier(factor) {
+  return (n) => n * factor;
+}
+
+const double = makeMultiplier(2);
+const triple = makeMultiplier(3);
+
+console.log(double(5));
+console.log(triple(5));
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `let count` | `createCounter` ke andar private variable |
+| Returned methods | Teeno arrow functions `count` ko closure se yaad rakhte hain |
+| `a` aur `b` | Har call ka apna alag `count`, is liye `2` aur `9` |
+| `a.count` | `undefined`, kyunki `count` bahar se accessible nahi |
+| `makeMultiplier(2)` | `factor = 2` yaad rakhne wala naya function |
+| Output | `10` aur `15` |
+
+### Interview tip
+
+Classic sawal: `var` wale loop mein `setTimeout` sab mein aakhri value kyun print karta hai? Kyunki saare callbacks ek hi `var i` ka closure share karte hain. `let` har iteration ka naya binding banata hai, is liye har callback ki apni value hoti hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Closure ko value ki copy samajhna"
+  why="Closure variable ka live reference rakhta hai, baad mein variable badla to closure bhi nayi value dekhta hai."
+  better="Agar us waqt ki value fix karni ho to use naye const mein ya function parameter mein pass karo."
+/>
+
+<Mistake
+  title="Loop mein var ke saath callbacks"
+  why="Sab callbacks ek hi variable share karte hain aur aakhri value print hoti hai."
+  better="Loop mein let use karo taake har iteration ka apna binding ho."
+/>
+
+<Mistake
+  title="Bari cheezein closure mein bekaar pakar ke rakhna"
+  why="Jab tak closure zinda hai, us ke referenced objects garbage collect nahi hote, memory barhti rehti hai."
+  better="Sirf zaroori data capture karo aur event listeners ya timers ka kaam khatam ho to remove ya clear karo."
+/>
+
+<Mistake
+  title="React handler mein purani state (stale closure)"
+  why="Handler ne pichle render ki value capture ki thi, is liye nayi state nazar nahi aati."
+  better="Updater function use karo, jaise setCount(c => c + 1), aur effects ki dependencies sahi rakho."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Functions](/courses/javascript/functions), [Scope & Hoisting](/courses/javascript/scope-and-hoisting) |
+| **Saath mein** | [Higher-Order Functions](/courses/javascript/higher-order-functions), [Timers](/courses/javascript/timers) |
+| **Baad mein** | [Debounce & Throttle](/courses/javascript/debounce-and-throttle), [Modules](/courses/javascript/modules) |
+
+<Flow title="Suggested order">
+
+Scope & Hoisting
+↓
+Closures
+↓
+Higher-Order Functions
+↓
+Debounce & Throttle
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Closure | Function + us ka lexical environment |
+| Kab banta hai | Har function banne par, nazar tab aata hai jab baad mein chale |
+| Reference ya copy | Live reference |
+| Faida | Private state, factories, handlers |
+| Khatra | Stale values aur memory leaks |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Inner function apne paida hone ki jagah ke variables saath le jata hai. Isi ki madad se aap private state aur reusable function factories bana sakte hain.
+
+</Callout>

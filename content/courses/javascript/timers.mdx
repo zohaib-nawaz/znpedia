@@ -1,0 +1,189 @@
+---
+title: "Timers: setTimeout & setInterval"
+description: JavaScript setTimeout aur setInterval se code ko delay ya repeat kaise karein, clearTimeout aur clearInterval ke saath, Roman Urdu mein.
+keywords:
+  - javascript settimeout setinterval
+  - settimeout in urdu
+  - clearinterval javascript
+  - javascript timers
+---
+
+## 1. Timers kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Timers aapko code ko kuch der baad ek dafa (setTimeout) ya baar baar (setInterval) chalane dete hain.**
+
+</Callout>
+
+Dono functions ek callback aur milliseconds mein delay lete hain. Yeh JavaScript language ka nahi, balke browser aur Node.js ka diya hua feature hai.
+
+Har timer ek **id** return karta hai. Isi id se aap timer ko cancel kar sakte hain.
+
+## 2. Kyun zaroori hai?
+
+Kai kaam foran nahi, thodi der baad ya baar baar hone chahiyein, jaise toast message 3 second baad chhupana ya clock har second update karna.
+
+<CompareTable leftTitle="Bina timers" rightTitle="Timers ke saath">
+
+Delay ke liye khaali loop, page freeze | Non-blocking delay, page chalta rahe
+Repeat ke liye manual tricks | setInterval se clean repeat
+Kaam cancel karna mushkil | clearTimeout aur clearInterval
+User ko feedback dena mushkil | Toasts, countdowns, polling asaan
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Use case | Timer |
+| --- | --- |
+| **Toast notification** | `setTimeout` se 3s baad hide |
+| **Digital clock** | `setInterval` har 1000ms |
+| **Countdown / OTP resend** | `setInterval` aur khatam par clear |
+| **Search debounce** | `setTimeout` aur har keypress par clear |
+| **Polling** | Har kuch second baad server check |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="setTimeout ka safar">
+
+setTimeout call hota hai aur id milti hai
+↓
+Browser timer ginta hai
+↓
+Waqt poora, callback task queue mein
+↓
+Stack khaali hone par event loop callback chalata hai
+
+</Flow>
+
+<Callout variant="important" title="Mental model">
+
+**Delay minimum waqt hai, guaranteed waqt nahi.** Stack busy ho to callback aur late chalega.
+
+</Callout>
+
+| Function | Kaam |
+| --- | --- |
+| `setTimeout(fn, ms)` | Ek dafa, `ms` ke baad |
+| `setInterval(fn, ms)` | Har `ms` ke baad, jab tak clear na ho |
+| `clearTimeout(id)` | Pending timeout cancel |
+| `clearInterval(id)` | Interval band |
+
+## 5. Code example
+
+### Toast jo 3 second baad chhup jaye
+
+```js
+function showToast(message) {
+  const toast = document.querySelector("#toast");
+  toast.textContent = message;
+  toast.hidden = false;
+
+  const id = setTimeout(() => {
+    toast.hidden = true;
+  }, 3000);
+
+  return () => clearTimeout(id);
+}
+
+const cancel = showToast("Saved!");
+```
+
+### Countdown jo khud ruk jaye
+
+```js
+let seconds = 5;
+
+const intervalId = setInterval(() => {
+  console.log(seconds);
+  seconds--;
+
+  if (seconds < 0) {
+    clearInterval(intervalId);
+    console.log("Time up");
+  }
+}, 1000);
+```
+
+### Promise wala delay
+
+```js
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+await wait(1000);
+console.log("1 second baad");
+```
+
+### Code kaise kaam kar raha hai?
+
+| Line | Kya ho raha hai |
+| --- | --- |
+| `const id = setTimeout(...)` | Timer id save, baad mein cancel ke liye |
+| `return () => clearTimeout(id)` | Cancel function wapas, caller zaroorat par roke |
+| `setInterval(..., 1000)` | Har second callback |
+| `clearInterval(intervalId)` | Shart poori hone par interval band |
+| `wait(ms)` | Timer ko promise mein lapet kar `await` ke saath use |
+
+## 6. Common mistakes
+
+<Mistake
+  title="Callback ki jagah function call pass karna"
+  why="setTimeout(save(), 1000) mein save foran chal jata hai, aur uska return value timer ko milta hai."
+  better="Function reference ya arrow function do: setTimeout(save, 1000) ya setTimeout(() => save(id), 1000)."
+/>
+
+<Mistake
+  title="setInterval ko kabhi clear na karna"
+  why="Interval hamesha chalta rehta hai, memory leak aur duplicate kaam hota hai."
+  better="Id save karein aur kaam khatam ya component hatne par clearInterval call karein."
+/>
+
+<Mistake
+  title="Exact timing par bharosa karna"
+  why="Busy stack ya background tab mein browser timers ko delay ya throttle kar deta hai."
+  better="Accurate time ke liye Date.now() se asal guzra waqt calculate karein."
+/>
+
+<Mistake
+  title="Async kaam ke liye setInterval use karna"
+  why="Agar request 2 second le aur interval 1 second ka ho, to requests overlap ho jati hain."
+  better="Kaam khatam hone par agla setTimeout schedule karein (recursive setTimeout)."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Functions](/courses/javascript/functions), [Arrow Functions](/courses/javascript/arrow-functions), [Event Loop](/courses/javascript/event-loop) |
+| **Baad mein** | [Callbacks](/courses/javascript/callbacks), [Promises](/courses/javascript/promises), [Debounce & Throttle](/courses/javascript/debounce-and-throttle) |
+
+<Flow title="Suggested order">
+
+Event Loop
+↓
+Timers
+↓
+Callbacks
+↓
+Promises
+↓
+Debounce aur Throttle
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `setTimeout` | Ek dafa, delay ke baad |
+| `setInterval` | Baar baar, clear hone tak |
+| Timer id | Cancel karne ke liye save karein |
+| Delay | Minimum waqt, guarantee nahi |
+| Promise delay | `new Promise((r) => setTimeout(r, ms))` |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Har timer ki **id save karein** aur kaam khatam hone par clear karein. Function pass karein, call nahi.
+
+</Callout>

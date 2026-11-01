@@ -1,0 +1,202 @@
+---
+title: "What's New in Next.js 16"
+description: "Next.js 16 new features: Turbopack default, proxy.ts, Cache Components, async params, React 19.2, naye caching APIs aur breaking changes Roman Urdu mein."
+keywords:
+  - next.js 16 new features
+  - next.js 16 breaking changes
+  - next.js 16 upgrade
+  - proxy.ts next.js
+  - cache components
+---
+
+## 1. Next.js 16 kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**Next.js 16 (October 2025) ek major release hai jis mein Turbopack default bundler bana, caching opt-in ho gayi aur `middleware.ts` ki jagah `proxy.ts` aaya.**
+
+</Callout>
+
+Is release ka maqsad teen cheezein hain: **build aur dev speed**, **explicit caching**, aur **tez navigation**. Saath mein kuch purani deprecated cheezein hata di gayi hain, is liye upgrade se pehle breaking changes samajhna zaroori hai.
+
+## 2. Kyun zaroori hai?
+
+Next.js 15 tak caching kaafi had tak implicit thi. Developers ko samajh nahi aata tha ke page static kyun bana ya data purana kyun dikh raha hai. Next.js 16 ne yeh model saaf kar diya.
+
+<CompareTable leftTitle="Next.js 15" rightTitle="Next.js 16">
+
+Webpack default, Turbopack opt-in | Turbopack dev aur build dono mein default
+middleware.ts | proxy.ts (Node.js runtime)
+Implicit caching | Cache Components, use cache se opt-in
+experimental.ppr flag | PPR, cacheComponents ka hissa
+Sync params bhi chal jate the | params aur searchParams sirf async
+next lint command | ESLint ya Biome seedha
+revalidateTag(tag) | revalidateTag(tag, profile) aur updateTag
+Node 18 support | Node 20.9+ zaroori
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Feature | Kahan faida |
+| --- | --- |
+| **Turbopack** | 2 se 5 guna tez builds, Fast Refresh 10 guna tak tez |
+| **Cache Components** | Ek page mein static shell aur dynamic hissay saath |
+| **proxy.ts** | Auth redirects, headers, rewrites |
+| **Layout deduplication** | 50 links ka shared layout sirf ek baar download |
+| **Incremental prefetching** | Sirf woh hissa prefetch jo cache mein nahi |
+| **updateTag** | Form save ke baad user ko foran naya data |
+| **React 19.2** | View Transitions, `useEffectEvent`, `Activity` |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Next.js 16 upgrade ka raasta">
+
+Node 20.9+ install
+   ↓
+npx @next/codemod@canary upgrade latest
+   ↓
+middleware.ts ko proxy.ts rename
+   ↓
+params, searchParams, cookies ko await
+   ↓
+Parallel slots mein default.js add
+   ↓
+next lint ko eslint se replace
+   ↓
+next build (Turbopack)
+
+</Flow>
+
+Codemod zyada tar kaam khud kar deta hai. Jo cheez reh jaye, us ke liye official upgrade guide dekhein.
+
+Next.js 16 ke saath **React 19.2** aata hai (App Router React Canary use karta hai), is liye `useEffectEvent`, `<ViewTransition>` aur `<Activity>` jaise features available hain. **React Compiler** support bhi stable hai (`reactCompiler: true`), lekin default off hai.
+
+## 5. Code example
+
+### Cache Components on karna
+
+```ts
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  cacheComponents: true,
+};
+
+export default nextConfig;
+```
+
+Naye 16.x minor versions ke docs `partialPrefetching: true` bhi saath set karne ko kehte hain, apne version ke docs ek baar zaroor dekhein.
+
+### middleware.ts se proxy.ts
+
+```ts
+import { NextResponse, type NextRequest } from "next/server";
+
+export function proxy(request: NextRequest) {
+  return NextResponse.redirect(new URL("/home", request.url));
+}
+
+export const config = {
+  matcher: "/old-home",
+};
+```
+
+### Async params aur naye caching APIs
+
+```tsx
+import { cacheLife } from "next/cache";
+
+async function getPost(slug: string) {
+  "use cache";
+  cacheLife("hours");
+  const res = await fetch(`https://api.example.com/posts/${slug}`);
+  return res.json();
+}
+
+export default async function Page({ params }: PageProps<"/blog/[slug]">) {
+  const { slug } = await params;
+  const post = await getPost(slug);
+  return <h1>{post.title}</h1>;
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `cacheComponents: true` | `"use cache"`, `cacheLife`, `cacheTag` aur PPR on |
+| `proxy.ts` | Purana middleware, ab naam aur function `proxy` |
+| `matcher` | Kin paths par proxy chalega |
+| `"use cache"` | Is function ka result cache hota hai |
+| `cacheLife("hours")` | Cache kitni dair fresh rahe |
+| `PageProps<"/blog/[slug]">` | Global type helper, route se params ka type |
+| `await params` | Next.js 16 mein params Promise hai |
+
+### Doosri breaking changes
+
+| Change | Detail |
+| --- | --- |
+| Webpack chahiye | `next dev --webpack`, `next build --webpack` |
+| Parallel routes | Har slot ko `default.js` chahiye, warna build fail |
+| `revalidateTag` | Doosra argument chahiye, jaise `revalidateTag("posts", "max")` |
+| Naye APIs | `updateTag` aur `refresh`, dono sirf Server Actions mein |
+| Removed | AMP, `serverRuntimeConfig`, `publicRuntimeConfig`, `next lint` |
+| `next/image` | `minimumCacheTTL` default 4 ghante, `qualities` default `[75]` |
+| TypeScript | Kam se kam 5.1 |
+
+### Interview tip
+
+"Next.js 16 mein sab se bari tabdeeli?" ka acha jawab: caching ab **opt-in** hai. Dynamic code default request time par chalta hai aur aap `"use cache"` se khud batate hain kya cache karna hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="middleware.ts ko waise hi chhor dena"
+  why="Edge use cases ke liye abhi chalta hai lekin deprecated hai aur future version mein hat jayega."
+  better="File ko proxy.ts rename karein aur exported function ka naam proxy rakhein."
+/>
+
+<Mistake
+  title="params ko bina await kiye use karna"
+  why="Next.js 16 mein sync access hata diya gaya, params ek Promise hai."
+  better="Server Component mein await params likhein, Client Component mein React use() hook."
+/>
+
+<Mistake
+  title="Parallel route slot ka default.js bhool jana"
+  why="Next.js 16 mein default.js ke baghair build fail hota hai."
+  better="Har slot mein default.tsx banayein jo null return kare ya notFound() call kare."
+/>
+
+<Mistake
+  title="Turbopack ke baad bhi custom webpack config par bharosa"
+  why="Turbopack webpack config nahi parhta, is liye build mein farq aa sakta hai."
+  better="Turbopack equivalent config use karein, ya zaroorat ho to --webpack flag lagayein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Introduction](/courses/nextjs/introduction), [Installation & Project Structure](/courses/nextjs/installation-and-project-structure) |
+| **Detail mein** | [Cache Components](/courses/nextjs/cache-components), [Proxy](/courses/nextjs/proxy), [Revalidation](/courses/nextjs/revalidation), [next.config & Turbopack](/courses/nextjs/next-config-and-turbopack) |
+| **React side** | [useEffectEvent](/courses/react/use-effect-event), [Activity](/courses/react/activity), [React Compiler](/courses/react/react-compiler) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Release | October 2025 |
+| Bundler | Turbopack default (dev aur build) |
+| Caching | `cacheComponents: true` + `"use cache"` |
+| Middleware | Ab `proxy.ts` |
+| Params | Async, `await params` |
+| Node | 20.9+ |
+| React | 19.2 features |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Next.js 16 ka formula: **Turbopack default, caching opt-in, `proxy.ts`, async params, aur har parallel slot ka `default.js`.**
+
+</Callout>

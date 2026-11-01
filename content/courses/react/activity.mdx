@@ -1,0 +1,179 @@
+---
+title: Activity Component
+description: React activity component Roman Urdu mein, React 19.2 ka Activity mode visible aur hidden se UI chhupana, state bachana aur pre-render karna.
+keywords:
+  - react activity component
+  - react 19.2 activity
+  - activity mode hidden
+  - preserve state react
+---
+
+## 1. Activity Component kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**`Activity` React 19.2 ka component hai jo UI ke kisi hisse ko chhupa sakta hai bina uski state khoye, aur chhupe hue hisse ko background mein tayyar rakh sakta hai.**
+
+</Callout>
+
+`Activity` ko `react` se import karte hain aur ek `mode` prop dete hain: `"visible"` ya `"hidden"`. Default `"visible"` hai.
+
+Hidden mode mein children screen se chhup jate hain (CSS `display: none`), unke Effects clean up ho jate hain, lekin unki **state aur DOM** bachi rehti hai. Wapas visible karne par sab wahin se shuru hota hai.
+
+## 2. Kyun zaroori hai?
+
+Purane tareeqe mein hum conditional rendering se component hata dete the. Isse component unmount hota tha aur uski state, jaise form ka text ya scroll position, khatam ho jati thi.
+
+<CompareTable leftTitle="Conditional rendering" rightTitle="Activity ke saath">
+
+isOpen && Component, hide par unmount | mode hidden, component zinda rehta hai
+State aur input text kho jata hai | State aur DOM preserve
+Wapas aane par dobara load | Turant wahin se continue
+Next screen pehle se tayyar nahi | Hidden mein low priority pre-render
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Use case | Faida |
+| --- | --- |
+| **Tabs** | Tab badlo to doosre tab ka form text bacha rahe |
+| **Sidebar ya drawer** | Band karke kholo to expanded sections wahi |
+| **Next page pre-render** | User ke click se pehle data aur code tayyar |
+| **Back navigation** | Pichla screen state ke saath wapas |
+| **Video ya chat panel** | Chhupane par Effects band, state bachi |
+
+## 4. Kaise kaam karta hai?
+
+React hidden Activity ke children ko render to karta hai, lekin **low priority** par, taa ke visible UI slow na ho. Effects sirf visible hone par chalte hain.
+
+<Flow title="Visible se hidden aur wapas">
+
+mode visible: UI dikh raha, Effects active
+↓
+mode hidden: display none
++
+Effects cleanup, state aur DOM preserve
+↓
+Updates low priority par render hote rehte hain
+↓
+mode visible: Effects dobara setup, UI turant wapas
+
+</Flow>
+
+<Callout variant="note" title="Mental model">
+
+Hidden Activity ko aisa samjho jaise component "pause" ho gaya ho: dikhta nahi, Effects nahi chalte, lekin yaad sab kuch hai.
+
+</Callout>
+
+## 5. Code example
+
+### Example 1: Tabs jo state yaad rakhte hain
+
+```jsx
+import { Activity, useState } from "react";
+
+function Notes() {
+  const [text, setText] = useState("");
+  return (
+    <textarea value={text} onChange={(e) => setText(e.target.value)} />
+  );
+}
+
+function Profile() {
+  return <p>Profile details</p>;
+}
+
+export default function Tabs() {
+  const [tab, setTab] = useState("notes");
+
+  return (
+    <div>
+      <button onClick={() => setTab("notes")}>Notes</button>
+      <button onClick={() => setTab("profile")}>Profile</button>
+
+      <Activity mode={tab === "notes" ? "visible" : "hidden"}>
+        <Notes />
+      </Activity>
+      <Activity mode={tab === "profile" ? "visible" : "hidden"}>
+        <Profile />
+      </Activity>
+    </div>
+  );
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `import { Activity }` | React 19.2 se built in component |
+| `mode={...}` | Sirf `"visible"` ya `"hidden"` |
+| `Notes` ki state | Profile tab par jane ke baad bhi text bacha rehta hai |
+| Hidden tab | DOM mein hai lekin `display: none` |
+
+### Example 2: Effect ka behaviour
+
+```jsx
+import { useEffect } from "react";
+
+function LiveClock() {
+  useEffect(() => {
+    const id = setInterval(() => console.log("tick"), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  return <p>Clock chal rahi hai</p>;
+}
+```
+
+Jab `LiveClock` hidden Activity ke andar jata hai, cleanup chalta hai aur interval ruk jata hai. Visible hone par Effect dobara setup hota hai. Is liye Effects ka cleanup sahi likhna zaroori hai.
+
+### Interview tip
+
+Farq yaad rakhein: CSS se chhupane par Effects chalte rehte hain, conditional rendering se state khatam hoti hai. `Activity` dono ka beech ka raasta hai: state bachti hai aur Effects pause hote hain.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Effect ka cleanup na likhna"
+  why="Hidden hone par React cleanup call karta hai, cleanup na ho to subscriptions aur timers leak hote hain."
+  better="Har Effect jo kuch subscribe ya start karta hai, uska cleanup function zaroor return kare."
+/>
+
+<Mistake
+  title="Hidden UI mein video ya audio ka chalte rehna"
+  why="DOM preserve hota hai, is liye media element khud ba khud pause nahi hota."
+  better="useLayoutEffect ke cleanup mein media ko pause karo taa ke hide hote hi band ho jaye."
+/>
+
+<Mistake
+  title="Har cheez ko Activity mein rakh dena"
+  why="Hidden UI bhi memory leta hai aur background mein render hota hai."
+  better="Sirf wahan use karo jahan state bachana ya pre-render karna waqai faida de, baqi jagah normal conditional rendering."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Conditional Rendering](/courses/react/conditional-rendering), [State with useState](/courses/react/state), [useEffect](/courses/react/use-effect) |
+| **Saath mein** | [Suspense & lazy()](/courses/react/suspense-and-lazy), [useTransition & useDeferredValue](/courses/react/use-transition) |
+| **Baad mein** | [Server Components](/courses/react/server-components), [Routing with React Router](/courses/react/react-router) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Import | `import { Activity } from "react"` |
+| Modes | `"visible"` (default) aur `"hidden"` |
+| Hidden | `display: none`, Effects cleanup, state preserve |
+| Background | Hidden children low priority par render |
+| Use cases | Tabs, drawers, pre-render, back navigation |
+
+<Callout variant="important" title="Yaad rakhein">
+
+`Activity` UI ko **unmount kiye bina chhupata hai**. State aur DOM bachte hain, Effects pause hote hain, aur wapas aane par user wahin se continue karta hai.
+
+</Callout>

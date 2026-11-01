@@ -1,0 +1,189 @@
+---
+title: Testing Pyramid
+description: Testing pyramid unit, integration aur end to end tests ka balance, har layer kya sabit karti hai, real user se auth, aur vendors ko fake karna.
+keywords:
+  - testing pyramid unit integration
+  - unit vs integration vs e2e
+  - vitest api tests
+  - test database isolation
+  - mocking external services
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Neeche bohat saare tez unit tests, beech mein har endpoint ke contract tests, aur upar sirf critical flows ke liye thore browser tests. Har layer wohi sabit kare jo sirf woh sabit kar sakti hai.**
+
+</Callout>
+
+| Layer | Kya sabit karti hai | Misaal |
+| --- | --- | --- |
+| **Unit** | Pure logic: parsers, validators, calculations, token helpers | `calculateTax(1000)` sahi number deta hai |
+| **Endpoint / integration** | API contract, har validation branch, auth failures, limits | `POST /api/orders` ghalat body par `422` |
+| **Browser (end to end)** | Poora user flow asli browser mein | Checkout se payment tak |
+
+Neeche ki layer sasti, tez aur zyada. Upar ki mehngi, slow aur kam.
+
+## 2. Kyun zaroori hai?
+
+Agar sab kuch browser tests se check karein to suite ghanton chalti hai aur choti si UI change se das tests toot jate hain. Agar sirf unit tests hon to har function theek hai, lekin endpoint bina auth check ke production mein chala jata hai.
+
+<Callout variant="note" title="Real pattern">
+
+Ek team ke tests ek shared staging database par chalte the. Do developers ne ek saath suite chalayi, ek ke test ne doosre ka data delete kar diya, aur dono ke tests random fail hone lage. Kuch hafton mein sab ne tests par bharosa chhor diya aur unhein chalana bhi.
+
+</Callout>
+
+<CompareTable leftTitle="Ulta pyramid (ice cream cone)" rightTitle="Sahi pyramid">
+
+Zyada tar browser tests | Zyada tar unit aur endpoint tests
+Suite 40 minute | Suite chand minute
+Flaky, retry par pass | Deterministic
+Fail ho to pata nahi kahan | Fail ho to exact function ya endpoint
+Shared database | Har run ka apna isolated database
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Pure functions ke unit tests | Testing ki aadat aur testable code likhna seekhna |
+| **Production code** | Unit + har endpoint ke tests, browser tests critical flows ke liye | Contract aur security har deploy par sabit |
+| **Senior level** | Layers ka balance aur test infrastructure | Suite tez aur bharose ke laiq rahe |
+
+## 4. Bura vs acha code
+
+### Bura: sab kuch mock
+
+```ts
+vi.mock("@/lib/db");
+vi.mock("@/lib/auth");
+
+test("creates order", async () => {
+  vi.mocked(getUser).mockResolvedValue({ id: "u1", role: "admin" });
+  vi.mocked(db.order.create).mockResolvedValue({ id: "o1" });
+
+  const res = await POST(new Request("http://x", { method: "POST", body: "{}" }));
+  expect(res.status).toBe(201);
+});
+```
+
+Auth mock hua, database mock hua, aur user hamesha admin. Yeh test sirf yeh sabit karta hai ke mocks chal rahe hain. Asli authorization kabhi test nahi hui.
+
+### Acha: unit test pure logic ka
+
+```ts
+import { describe, expect, test } from "vitest";
+import { calculateTax } from "./tax";
+
+describe("calculateTax", () => {
+  test("applies standard rate", () => {
+    expect(calculateTax(1000)).toBe(170);
+  });
+
+  test("returns zero below threshold", () => {
+    expect(calculateTax(50)).toBe(0);
+  });
+});
+```
+
+### Acha: endpoint test real user ke saath
+
+```ts
+import { expect, test } from "vitest";
+import { signInAsSeededUser } from "../helpers/auth";
+
+test("rejects order with empty items", async () => {
+  const token = await signInAsSeededUser();
+
+  const res = await fetch(`${process.env.TEST_BASE_URL}/api/orders`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+    body: JSON.stringify({ items: [] }),
+  });
+
+  expect(res.status).toBe(422);
+});
+```
+
+Seed script ek test user banata hai jis ka email pehle se confirmed hai. Test usi se sign in karta hai, is liye authorization aur tenant scoping bilkul production ki tarah chalti hai.
+
+### Farq kya hai?
+
+| Cheez | Bura | Acha |
+| --- | --- | --- |
+| Auth | Mock, hamesha admin | Seeded real user ka token |
+| Database | Mock | Isolated test database |
+| Kya sabit hua | Mocks ka wiring | Asli contract aur rules |
+
+## 5. Kaise apply karein?
+
+<Flow title="Naye feature ke tests">
+
+Pure logic alag function mein nikalein
+↓
+Us ke unit tests (har branch)
+↓
+Endpoint ke success, validation, auth tests
+↓
+Critical user flow ho to ek browser test
+↓
+CI mein isolated database par sab chalayein
+
+</Flow>
+
+Rules jo har layer par lagte hain:
+
+- Tests kabhi production ya shared staging database ko nahi chhoote. CI service container (jaise Postgres ya MySQL) ya alag project use karta hai.
+- Bahar ke vendors (payment, SMS, email) boundary par fake hote hain. Jis test ko asli vendor key chahiye woh test nahi, `scripts/` mein ek manual script hai.
+- Paid AI model calls CI suite mein nahi chalti. Prompt ke liye free contract test, aur paid evaluation sirf manually, cost estimate ke baad.
+- Tests kabhi mailbox ya SMS ka intezar nahi karte.
+
+## 6. Exceptions aur common mistakes
+
+**Kab rule nahi lagta:** chhota marketing site jis mein koi logic nahi, us par unit tests ka faida kam hai. Wahan build aur link check kaafi hai. Coverage percentage par bhi teams mukhtalif hain: kuch threshold enforce karti hain (jaise 80%), kuch sirf report karti hain taake number nazar aaye lekin log number poora karne ke liye bekaar tests na likhein. Dono ke paas dalil hai.
+
+<Mistake
+  title="Har cheez browser test se check karna"
+  why="Suite slow aur flaky ho jati hai, aur fail hone par masla dhoondhna mushkil."
+  better="Logic unit test mein, contract endpoint test mein, browser sirf critical flow ke liye."
+/>
+
+<Mistake
+  title="Auth ko mock kar dena"
+  why="Phir authorization aur tenant scoping kabhi test nahi hoti, jo sab se khatarnak bugs hain."
+  better="Seeded test user se asli sign in karein aur token bhejein."
+/>
+
+<Mistake
+  title="Tests ka order par depend karna"
+  why="Ek test ka data doosre ko chahiye ho to akela chalane ya parallel par fail hota hai."
+  better="Har test apna data khud banaye aur kisi doosre par na tike."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Small Functions & Single Responsibility](/courses/best-practices/small-functions), [Definition of Done](/courses/best-practices/definition-of-done) |
+| **Saath mein** | [Testing React Apps](/courses/react/testing), [Testing Next.js Apps](/courses/nextjs/testing) |
+| **Baad mein** | [Endpoint Tests First](/courses/best-practices/endpoint-tests-first), [CI/CD & Environments](/courses/best-practices/ci-cd-and-environments) |
+
+## Final quick revision
+
+| Check | Haan? |
+| --- | --- |
+| Pure logic ke unit tests | |
+| Har endpoint ke contract tests | |
+| Browser tests sirf critical flows | |
+| Tests seeded real user se sign in | |
+| Isolated database, production kabhi nahi | |
+| Vendors fake, paid AI calls CI se bahar | |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Test ka kaam bharosa dena hai. Jo test mock ko test kare, ya kabhi kabhi fail ho, woh bharosa nahi, shor deta hai.
+
+</Callout>

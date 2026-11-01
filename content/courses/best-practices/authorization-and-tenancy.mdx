@@ -1,0 +1,215 @@
+---
+title: Authorization & Multi-Tenancy
+description: Authorization multi tenant rbac ke saath, har request aur har resource par server check, tenant id session se, aur IDOR jaise data leaks se bachao.
+keywords:
+  - authorization multi tenant rbac
+  - idor vulnerability
+  - row level security postgres
+  - role based access control
+  - tenant isolation
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Har request par, har resource ke liye server check karta hai ke yeh caller ise chhoo sakta hai. Tenant id aur role session ya database se aate hain, request body ya URL se kabhi nahi.**
+
+</Callout>
+
+Authentication batata hai "tum kaun ho". Authorization batata hai "tum kya kar sakte ho". Multi tenancy ka matlab hai ek hi app aur database mein bohat si companies (tenants) ka data, jo ek doosre ko kabhi nazar na aaye.
+
+## 2. Kyun zaroori hai?
+
+Sab se aam bug ka naam **IDOR** (Insecure Direct Object Reference) hai. User apni invoice kholta hai: `/api/invoices/1042`. URL mein `1043` likhta hai aur kisi doosri company ki invoice khul jati hai. Login check tha, ownership check nahi tha.
+
+Doosra: dashboard tenant id query string se leta tha, `?tenantId=7`. Kisi ne `8` kar diya aur doosri company ka poora data dekh liya. Teesra: profile update `update(body)` karta tha, body mein `role: "admin"` bhej kar user admin ban gaya.
+
+<CompareTable leftTitle="Sirf login check" rightTitle="Har resource par check">
+
+Id badlo aur kisi ka bhi record khul jaye | Query mein tenant ya owner filter, warna 404
+Tenant id URL ya body se | Tenant id session ya host se
+Role body se set ho sakta hai | Role sirf database ya verified token se
+Admin route ek ek kar ke guard | Admin prefix par poore group ka guard
+Signed in lekin mana par 401 | Mana par 403, missing login par 401
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Ownership check seekhna zaroori | Har CRUD app mein yahi pehla security bug hota hai |
+| **Production code** | Lazmi | Ek missing filter poori customer list leak kar deta hai |
+| **Senior level** | Tenancy model chunna aur likhna | Code filter ya database policies, team ko pata ho kaun sa |
+
+Kab seekhein: [Authentication Patterns](/courses/best-practices/authentication) ke baad, jab app mein ek se zyada user ka data ho.
+
+## 4. Bura vs acha code
+
+### Bura: login check, ownership nahi
+
+```ts
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id } = await params;
+  const tenantId = new URL(request.url).searchParams.get("tenantId");
+  const invoice = await db.query("select * from invoices where id = $1", [id]);
+
+  return NextResponse.json({ invoice: invoice.rows[0], tenantId });
+}
+```
+
+Koi bhi signed in user kisi bhi invoice ki id likh kar use parh sakta hai.
+
+### Acha: tenant session se, filter data layer mein
+
+File `lib/invoices/invoices.queries.ts`:
+
+```ts
+export async function findInvoiceForTenant(tenantId: string, invoiceId: string) {
+  const result = await pool.query<InvoiceRow>(
+    "select id, number, total, status from invoices where tenant_id = $1 and id = $2",
+    [tenantId, invoiceId],
+  );
+
+  return result.rows.at(0);
+}
+```
+
+Handler:
+
+```ts
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const membership = await getCurrentMembership();
+  if (!membership) {
+    return NextResponse.json({ error: INVOICE_MESSAGES.unauthorized }, { status: 401 });
+  }
+
+  const { id } = await params;
+  const invoice = await findInvoiceForTenant(membership.tenantId, id);
+  if (!invoice) {
+    return NextResponse.json({ error: INVOICE_MESSAGES.notFound }, { status: 404 });
+  }
+
+  return NextResponse.json({ invoice: toInvoice(invoice) });
+}
+```
+
+Role ke liye ek closed enum, ek hi file mein:
+
+```ts
+export const ROLES = ["owner", "admin", "member"] as const;
+export type Role = (typeof ROLES)[number];
+
+export function canManageBilling(role: Role) {
+  return role === "owner" || role === "admin";
+}
+```
+
+Agar aap Postgres ki Row Level Security (RLS) use karte hain to filter database khud lagata hai:
+
+```sql
+alter table invoices enable row level security;
+
+create policy invoices_select_own_tenant on invoices
+  for select
+  using (tenant_id in (select tenant_id from memberships where user_id = auth.uid()));
+```
+
+### Farq kya hai?
+
+| Cheez | Bura code | Acha code |
+| --- | --- | --- |
+| Tenant | Query string se | Session wali membership se |
+| Query filter | Sirf `id` | `tenant_id` aur `id` dono |
+| Doosre ka record | Khul jata hai | 404 |
+| Query ki jagah | Handler mein | Data layer mein |
+| Response | Poori row | `toInvoice` mapper |
+
+## 5. Kaise apply karein?
+
+<Flow title="Authorization ki layers">
+
+Caller resolve karo (401 agar nahi)
+↓
+Role aur tenant session ya database se lo
+↓
+Action ki ijazat check karo (403 agar nahi)
+↓
+Query mein tenant ya owner filter lagao
+↓
+Record na mile to 404
+
+</Flow>
+
+Do tenancy models hain, app ki docs mein likhein kaun sa use ho raha hai:
+
+| Model | Kaise | Shart |
+| --- | --- | --- |
+| Code mein filter | Server ka privileged connection, har query mein `tenant_id` | Saari queries sirf data layer mein, bahar query review blocker |
+| Row Level Security | Har table par policies, user ke token se query | Har table par policy, admin key sirf webhooks aur jobs mein |
+
+Aur kuch rules:
+
+- Admin routes ek prefix ke neeche, guard poore group par, taake naya route guard bhool na sake.
+- Customer data badalne wale admin actions audit table mein: kis ne, kya, kab.
+- Quota ek statement mein check aur increment: `update ... where used < limit`.
+- Realtime channels subscribe ke waqt authorize hon, aur broadcast mein doosre tenant ka data na ho.
+
+## 6. Exceptions aur common mistakes
+
+Kabhi 403 ki jagah 404 dena behtar hota hai taake attacker ko pata na chale ke record mojood hai, jaisa upar ke example mein. Yeh jaan boojh kar aur team ke faisle se ho. Public data, jaise blog posts, par ownership check ki zaroorat nahi, lekin draft posts par hai.
+
+<Mistake
+  title="Sirf route ke shuru mein check karna"
+  why="User logged in hai, lekin record kisi aur ka hai, yeh check ek line baad bhool jata hai."
+  better="Har resource load karte waqt query mein owner ya tenant filter lagao."
+/>
+
+<Mistake
+  title="Role ki list do files mein"
+  why="Ek file mein naya role add hota hai, doosri mein nahi, aur permission check chupke se galat ho jata hai."
+  better="Roles ka ek closed enum ek file mein, database mein bhi enum ya CHECK constraint."
+/>
+
+<Mistake
+  title="Permissions table jo server kabhi check nahi karta"
+  why="UI buttons chhupa deta hai lekin API call seedhi chal jati hai, yeh sirf sajawat hai."
+  better="Jo permission maujood hai woh server par enforce ho, warna use hata do."
+/>
+
+<Mistake
+  title="Admin key wala database client user request mein use karna"
+  why="RLS policies bypass ho jati hain aur ek bug se sab tenants ka data mil jata hai."
+  better="Privileged client ko server only module mein rakho aur sirf webhooks ya admin jobs mein use karo."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Authentication Patterns](/courses/best-practices/authentication), [Dynamic Routes](/courses/nextjs/dynamic-routes), [Database Integration](/courses/nextjs/database-integration) |
+| **Saath mein** | [Query Patterns & Transactions](/courses/best-practices/query-patterns), [Input Validation at the Boundary](/courses/best-practices/input-validation) |
+| **Baad mein** | [Common Vulnerabilities (OWASP)](/courses/best-practices/common-vulnerabilities), [Endpoint Tests First](/courses/best-practices/endpoint-tests-first) |
+
+## Final quick revision
+
+| Check | Sawal |
+| --- | --- |
+| Har resource | Kya query mein tenant ya owner filter hai? |
+| Tenant source | Kya tenant id session ya host se aata hai? |
+| Role | Kya role kabhi body ya client flag se aata hai? |
+| Status | Missing login 401, mana 403? |
+| Admin | Kya admin group par ek guard hai aur audit log hai? |
+| Tenancy model | Kya docs mein likha hai filter ya RLS? |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Login check darwaza hai, ownership check har kamre ka tala. Har query se poochho: "kya yeh row sach mein is caller ki hai?"
+
+</Callout>

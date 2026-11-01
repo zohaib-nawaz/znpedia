@@ -1,0 +1,184 @@
+---
+title: Numbers & Math
+description: JavaScript numbers math ka guide, floating point masla, toFixed, Math.round, random numbers aur Intl.NumberFormat. Roman Urdu mein seekhein.
+keywords:
+  - javascript numbers math
+  - javascript math object
+  - javascript random number
+  - 0.1 + 0.2 javascript
+  - intl numberformat
+---
+
+## 1. Numbers aur Math kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**JavaScript mein `number` ek hi type hai jo integers aur decimals dono rakhta hai, aur `Math` ek built-in object hai jo rounding, power aur random jaise kaam karta hai.**
+
+</Callout>
+
+Andar se har `number` ek **64-bit floating point** value hai. Is liye `5` aur `5.0` bilkul same hain. Kuch khaas values bhi hain:
+
+| Value | Kab milti hai |
+| --- | --- |
+| `Infinity` | `1 / 0` |
+| `-Infinity` | `-1 / 0` |
+| `NaN` | Ghalat math, jaise `"abc" * 2` |
+| `Number.MAX_SAFE_INTEGER` | `9007199254740991`, is se upar precision kharab |
+
+## 2. Kyun zaroori hai?
+
+Prices, discounts, ratings, pagination, sab numbers hain. Agar floating point ka masla na pata ho to `0.1 + 0.2` ka jawab `0.30000000000000004` dekh kar hairani hoti hai aur bill mein ghalat paise aa jate hain.
+
+<CompareTable leftTitle="Bina samjhe" rightTitle="Samajh kar">
+
+Rupees decimals mein jodna | Paise integers mein rakhna, aakhir mein divide
+Number ko khud format karna | Intl.NumberFormat se currency format
+Random ke liye ajeeb formulas | Math.floor aur Math.random ka standard pattern
+Bari numbers mein zeros ginna | 1_000_000 jaise numeric separators
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Real use | Tool |
+| --- | --- |
+| **Price ko 2 decimal dikhana** | `toFixed(2)` ya `Intl.NumberFormat` |
+| **Rating round karna** | `Math.round()` |
+| **Total pages** | `Math.ceil(total / perPage)` |
+| **OTP ya dice** | `Math.random()` + `Math.floor()` |
+| **Sab se bari value** | `Math.max(...values)` |
+| **Number check** | `Number.isInteger()`, `Number.isNaN()` |
+
+## 4. Kaise kaam karta hai?
+
+Computer numbers ko **binary** mein rakhta hai. `0.1` jaisi decimals binary mein exactly nahi likhi ja saktin, is liye chhota sa farq reh jata hai.
+
+<Flow title="0.1 + 0.2 ka safar">
+
+0.1 binary mein, thora sa approximate
+     ↓
+0.2 binary mein, thora sa approximate
+     ↓
+Dono jode, chhote errors jud gaye
+     ↓
+0.30000000000000004
+
+</Flow>
+
+<Callout variant="important" title="Mental model">
+
+**Paison ka hisaab integers (paisa) mein karein, sirf dikhate waqt decimal mein badlein.**
+
+</Callout>
+
+## 5. Code example
+
+Floating point aur safe comparison:
+
+```js
+console.log(0.1 + 0.2);
+console.log(0.1 + 0.2 === 0.3);
+
+const close = Math.abs(0.1 + 0.2 - 0.3) < Number.EPSILON;
+console.log(close);
+
+const pricesInPaisa = [1050, 2099, 350];
+const totalPaisa = pricesInPaisa.reduce((sum, p) => sum + p, 0);
+console.log(totalPaisa / 100);
+```
+
+Output: `0.30000000000000004`, `false`, `true`, `34.99`.
+
+Math methods:
+
+```js
+console.log(Math.round(4.5));
+console.log(Math.floor(4.9));
+console.log(Math.ceil(4.1));
+console.log(Math.trunc(-4.7));
+console.log(Math.max(3, 9, 1));
+console.log(Math.abs(-12));
+console.log(2 ** 10);
+
+const dice = Math.floor(Math.random() * 6) + 1;
+console.log(dice);
+```
+
+Output: `5`, `4`, `5`, `-4`, `9`, `12`, `1024`, aur `1` se `6` tak koi random number.
+
+Formatting:
+
+```js
+const salary = 1_250_000;
+
+console.log((19.987).toFixed(2));
+
+const pkr = new Intl.NumberFormat("en-PK", {
+  style: "currency",
+  currency: "PKR",
+});
+console.log(pkr.format(salary));
+```
+
+`toFixed(2)` string `"19.99"` deta hai. `Intl.NumberFormat` locale ke hisaab se currency aur commas laga deta hai.
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `Number.EPSILON` | Do numbers ke "taqreeban barabar" hone ka chhota sa margin |
+| `Math.floor` / `Math.ceil` | Neeche / upar wale integer tak |
+| `Math.trunc` | Decimal hissa kaat deta hai |
+| `Math.random()` | `0` se `1` tak (1 shamil nahi) random decimal |
+| `1_250_000` | Numeric separator, sirf parhne mein asaani |
+| `toFixed(2)` | 2 decimals wali **string** |
+
+### Interview tip
+
+"`0.1 + 0.2 !== 0.3` kyun?" Jawab: JavaScript IEEE 754 double precision floats use karti hai. Binary mein `0.1` aur `0.2` exact nahi, is liye chhota rounding error aata hai. Yeh sirf JavaScript nahi, zyada tar languages mein hota hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="toFixed ke result ko number samajhna"
+  why="toFixed string return karta hai, phir us mein plus lagane se text jud jata hai."
+  better="Calculation numbers mein karein, toFixed ya Intl.NumberFormat sirf dikhane ke liye use karein."
+/>
+
+<Mistake
+  title="Decimals ko seedha === se compare karna"
+  why="Floating point error ki wajah se 0.1 + 0.2 === 0.3 false aata hai."
+  better="Integers (jaise paisa) mein kaam karein ya Number.EPSILON wala tolerance check use karein."
+/>
+
+<Mistake
+  title="Math.random ko security ke liye use karna"
+  why="Math.random cryptographically secure nahi, is ke numbers predict kiye ja sakte hain."
+  better="Tokens ya passwords ke liye crypto.getRandomValues ya crypto.randomUUID use karein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Data Types](/courses/javascript/data-types), [Operators](/courses/javascript/operators), [Type Conversion](/courses/javascript/type-conversion) |
+| **Is ke baad** | [Conditionals](/courses/javascript/conditionals), [Loops](/courses/javascript/loops) |
+| **Aage** | [Array Methods](/courses/javascript/array-methods), [Spread & Rest](/courses/javascript/spread-and-rest) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Ek hi `number` type | Integers aur decimals dono, 64-bit float |
+| Floating point | `0.1 + 0.2` exact `0.3` nahi |
+| Paise | Integers mein hisaab karein |
+| Rounding | `round`, `floor`, `ceil`, `trunc` |
+| Random int | `Math.floor(Math.random() * n) + 1` |
+| Formatting | `Intl.NumberFormat`, `toFixed` string deta hai |
+
+<Callout variant="important" title="Yaad rakhein">
+
+**Calculation numbers mein, formatting sirf aakhir mein.** Aur security ke liye `Math.random()` nahi, `crypto` use karein.
+
+</Callout>

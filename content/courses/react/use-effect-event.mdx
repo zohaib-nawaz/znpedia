@@ -1,0 +1,168 @@
+---
+title: useEffectEvent
+description: React useEffectEvent hook (React 19.2 stable) se Effect ke andar latest props aur state parhna seekhein, bina Effect ko dobara chalaye, Roman Urdu mein.
+keywords:
+  - react useeffectevent
+  - useeffectevent react 19.2
+  - effect event react urdu
+  - useeffect dependencies problem
+---
+
+## 1. useEffectEvent kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**`useEffectEvent` ek hook hai jo Effect ke andar ek aisa function banata hai jo hamesha latest props aur state dekhta hai, lekin Effect ki dependency nahi banta.**
+
+</Callout>
+
+Kabhi Effect ke andar kuch logic **reactive** hoti hai (jis ke badalne par Effect dobara chalna chahiye) aur kuch **non-reactive** (jis ki sirf latest value chahiye, lekin uske badalne par Effect restart nahi hona chahiye).
+
+`useEffectEvent` isi non-reactive hisse ko Effect se alag karta hai. Yeh React 19.2 mein stable hua hai.
+
+## 2. Kyun zaroori hai?
+
+Socho ek chat room component hai. Connection `roomId` par depend karta hai. Connect hone par notification dikhani hai jis mein `theme` use hota hai.
+
+<CompareTable leftTitle="Sirf useEffect" rightTitle="useEffectEvent ke saath">
+
+theme ko deps mein daalna parta hai | theme Effect Event ke andar parha jata hai
+Theme badli to chat reconnect | Theme badli to kuch reconnect nahi
+Linter warning chupane ka dil karta hai | Linter khush, deps bilkul sahi
+Stale value ka darr | Hamesha latest theme milti hai
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Situation | Reactive hissa | Effect Event mein kya |
+| --- | --- | --- |
+| Chat connection | `roomId` | Notification jo `theme` use kare |
+| Page visit analytics | `url` | `cartCount` ko log karna |
+| Timer ya interval | Interval ka setup | Latest `step` ke saath state update |
+| Event listener | Listener lagana | Handler jo latest props parhe |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Reactive aur non-reactive ko alag karna">
+
+Effect sirf reactive values par depend karta hai
+↓
+Non-reactive logic useEffectEvent mein jati hai
+↓
+Effect andar se Effect Event call karta hai
+↓
+Effect Event ko har call par latest props aur state milti hain
+↓
+Effect sirf reactive value badalne par dobara chalta hai
+
+</Flow>
+
+Effect Event ko aise samjhein jaise ek event handler, bas fark yeh hai ke yeh user click se nahi, **Effect ke andar se** fire hota hai.
+
+## 5. Code example
+
+### Chat room notification
+
+```tsx
+import { useEffect, useEffectEvent } from "react";
+import { createConnection } from "./chat";
+import { showNotification } from "./notifications";
+
+export function ChatRoom({ roomId, theme }: { roomId: string; theme: string }) {
+  const onConnected = useEffectEvent(() => {
+    showNotification("Connected!", theme);
+  });
+
+  useEffect(() => {
+    const connection = createConnection(roomId);
+    connection.on("connected", () => {
+      onConnected();
+    });
+    connection.connect();
+    return () => connection.disconnect();
+  }, [roomId]);
+
+  return <h1>Room: {roomId}</h1>;
+}
+```
+
+### Analytics with latest value
+
+```tsx
+import { useEffect, useEffectEvent } from "react";
+import { logVisit } from "./analytics";
+
+export function Page({ url, cartCount }: { url: string; cartCount: number }) {
+  const onVisit = useEffectEvent((visitedUrl: string) => {
+    logVisit(visitedUrl, cartCount);
+  });
+
+  useEffect(() => {
+    onVisit(url);
+  }, [url]);
+
+  return <main>{url}</main>;
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `useEffectEvent(() => ...)` | Non-reactive function banaya |
+| `theme` andar parhna | Hamesha latest theme, bina dependency ke |
+| Deps `[roomId]` | Sirf room badalne par reconnect |
+| `onVisit(url)` | Reactive value argument ke taur par pass ki, clear intent |
+| `cartCount` | Sirf parha jata hai, badalne par log dobara nahi hota |
+
+## 6. Common mistakes
+
+<Mistake
+  title="Effect Event ko dependency array mein daalna"
+  why="Effect Event jaan boojh kar non-reactive hai, isay deps mein daalne ki zaroorat nahi."
+  better="Deps mein sirf reactive values rakhein. eslint-plugin-react-hooks ka latest version yeh khud samajhta hai."
+/>
+
+<Mistake
+  title="Effect Event ko render ya event handler se call karna"
+  why="Yeh sirf Effects ke andar se call hone ke liye bana hai, bahar call karna rules ke khilaf hai."
+  better="Click jaise events ke liye normal event handler function likhein."
+/>
+
+<Mistake
+  title="Effect Event ko child component ya dusre hook ko pass karna"
+  why="Effect Event apne component ke Effects tak mehdood hai, pass karne se behavior unpredictable ho jata hai."
+  better="Isay usi component mein declare karein jahan ka Effect isay call karta hai."
+/>
+
+<Mistake
+  title="Har dependency warning chupane ke liye use karna"
+  why="Agar logic sach mein reactive hai to usay Effect Event mein daalne se bug aata hai, update miss ho jata hai."
+  better="Sirf woh logic andar rakhein jiske badalne par Effect restart nahi hona chahiye."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [useEffect](/courses/react/use-effect), [Handling Events](/courses/react/events), [Rules of Hooks](/courses/react/rules-of-hooks) |
+| **Saath** | [Custom Hooks](/courses/react/custom-hooks), [useRef](/courses/react/use-ref) |
+| **Baad mein** | [useTransition & useDeferredValue](/courses/react/use-transition), [React Compiler](/courses/react/react-compiler) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Kya hai | Effect ke andar non-reactive logic ke liye function |
+| Version | React 19.2 mein stable |
+| Import | `import { useEffectEvent } from "react"` |
+| Latest values | Har call par latest props aur state |
+| Deps | Effect Event deps mein nahi jata |
+| Call kahan se | Sirf Effects ke andar se |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Sawal poochein: "Is value ke badalne par kya Effect dobara chalna chahiye?" Agar haan, to woh dependency hai. Agar nahi, to us logic ko **`useEffectEvent`** mein rakhein.
+
+</Callout>

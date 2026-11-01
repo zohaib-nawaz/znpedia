@@ -1,0 +1,200 @@
+---
+title: TypeScript with React
+description: React typescript Roman Urdu mein, props ke types, useState generics, event types, ref types aur children ko sahi type karna simple examples ke saath.
+keywords:
+  - react typescript
+  - typescript props react
+  - react event types
+  - usestate typescript
+---
+
+## 1. TypeScript with React kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**TypeScript React components ke props, state, events aur refs ko types deta hai, taa ke galtiyan code chalne se pehle editor mein hi pakri jayein.**
+
+</Callout>
+
+TypeScript JavaScript ke upar type system hai. React files `.tsx` extension mein likhi jati hain. Vite ka `react-ts` template ya Next.js dono TypeScript ke saath out of the box aate hain.
+
+Aapko har cheez type nahi karni parti. TypeScript bohot kuch khud **infer** kar leta hai, aapka kaam mostly props aur kuch edge cases ko type karna hai.
+
+## 2. Kyun zaroori hai?
+
+Bari app mein yeh yaad rakhna mushkil hai ke kaunsa component kaunse props leta hai. JavaScript mein galti runtime par pata chalti hai, aksar user ke saamne.
+
+<CompareTable leftTitle="Sirf JavaScript" rightTitle="TypeScript ke saath">
+
+Galat prop ka pata runtime par | Editor mein red line, foran
+Prop ka naam yaad rakhna parta | Autocomplete sab bata deta hai
+undefined se crash | Optional values ka check zaroori
+Refactor mein toot phoot ka darr | Rename par saari jagah update
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Cheez | Type ka tareeqa |
+| --- | --- |
+| **Props** | `type ButtonProps = { ... }` |
+| **Children** | `React.ReactNode` |
+| **State jo null bhi ho** | `useState<User \| null>(null)` |
+| **Input ka onChange** | `React.ChangeEvent<HTMLInputElement>` |
+| **DOM ref** | `useRef<HTMLInputElement>(null)` |
+| **Native props extend** | `ComponentProps<"button">` |
+
+## 4. Kaise kaam karta hai?
+
+TypeScript sirf development aur build time par kaam karta hai. Browser tak pohnchne se pehle types hata diye jate hain, is liye runtime par koi extra code nahi.
+
+<Flow title="Type check ka safar">
+
+Component .tsx mein likha
+↓
+Props aur state ke types define
+↓
+Editor aur tsc mismatch pakarte hain
+↓
+Build ke waqt types strip
+↓
+Browser mein plain JavaScript
+
+</Flow>
+
+## 5. Code example
+
+### Example 1: Props, children aur optional values
+
+```tsx
+import type { ReactNode } from "react";
+
+type CardProps = {
+  title: string;
+  variant?: "primary" | "danger";
+  children: ReactNode;
+};
+
+export function Card({ title, variant = "primary", children }: CardProps) {
+  return (
+    <section className={variant}>
+      <h2>{title}</h2>
+      {children}
+    </section>
+  );
+}
+```
+
+### Example 2: State, events aur refs
+
+```tsx
+import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
+
+type User = { id: number; name: string };
+
+export function SearchForm() {
+  const [query, setQuery] = useState("");
+  const [user, setUser] = useState<User | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function handleChange(e: ChangeEvent<HTMLInputElement>) {
+    setQuery(e.target.value);
+  }
+
+  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setUser({ id: 1, name: query });
+    inputRef.current?.focus();
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input ref={inputRef} value={query} onChange={handleChange} />
+      <button type="submit">Search</button>
+      {user && <p>Mila: {user.name}</p>}
+    </form>
+  );
+}
+```
+
+### Example 3: Native button props extend karna
+
+```tsx
+import type { ComponentProps } from "react";
+
+type ButtonProps = ComponentProps<"button"> & { loading?: boolean };
+
+export function Button({ loading = false, children, ...rest }: ButtonProps) {
+  return (
+    <button disabled={loading} {...rest}>
+      {loading ? "Ruko..." : children}
+    </button>
+  );
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `variant?:` | Optional prop, default value destructuring mein |
+| `"primary" \| "danger"` | Union type, sirf yeh do values allowed |
+| `useState("")` | Type `string` khud infer hua |
+| `useState<User \| null>(null)` | Shuru mein null, baad mein User |
+| `useRef<HTMLInputElement>(null)` | React 19 mein `useRef` ko argument dena zaroori |
+| `ComponentProps<"button">` | `onClick`, `type`, `disabled` sab native props mil gaye |
+
+### Interview tip
+
+React 19 mein `ref` ek normal prop hai, is liye naye components ke liye `forwardRef` ki zaroorat nahi. `ComponentProps<"input">` mein `ref` bhi shamil hota hai. `React.FC` ab zaroori nahi, seedha props ko type karna common aur saaf tareeqa hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Har jagah any use karna"
+  why="any type checking band kar deta hai, phir TypeScript ka koi faida nahi rehta."
+  better="Sahi type likho, ya unknown use karke value ko check karo."
+/>
+
+<Mistake
+  title="Nullable state ka generic na dena"
+  why="useState(null) ka type sirf null ban jata hai aur baad mein object set karne par error aata hai."
+  better="Generic mein User aur null dono ka union do, jaise Example 2 mein kiya gaya hai."
+/>
+
+<Mistake
+  title="Children ka type JSX.Element rakhna"
+  why="Is se string, number, array ya null children reject ho jate hain."
+  better="Children ke liye ReactNode use karo."
+/>
+
+<Mistake
+  title="Event ke liye any likhna"
+  why="e.target.value jaisi cheezon par autocomplete aur safety dono khatam."
+  better="ChangeEvent, FormEvent ya MouseEvent ko element type ke saath use karo."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Props](/courses/react/props), [State with useState](/courses/react/state), [Forms & Controlled Inputs](/courses/react/forms) |
+| **Saath mein** | [useRef](/courses/react/use-ref), [Custom Hooks](/courses/react/custom-hooks), [Children & Composition](/courses/react/children-and-composition) |
+| **Baad mein** | [Testing React Apps](/courses/react/testing), [State Management Libraries](/courses/react/state-management) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| File | `.tsx` |
+| Props | `type Props = { ... }`, optional ke liye `?` |
+| Children | `ReactNode` |
+| State | Infer hone do, null wali state par generic |
+| Events | `ChangeEvent<HTMLInputElement>`, `FormEvent<HTMLFormElement>` |
+| Refs | `useRef<HTMLInputElement>(null)` |
+
+<Callout variant="important" title="Yaad rakhein">
+
+TypeScript ko jitna ho sake **infer** karne do, aur apna dhyaan **props ke types** par rakho. Saaf props types poori team ke liye documentation ka kaam karte hain.
+
+</Callout>

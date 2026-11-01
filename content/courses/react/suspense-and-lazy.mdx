@@ -1,0 +1,180 @@
+---
+title: Suspense & lazy()
+description: React suspense lazy loading Roman Urdu mein, lazy() se component split karna aur Suspense fallback se loading UI dikhana, examples ke saath.
+keywords:
+  - react suspense lazy loading
+  - react lazy component
+  - react suspense fallback
+  - code splitting in react
+---
+
+## 1. Suspense & lazy() kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**`lazy()` component ka code tab load karta hai jab woh pehli baar render ho, aur `Suspense` us waqt tak ek fallback UI dikhata hai.**
+
+</Callout>
+
+`lazy()` aur `Suspense` dono `react` package se aate hain. `lazy()` ek dynamic `import()` leta hai aur ek aisa component wapas deta hai jiska code alag file (chunk) mein hota hai.
+
+`Suspense` ek boundary hai. Uske andar koi bhi component agar abhi "ready" nahi, jaise lazy code load ho raha ho ya `use()` kisi Promise ka wait kar raha ho, to React `fallback` dikhata hai.
+
+## 2. Kyun zaroori hai?
+
+Bina code splitting ke poori app ka JavaScript ek hi bundle mein jata hai. User ko settings page kabhi kholna bhi na ho, phir bhi uska code pehle download hota hai.
+
+<CompareTable leftTitle="Bina lazy()" rightTitle="lazy() + Suspense ke saath">
+
+Saara code ek bara bundle | Har heavy part alag chunk
+First load slow | First load chhota aur fast
+Rarely used page bhi pehle download | Code sirf zaroorat par aata hai
+Loading state khud manage karni parti | Suspense fallback declaratively
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Use case | Example |
+| --- | --- |
+| **Route level splitting** | Har page ka component `lazy()` se |
+| **Heavy widgets** | Chart library, rich text editor, map |
+| **Modals aur drawers** | Jo sirf click par khulte hain |
+| **Admin panels** | Jo sirf kuch users dekhte hain |
+| **Data loading** | `use()` ya framework data ke saath loading UI |
+
+## 4. Kaise kaam karta hai?
+
+Jab React lazy component ko pehli baar render karta hai, woh `import()` call karta hai. Jab tak Promise resolve nahi hota, component "suspend" ho jata hai aur React sab se qareebi `Suspense` boundary ka `fallback` dikhata hai.
+
+<Flow title="Lazy component ka safar">
+
+Component pehli baar render
+↓
+import() call, chunk download shuru
+↓
+Component suspend hota hai
+↓
+Nearest Suspense ka fallback dikhta hai
+↓
+Chunk load hua, asal component render
+
+</Flow>
+
+Doosri baar render par code cache mein hota hai, is liye fallback dobara nahi aata.
+
+## 5. Code example
+
+### Example 1: Basic lazy loading
+
+```jsx
+import { lazy, Suspense, useState } from "react";
+
+const SettingsPanel = lazy(() => import("./SettingsPanel.jsx"));
+
+export default function App() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div>
+      <button onClick={() => setOpen(true)}>Settings kholo</button>
+      {open && (
+        <Suspense fallback={<p>Settings load ho rahi hain...</p>}>
+          <SettingsPanel />
+        </Suspense>
+      )}
+    </div>
+  );
+}
+```
+
+```jsx
+export default function SettingsPanel() {
+  return <section>Yahan settings hain</section>;
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Line | Matlab |
+| --- | --- |
+| `lazy(() => import(...))` | Module top level par lazy component banaya |
+| `export default` | `lazy()` ko default export chahiye |
+| `open && (...)` | Button click se pehle code download hi nahi hota |
+| `fallback` | Chunk aane tak yeh UI dikhti hai |
+
+### Example 2: Nested boundaries
+
+```jsx
+import { lazy, Suspense } from "react";
+
+const Sidebar = lazy(() => import("./Sidebar.jsx"));
+const Feed = lazy(() => import("./Feed.jsx"));
+
+export default function Dashboard() {
+  return (
+    <Suspense fallback={<p>Page load ho raha hai...</p>}>
+      <Sidebar />
+      <Suspense fallback={<p>Feed load ho rahi hai...</p>}>
+        <Feed />
+      </Suspense>
+    </Suspense>
+  );
+}
+```
+
+Andar wali boundary sirf `Feed` ko cover karti hai. `Sidebar` aa jaye to woh dikh jata hai, `Feed` apna alag fallback dikhata hai. Is tarah aap decide karte hain ke loading UI kitni granular ho.
+
+### Interview tip
+
+Agar poocha jaye "Suspense sirf lazy ke liye hai?", to jawab: nahi. Suspense kisi bhi suspending source ke saath kaam karta hai, jaise `lazy()`, `use(promise)`, aur Suspense-enabled frameworks ka data fetching. `useEffect` ke andar fetch Suspense ko trigger nahi karta.
+
+## 6. Common mistakes
+
+<Mistake
+  title="lazy() ko component ke andar call karna"
+  why="Har render par naya component type banta hai, state reset hoti hai aur code baar baar load hota hai."
+  better="lazy() hamesha module ke top level par, component ke bahar likho."
+/>
+
+<Mistake
+  title="Named export ko seedha lazy() mein dena"
+  why="lazy() ko aisa Promise chahiye jo default export wala module de, warna error aata hai."
+  better="Component ko default export karo, ya import ke baad then mein default ki shakal mein return karo."
+/>
+
+<Mistake
+  title="Poori app ko ek hi Suspense mein lapet dena"
+  why="Chhota sa part load ho raha ho to bhi poora page fallback ban jata hai."
+  better="Boundaries wahan lagao jahan loading UI meaningful ho, jaise har section ya route par."
+/>
+
+<Mistake
+  title="Load error ko handle na karna"
+  why="Network fail ho jaye to import reject hota hai aur app crash ho sakti hai."
+  better="Suspense ke upar Error Boundary lagao taa ke user ko retry ka option mile."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Components](/courses/react/components), [Conditional Rendering](/courses/react/conditional-rendering), [Promises](/courses/javascript/promises) |
+| **Saath mein** | [Error Boundaries](/courses/react/error-boundaries), [The use() API](/courses/react/use-hook) |
+| **Baad mein** | [useTransition & useDeferredValue](/courses/react/use-transition), [Server Components](/courses/react/server-components), [Routing with React Router](/courses/react/react-router) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `lazy()` | Dynamic `import()` se component ka alag chunk |
+| `Suspense` | Suspend hone par `fallback` dikhata hai |
+| Placement | `lazy()` top level par, default export ke saath |
+| Nesting | Andar wali boundary sirf apne children cover karti hai |
+| Errors | Error Boundary ke saath pair karo |
+
+<Callout variant="important" title="Yaad rakhein">
+
+`lazy()` code ko **kab** load karna hai woh decide karta hai, aur `Suspense` batata hai ke **load hote waqt** kya dikhana hai. Dono mil kar first load ko chhota aur fast banate hain.
+
+</Callout>

@@ -1,0 +1,190 @@
+---
+title: Truthy, Falsy & Equality
+description: JavaScript truthy falsy values ki list, == vs === ka farq, Object.is aur objects ka reference comparison. Roman Urdu mein interview ready guide.
+keywords:
+  - javascript truthy falsy == vs ===
+  - falsy values javascript
+  - strict vs loose equality
+  - object.is javascript
+---
+
+## 1. Truthy, falsy aur equality kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Truthy value condition mein `true` ki tarah aur falsy value `false` ki tarah behave karti hai. Equality batati hai do values barabar hain ya nahi: `===` strict hai, `==` type badal kar compare karta hai.**
+
+</Callout>
+
+JavaScript mein sirf yeh **8 values falsy** hain. Baqi sab truthy:
+
+| Falsy value | Type |
+| --- | --- |
+| `false` | boolean |
+| `0`, `-0` | number |
+| `0n` | bigint |
+| `""` | empty string |
+| `null` | null |
+| `undefined` | undefined |
+| `NaN` | number |
+
+Hairan karne wali **truthy** values: `"0"`, `"false"`, `" "` (space), `[]`, `{}`.
+
+## 2. Kyun zaroori hai?
+
+`if (value)` har jagah likha jata hai. Agar pata na ho ke `0` falsy hai to quantity `0` wala item ghalti se "missing" ban jata hai. Aur `==` ke ajeeb rules se bugs aate hain jo pakarna mushkil hai.
+
+<CompareTable leftTitle="Loose equality ==" rightTitle="Strict equality ===">
+
+Pehle types badalta hai, phir compare | Type alag ho to seedha false
+0 == empty string true deta hai | 0 === empty string false
+Rules yaad rakhne parte hain | Jo dikhta hai wohi result
+Bugs chhupa leta hai | Predictable aur safe
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Situation | Sahi tareeqa |
+| --- | --- |
+| **Input khaali to nahi** | `if (name.trim())` |
+| **Array mein items hain** | `if (items.length > 0)`, kyun ke `[]` truthy hai |
+| **Value null ya undefined** | `value == null` ya `value ?? fallback` |
+| **Do values ka match** | `===` |
+| **NaN check** | `Number.isNaN(x)` ya `Object.is(x, NaN)` |
+| **Do objects same hain?** | `===` sirf reference check karta hai |
+
+## 4. Kaise kaam karta hai?
+
+Condition (`if`, `while`, `&&`, `||`, `!`) value ko andar se **boolean** mein badalti hai. Yeh `Boolean(value)` jaisa hai.
+
+<Flow title="Condition mein value ka safar">
+
+if (value)
+     ↓
+Boolean(value) andar se chalta hai
+     ↓
+Falsy list mein hai? to false
+     ↓
+Warna true
+
+</Flow>
+
+`===` pehle type dekhta hai. Type alag to foran `false`. `==` type alag ho to coercion rules lagata hai, jaise string ko number banana.
+
+Objects aur arrays ke liye dono operators **reference** compare karte hain, content nahi.
+
+<Callout variant="important" title="Mental model">
+
+**Falsy list chhoti hai, usay yaad kar lein. Baqi sab truthy. Comparison mein hamesha `===`.**
+
+</Callout>
+
+## 5. Code example
+
+Truthy aur falsy:
+
+```js
+const values = [0, "", "0", [], {}, null, NaN, " "];
+
+for (const v of values) {
+  console.log(JSON.stringify(v), Boolean(v));
+}
+```
+
+Output: `0 false`, `"" false`, `"0" true`, `[] true`, `{} true`, `null false`, `null false` (NaN JSON mein `null` dikhta hai), `" " true`.
+
+`==` vs `===`:
+
+```js
+console.log(0 == "");
+console.log(0 === "");
+console.log("1" == 1);
+console.log(null == undefined);
+console.log(null === undefined);
+console.log(null == 0);
+console.log(NaN === NaN);
+```
+
+Output: `true`, `false`, `true`, `true`, `false`, `false`, `false`.
+
+Objects aur `Object.is`:
+
+```js
+const a = { id: 1 };
+const b = { id: 1 };
+const c = a;
+
+console.log(a === b);
+console.log(a === c);
+console.log(Object.is(NaN, NaN));
+console.log(Object.is(0, -0));
+```
+
+Output: `false`, `true`, `true`, `false`.
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `Boolean(v)` | Wahi conversion jo `if` andar karta hai |
+| `0 == ""` | `""` number `0` ban gaya, is liye `true` |
+| `null == undefined` | Khaas rule, sirf ek doosre ke barabar |
+| `NaN === NaN` | `NaN` kisi ke barabar nahi, khud ke bhi nahi |
+| `a === b` | Content same, lekin alag objects, `false` |
+| `Object.is()` | `===` jaisa, lekin `NaN` aur `-0` sahi handle |
+
+### Interview tip
+
+`[] == false` ka jawab `true` hai, lekin `if ([])` chalta hai. Wajah: `==` dono ko number banata hai (`[]` se `""` se `0`, aur `false` se `0`), jab ke `if` sirf truthiness dekhta hai, aur `[]` truthy hai. Yeh sawal `==` se bachne ki behtareen daleel hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="if (count) se number ka hona check karna"
+  why="count 0 ho to falsy ban jata hai aur valid 0 ko missing samjha jata hai."
+  better="Seedha check likhein, jaise count !== undefined ya typeof count === 'number'."
+/>
+
+<Mistake
+  title="Khaali array ko if (arr) se check karna"
+  why="Empty array bhi truthy hai, is liye condition hamesha pass hoti hai."
+  better="arr.length > 0 check karein."
+/>
+
+<Mistake
+  title="== use karna"
+  why="Coercion ke rules ajeeb results dete hain, jaise '0' == false true."
+  better="Hamesha === aur !== use karein. null aur undefined dono ek saath check karne hon to value == null chal sakta hai."
+/>
+
+<Mistake
+  title="Do objects ko === se content ke liye compare karna"
+  why="=== sirf yeh dekhta hai ke dono same object hain, andar ka data nahi."
+  better="Specific fields compare karein, jaise a.id === b.id."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Type Conversion](/courses/javascript/type-conversion), [Operators](/courses/javascript/operators), [Conditionals](/courses/javascript/conditionals) |
+| **Is ke baad** | [Functions](/courses/javascript/functions), [Objects](/courses/javascript/objects) |
+| **Aage** | [Optional Chaining & Nullish Coalescing](/courses/javascript/optional-chaining-and-nullish), [Map & Set](/courses/javascript/map-and-set) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Falsy | `false`, `0`, `-0`, `0n`, `""`, `null`, `undefined`, `NaN` |
+| Truthy surprises | `"0"`, `"false"`, `[]`, `{}` |
+| `===` | Type aur value dono same, default choice |
+| `==` | Coercion karta hai, avoid karein |
+| Objects | Reference compare hota hai, content nahi |
+| `Object.is` | `NaN` aur `-0` ke liye exact |
+
+<Callout variant="important" title="Yaad rakhein">
+
+**Falsy list yaad karein, baqi sab truthy.** Comparison ke liye hamesha `===`, aur khaali array ko `length` se check karein.
+
+</Callout>

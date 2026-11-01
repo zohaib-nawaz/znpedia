@@ -1,0 +1,180 @@
+---
+title: JSX
+description: React JSX kya hai, HTML jaisa syntax JavaScript mein kaise kaam karta hai, curly braces, className aur JSX ke rules Roman Urdu mein seekhein.
+keywords:
+  - react jsx
+  - jsx in urdu
+  - jsx rules react
+  - jsx expressions curly braces
+---
+
+## 1. JSX kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**JSX JavaScript ka ek syntax extension hai jis se aap JavaScript file ke andar HTML jaisa UI likhte hain.**
+
+</Callout>
+
+JSX dekhne mein HTML lagta hai lekin asal mein **JavaScript** hai. Build tool (jaise Vite) isay normal JavaScript function calls mein badal deta hai jo React elements banate hain.
+
+```jsx
+const heading = <h1 className="title">Salam</h1>;
+```
+
+## 2. Kyun zaroori hai?
+
+JSX ke bina bhi React likha ja sakta hai, lekin har element ke liye function call likhna parta hai aur nested UI parhna bohot mushkil ho jata hai.
+
+<CompareTable leftTitle="Bina JSX" rightTitle="JSX ke saath">
+
+Har element ke liye createElement call | HTML jaisa seedha markup
+Nesting mein brackets ka jungle | Structure ek nazar mein samajh aata hai
+UI aur logic alag files mein | Component mein UI aur logic saath
+Typos runtime par pakre jate hain | Editor aur TypeScript foran batate hain
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Jagah | Example |
+| --- | --- |
+| **Har React component** | `return` ke andar UI |
+| **Lists** | `items.map()` se elements banana |
+| **Conditional UI** | `isLoggedIn && <Profile />` |
+| **Next.js aur React Native** | Wahi JSX syntax |
+| **Files** | `.jsx` ya TypeScript ke saath `.tsx` |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="JSX se screen tak">
+
+Aap JSX likhte hain
+↓
+Vite ya Babel isay jsx function calls mein badalta hai
+↓
+Har call ek React element object banata hai
+↓
+React in objects se DOM banata hai
+
+</Flow>
+
+Yani yeh do lines barabar hain:
+
+```jsx
+const a = <h1 className="title">Salam</h1>;
+```
+
+```js
+import { jsx } from "react/jsx-runtime";
+
+const a = jsx("h1", { className: "title", children: "Salam" });
+```
+
+Naye JSX transform ki wajah se ab har file mein `import React from "react"` likhna zaroori nahi.
+
+### JSX ke rules
+
+| Rule | Example |
+| --- | --- |
+| Ek hi parent element return karo | `<div>...</div>` ya Fragment `<>...</>` |
+| Har tag band karo | `<img />`, `<br />`, `<input />` |
+| `class` ki jagah `className` | `<p className="note">` |
+| `for` ki jagah `htmlFor` | `<label htmlFor="email">` |
+| Attributes camelCase mein | `onClick`, `tabIndex`, `maxLength` |
+| JavaScript `{ }` ke andar | `<p>{user.name}</p>` |
+| `style` object leta hai | `style={{ color: "red" }}` |
+
+## 5. Code example
+
+```jsx
+export default function ProfileCard() {
+  const user = { name: "Ayesha", role: "Frontend Dev", isOnline: true };
+  const skills = ["HTML", "CSS", "React"];
+
+  return (
+    <>
+      {/* Yeh JSX comment hai */}
+      <section className="card">
+        <h2>{user.name.toUpperCase()}</h2>
+        <p style={{ color: "gray", fontSize: 14 }}>{user.role}</p>
+        <p>Status: {user.isOnline ? "Online" : "Offline"}</p>
+        <label htmlFor="msg">Message</label>
+        <input id="msg" placeholder="Likhein..." />
+        <ul>
+          {skills.map((skill) => (
+            <li key={skill}>{skill}</li>
+          ))}
+        </ul>
+      </section>
+    </>
+  );
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `<>...</>` | Fragment, extra `div` ke bina ek parent |
+| `{user.name.toUpperCase()}` | Curly braces mein koi bhi JavaScript expression |
+| `style={{ ... }}` | Bahar wale braces JavaScript, andar wala object |
+| `fontSize: 14` | Number ko React khud `14px` bana deta hai |
+| `? :` | Ternary se condition, `if` statement JSX mein nahi chalta |
+| `skills.map(...)` | Array se list, har item ko unique `key` |
+| `{/* ... */}` | JSX ke andar comment ka tareeqa |
+
+### Interview tip
+
+"Browser JSX samajhta hai?" Nahi. JSX build step par JavaScript function calls mein compile hota hai. Browser tak sirf normal JavaScript pohanchti hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Do sibling elements bina parent ke return karna"
+  why="Function ek hi value return kar sakta hai, is liye adjacent JSX elements wala error aata hai."
+  better="Dono ko ek div ya Fragment mein wrap karein."
+/>
+
+<Mistake
+  title="class aur for likhna"
+  why="Yeh JavaScript ke reserved words hain, React warning deta hai."
+  better="className aur htmlFor use karein."
+/>
+
+<Mistake
+  title="Curly braces ke andar if ya for likhna"
+  why="JSX mein sirf expressions chalti hain, statements nahi."
+  better="Ternary, && operator ya map use karein, ya logic return se pehle likhein."
+/>
+
+<Mistake
+  title="Object ko seedha render karna"
+  why="React object ko text nahi bana sakta aur Objects are not valid as a React child error deta hai."
+  better="Object ki koi field render karein, jaise user.name, ya JSON.stringify use karein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Setup with Vite](/courses/react/setup-with-vite), [Array Methods](/courses/javascript/array-methods), [Conditionals](/courses/javascript/conditionals) |
+| **Saath** | [Components](/courses/react/components) |
+| **Baad mein** | [Conditional Rendering](/courses/react/conditional-rendering), [Lists & Keys](/courses/react/lists-and-keys), [Styling in React](/courses/react/styling) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| JSX | JavaScript mein HTML jaisa syntax |
+| Compile | `jsx()` calls se React elements |
+| JavaScript daalna | `{ }` curly braces |
+| Parent | Ek root element ya Fragment |
+| Attributes | `className`, `htmlFor`, camelCase |
+| Style | Object, `style={{ }}` |
+
+<Callout variant="important" title="Yaad rakhein">
+
+JSX **HTML nahi, JavaScript hai**. Isi liye `{ }` mein expressions chalti hain aur attributes JavaScript ke naam use karte hain.
+
+</Callout>

@@ -1,0 +1,202 @@
+---
+title: localStorage, sessionStorage & Cookies
+description: JavaScript localStorage aur sessionStorage se browser mein data save karna, JSON ke saath objects store karna aur cookies se farq, Roman Urdu mein.
+keywords:
+  - javascript localstorage sessionstorage
+  - localstorage in urdu
+  - cookies vs localstorage
+  - web storage api
+---
+
+## 1. Web Storage kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**Web storage browser ke andar chhota key-value data save karne ki jagah hai: localStorage, sessionStorage aur cookies.**
+
+</Callout>
+
+`localStorage` ka data browser band karne ke baad bhi rehta hai. `sessionStorage` ka data sirf us tab tak rehta hai, tab band to data khatam.
+
+**Cookies** bhi browser mein store hoti hain, lekin har request ke saath server ko khud ba khud jati hain. Is liye login sessions aksar cookies mein hote hain.
+
+## 2. Kyun zaroori hai?
+
+Page reload par user ki theme, cart ya form draft gum ho jaye to experience kharab hota hai. Storage se chhoti cheezein browser yaad rakh leta hai.
+
+<CompareTable leftTitle="Bina storage" rightTitle="Storage ke saath">
+
+Reload par dark mode wapas light | Theme yaad rehti hai
+Form draft gum | Draft wapas aa jata hai
+Har chhoti setting server par | Chhoti settings browser mein
+Login har page par dobara | Cookie se session chalta rahe
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Data | Behtar jagah |
+| --- | --- |
+| **Theme, language** | `localStorage` |
+| **Guest cart** | `localStorage` |
+| **Ek tab ka multi-step form** | `sessionStorage` |
+| **Login session** | `HttpOnly` cookie (server set karta hai) |
+| **Bara data, offline app** | IndexedDB |
+
+| Feature | localStorage | sessionStorage | Cookies |
+| --- | --- | --- | --- |
+| Kab tak | Jab tak delete na ho | Tab band hone tak | `Expires` / `Max-Age` tak |
+| Size | Takreeban 5 MB | Takreeban 5 MB | Takreeban 4 KB |
+| Server ko jata hai | Nahi | Nahi | Har request ke saath |
+| JavaScript se padh sakte | Haan | Haan | `HttpOnly` na ho to |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Object save aur load">
+
+JavaScript object
+↓
+JSON.stringify se string
+↓
+localStorage.setItem se save
+↓
+Reload ke baad getItem se string
+↓
+JSON.parse se wapas object
+
+</Flow>
+
+<Callout variant="important" title="Mental model">
+
+**Storage sirf strings rakhta hai.** Object, array ya number ho to JSON mein badal kar rakhein.
+
+</Callout>
+
+Storage per **origin** hota hai, yani `https://site.com` ka data doosri site nahi padh sakti.
+
+## 5. Code example
+
+### Theme yaad rakhna
+
+```js
+const saved = localStorage.getItem("theme") ?? "light";
+document.body.dataset.theme = saved;
+
+themeBtn.addEventListener("click", () => {
+  const next = document.body.dataset.theme === "dark" ? "light" : "dark";
+  document.body.dataset.theme = next;
+  localStorage.setItem("theme", next);
+});
+```
+
+### Objects ke liye safe helpers
+
+```js
+function save(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.warn("Save nahi hua:", error.name);
+  }
+}
+
+function load(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw === null ? fallback : JSON.parse(raw);
+  } catch {
+    return fallback;
+  }
+}
+
+save("cart", [{ id: 7, qty: 2 }]);
+console.log(load("cart", []));
+
+sessionStorage.setItem("step", "2");
+localStorage.removeItem("cart");
+```
+
+### Cookie padhna aur likhna
+
+```js
+document.cookie = "lang=ur; Max-Age=2592000; Path=/; SameSite=Lax; Secure";
+console.log(document.cookie);
+```
+
+### Code kaise kaam kar raha hai?
+
+| Line | Kya ho raha hai |
+| --- | --- |
+| `getItem("theme") ?? "light"` | Pehli visit par `null`, to default |
+| `JSON.stringify(value)` | Object ko string banaya |
+| `try / catch` | Storage full ya private mode mein error aa sakta hai |
+| `JSON.parse(raw)` | String ko wapas object |
+| `removeItem("cart")` | Ek key delete |
+| `document.cookie = ...` | Ek cookie set, 30 din ke liye |
+
+### Interview tip
+
+Auth token `localStorage` mein rakhna risky hai, kyunki XSS hone par koi bhi script use padh sakti hai. Session ke liye server ki set ki hui `HttpOnly`, `Secure`, `SameSite` cookie behtar hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Object ko seedha setItem mein dalna"
+  why="Woh [object Object] string ban jata hai aur data gum."
+  better="JSON.stringify se save aur JSON.parse se load karein."
+/>
+
+<Mistake
+  title="Password ya tokens localStorage mein rakhna"
+  why="Page par chalne wali har script, XSS samait, yeh data padh sakti hai."
+  better="Sensitive session data HttpOnly cookie mein, server ke zariye."
+/>
+
+<Mistake
+  title="JSON.parse bina try ke"
+  why="Kharab ya purana data ho to SyntaxError se page crash ho jata hai."
+  better="Load helper mein try catch aur fallback value rakhein."
+/>
+
+<Mistake
+  title="Storage ko database samajhna"
+  why="5 MB ki limit hai, user kabhi bhi clear kar sakta hai, aur kaam sync hota hai."
+  better="Chhoti settings ke liye storage, bare data ke liye server ya IndexedDB."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [JSON](/courses/javascript/json), [DOM Events](/courses/javascript/dom-events), [Optional Chaining & Nullish Coalescing](/courses/javascript/optional-chaining-and-nullish) |
+| **Saath mein** | [Forms & Validation](/courses/javascript/forms-and-validation), [Error Handling](/courses/javascript/error-handling) |
+| **Baad mein** | [Modules](/courses/javascript/modules), [Debugging JavaScript](/courses/javascript/debugging) |
+
+<Flow title="Suggested order">
+
+JSON
+↓
+DOM Events
+↓
+Forms aur Validation
+↓
+Web Storage
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `localStorage` | Hamesha ke liye, jab tak delete na ho |
+| `sessionStorage` | Sirf us tab ke liye |
+| Cookies | Har request ke saath server ko, chhoti size |
+| Sirf strings | Objects ke liye JSON |
+| Methods | `setItem`, `getItem`, `removeItem`, `clear` |
+| Security | Secrets storage mein nahi, `HttpOnly` cookie |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Storage mein sirf **chhoti, non-sensitive** cheezein rakhein. JSON ke saath save karein aur parse hamesha `try / catch` mein.
+
+</Callout>

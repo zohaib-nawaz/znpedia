@@ -1,0 +1,205 @@
+---
+title: Logging
+description: Logging best practices pii ke saath, ek logger, structured lines, request id aur scope prefix, aur passwords, tokens ya personal data kabhi log na karein.
+keywords:
+  - logging best practices pii
+  - structured logging node
+  - pino redact
+  - request id logging
+  - sensitive data in logs
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Poori app mein ek logger ho. Har line structured ho, us mein request id, route, status aur duration ho, aur secrets ya personal data likhne se pehle scrub ho jayein.**
+
+</Callout>
+
+Log woh diary hai jo production mein aap ki aankhein hai. Jab kuch tootne ki report aati hai to aap debugger nahi laga sakte, sirf logs parh sakte hain. Achhe logs sawal ka jawab dete hain, bure logs ya to khamosh hote hain ya khud ek data leak ban jate hain.
+
+## 2. Kyun zaroori hai?
+
+Ek developer ne debugging ke liye `console.log("login", body)` likha aur hata na saka. Ab har login ka password logs mein plain text hai, aur logs ek third party service par jate hain jahan poori team aur vendor dono parh sakte hain.
+
+Doosra: magic link ka token URL ke query string mein tha, aur request logger poora URL likhta tha. Jis ke paas log access tha woh kisi ka bhi account khol sakta tha.
+
+Teesra: ek user kehta hai "mera payment fail hua". Logs mein hazaron lines hain lekin request id nahi, to pata hi nahi chalta kaun si line us ki thi.
+
+<CompareTable leftTitle="Bikhre hue console.log" rightTitle="Ek structured logger">
+
+Password aur tokens logs mein plain | Sensitive keys khud redact ho jati hain
+Poora URL query string samet | Sirf path, query string nahi
+Kaun si line kis request ki, pata nahi | Har line par request id
+Console aur logger dono, har error do dafa | Ek logger, ek line
+Free text, search mushkil | JSON fields, filter aur alert asaan
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | `console.error` theek hai, lekin secrets kabhi na | Aadat yahin banti hai |
+| **Production code** | Lazmi | Logs debugging ka akela zariya aur privacy ka bara khatra dono hain |
+| **Senior level** | Logger, scrubber aur retention policy tay karna | Kya log ho, kitni der rahe, kis ke paas access ho |
+
+Kab seekhein: jab pehli dafa koi app deploy karein aur us ka error samajhne ke liye production logs parhne parein.
+
+## 4. Bura vs acha code
+
+### Bura: jo mila log kar diya
+
+```ts
+export async function POST(request: Request) {
+  const body = await request.json();
+  console.log("request aayi", request.url, request.headers, body);
+
+  try {
+    return Response.json(await resetPassword(body));
+  } catch (error) {
+    console.log(error);
+    logger.error(error);
+    throw error;
+  }
+}
+```
+
+Headers mein cookie aur authorization token, body mein naya password, URL mein reset token. Error do jagah log hota hai aur kisi line mein request id nahi.
+
+### Acha: ek logger, redaction ke saath
+
+File `lib/logger/logger.ts`, pino ke saath:
+
+```ts
+import pino from "pino";
+
+import { SENSITIVE_PATHS } from "./logger.types";
+
+export const logger = pino({
+  level: process.env.LOG_LEVEL ?? "info",
+  redact: { paths: SENSITIVE_PATHS, censor: "[REDACTED]" },
+});
+```
+
+File `lib/logger/logger.types.ts`:
+
+```ts
+export const SENSITIVE_PATHS = [
+  "password",
+  "*.password",
+  "token",
+  "*.token",
+  "headers.authorization",
+  "headers.cookie",
+  "email",
+  "*.email",
+];
+```
+
+Request ki ek line, khatam hone par:
+
+```ts
+export function logRequest(entry: RequestLogEntry) {
+  logger.info(
+    {
+      requestId: entry.requestId,
+      route: new URL(entry.url).pathname,
+      status: entry.status,
+      durationMs: entry.durationMs,
+    },
+    "request completed",
+  );
+}
+```
+
+Error ek jagah, scope ke saath:
+
+```ts
+logger.error({ err: error, requestId, scope: "password-reset" }, "[password-reset] reset failed");
+```
+
+Scrubber ka ek chhota unit test bhi likhein jo check kare ke `password` aur `authorization` output mein `[REDACTED]` bante hain. Warna koi list se ek key hata dega aur pata nahi chalega.
+
+### Farq kya hai?
+
+| Cheez | Bura code | Acha code |
+| --- | --- | --- |
+| Logger | `console.log` aur logger dono | Sirf ek logger |
+| Secrets | Body, headers, URL sab plain | `redact` list, test ke saath |
+| URL | Query string samet | Sirf `pathname` |
+| Context | Kuch nahi | `requestId`, `route`, `status`, `durationMs` |
+| Error | Do dafa log | Ek dafa, `[scope]` ke saath |
+
+## 5. Kaise apply karein?
+
+<Flow title="Logging setup">
+
+Ek logger module banao
+↓
+Sensitive keys ki ek list aur redaction
+↓
+Har request ko id do aur khatam par ek line likho
+↓
+Errors ek jagah log karo, scope prefix ke saath
+↓
+Scrubber ka unit test aur lint mein console.log mana
+
+</Flow>
+
+Levels ka seedha matlab:
+
+| Level | Kab |
+| --- | --- |
+| `error` | Kuch toota aur kisi ko dekhna chahiye |
+| `warn` | Ajeeb lekin app chal rahi hai, jaise retry hua |
+| `info` | Ahem waqiya, jaise request complete ya job khatam |
+| `debug` | Sirf local ya waqti troubleshooting ke liye |
+
+## 6. Exceptions aur common mistakes
+
+Local development mein `console.log` se debugging bilkul theek hai, bas commit se pehle hata dein. User id log karna aam taur par theek hai kyunki woh khud personal data nahi, lekin email, phone, address, CNIC jaise identity numbers aur payment details kabhi nahi.
+
+<Mistake
+  title="Poori request body ya headers log karna"
+  why="Passwords, cookies aur tokens logs mein aa jate hain aur log access wala har shakhs unhein use kar sakta hai."
+  better="Sirf chune hue fields log karo aur sensitive keys ki redaction list rakho."
+/>
+
+<Mistake
+  title="Production mein poora URL log karna"
+  why="Query string mein reset tokens, search terms aur kabhi email hote hain."
+  better="Sirf pathname log karo, zaroori query param ho to naam le kar alag se."
+/>
+
+<Mistake
+  title="Har layer par error log karna"
+  why="Ek masla paanch lines banata hai, alerts shor macha dete hain aur asal cause dhoondhna mushkil hota hai."
+  better="Error ko wahan log karo jahan woh response ya job failure mein badalta hai, baqi jagah sirf propagate karo."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Debugging JavaScript](/courses/javascript/debugging), [Error Handling & Error Envelope](/courses/best-practices/error-handling-and-envelope) |
+| **Saath mein** | [Secrets Management](/courses/best-practices/secrets-management), [Rate Limiting & Background Jobs](/courses/best-practices/rate-limiting-and-background-jobs) |
+| **Baad mein** | [Security Baseline](/courses/best-practices/security-baseline), [Production Readiness Checklist](/courses/best-practices/production-readiness-checklist) |
+
+## Final quick revision
+
+| Check | Sawal |
+| --- | --- |
+| Ek logger | Kya `console` aur logger dono to nahi chal rahe? |
+| Redaction | Kya sensitive keys ki list hai aur us ka test? |
+| URL | Kya query string log ho rahi hai? |
+| Context | Har request line mein id, route, status, duration? |
+| Errors | Kya har error ek hi dafa, scope ke saath log hota hai? |
+| Personal data | Email, phone, identity numbers logs se bahar? |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Har log line ko aise likho jaise woh kal kisi ajnabi ke haath lag sakti hai. Usay masla samajhne mein madad mile, lekin kisi user ka raaz na mile.
+
+</Callout>

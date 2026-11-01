@@ -1,7 +1,242 @@
 {
   "title": "JavaScript",
+  "order": 1,
   "slug": "javascript",
-  "description": "Structured JavaScript course documentation — chapters and lessons coming soon.",
+  "description": "JavaScript zero se advanced tak Roman Urdu mein, variables, functions, closures, async/await, DOM aur modern ES features chhote chhote chapters mein.",
   "badge": "JS",
-  "chapters": ["introduction"]
+  "sections": [
+    {
+      "title": "Getting Started",
+      "chapters": [
+        {
+          "slug": "introduction",
+          "title": "Introduction"
+        },
+        {
+          "slug": "how-javascript-runs",
+          "title": "How JavaScript Runs"
+        },
+        {
+          "slug": "setup-and-first-program",
+          "title": "Setup & First Program"
+        }
+      ]
+    },
+    {
+      "title": "Basics",
+      "chapters": [
+        {
+          "slug": "variables",
+          "title": "Variables: let, const, var"
+        },
+        {
+          "slug": "data-types",
+          "title": "Data Types"
+        },
+        {
+          "slug": "type-conversion",
+          "title": "Type Conversion"
+        },
+        {
+          "slug": "operators",
+          "title": "Operators"
+        },
+        {
+          "slug": "strings",
+          "title": "Strings & Template Literals"
+        },
+        {
+          "slug": "numbers-and-math",
+          "title": "Numbers & Math"
+        },
+        {
+          "slug": "conditionals",
+          "title": "Conditionals: if, switch, ternary"
+        },
+        {
+          "slug": "loops",
+          "title": "Loops"
+        },
+        {
+          "slug": "truthy-falsy-and-equality",
+          "title": "Truthy, Falsy & Equality"
+        }
+      ]
+    },
+    {
+      "title": "Functions",
+      "chapters": [
+        {
+          "slug": "functions",
+          "title": "Functions"
+        },
+        {
+          "slug": "arrow-functions",
+          "title": "Arrow Functions"
+        },
+        {
+          "slug": "scope-and-hoisting",
+          "title": "Scope & Hoisting"
+        },
+        {
+          "slug": "closures",
+          "title": "Closures"
+        },
+        {
+          "slug": "this-keyword",
+          "title": "The this Keyword"
+        },
+        {
+          "slug": "call-apply-bind",
+          "title": "call, apply & bind"
+        },
+        {
+          "slug": "higher-order-functions",
+          "title": "Higher-Order Functions"
+        }
+      ]
+    },
+    {
+      "title": "Arrays & Objects",
+      "chapters": [
+        {
+          "slug": "arrays",
+          "title": "Arrays"
+        },
+        {
+          "slug": "array-methods",
+          "title": "Array Methods: map, filter, reduce"
+        },
+        {
+          "slug": "objects",
+          "title": "Objects"
+        },
+        {
+          "slug": "destructuring",
+          "title": "Destructuring"
+        },
+        {
+          "slug": "spread-and-rest",
+          "title": "Spread & Rest"
+        },
+        {
+          "slug": "optional-chaining-and-nullish",
+          "title": "Optional Chaining & Nullish Coalescing"
+        },
+        {
+          "slug": "map-and-set",
+          "title": "Map & Set"
+        },
+        {
+          "slug": "json",
+          "title": "JSON"
+        }
+      ]
+    },
+    {
+      "title": "Objects In Depth",
+      "chapters": [
+        {
+          "slug": "prototypes",
+          "title": "Prototypes & Inheritance"
+        },
+        {
+          "slug": "classes",
+          "title": "Classes"
+        }
+      ]
+    },
+    {
+      "title": "Async JavaScript",
+      "chapters": [
+        {
+          "slug": "event-loop",
+          "title": "Event Loop"
+        },
+        {
+          "slug": "timers",
+          "title": "Timers: setTimeout & setInterval"
+        },
+        {
+          "slug": "callbacks",
+          "title": "Callbacks"
+        },
+        {
+          "slug": "promises",
+          "title": "Promises"
+        },
+        {
+          "slug": "async-await",
+          "title": "Async / Await"
+        },
+        {
+          "slug": "fetch-api",
+          "title": "Fetch API"
+        },
+        {
+          "slug": "error-handling",
+          "title": "Error Handling"
+        }
+      ]
+    },
+    {
+      "title": "Browser & DOM",
+      "chapters": [
+        {
+          "slug": "dom-basics",
+          "title": "DOM Basics"
+        },
+        {
+          "slug": "dom-events",
+          "title": "DOM Events"
+        },
+        {
+          "slug": "event-delegation",
+          "title": "Event Bubbling & Delegation"
+        },
+        {
+          "slug": "forms-and-validation",
+          "title": "Forms & Validation"
+        },
+        {
+          "slug": "web-storage",
+          "title": "localStorage, sessionStorage & Cookies"
+        }
+      ]
+    },
+    {
+      "title": "Modern JavaScript",
+      "chapters": [
+        {
+          "slug": "modules",
+          "title": "Modules: import & export"
+        },
+        {
+          "slug": "iterators-and-generators",
+          "title": "Iterators & Generators"
+        },
+        {
+          "slug": "regular-expressions",
+          "title": "Regular Expressions"
+        }
+      ]
+    },
+    {
+      "title": "Practical Skills",
+      "chapters": [
+        {
+          "slug": "debounce-and-throttle",
+          "title": "Debounce & Throttle"
+        },
+        {
+          "slug": "npm-and-packages",
+          "title": "npm & Packages"
+        },
+        {
+          "slug": "debugging",
+          "title": "Debugging JavaScript"
+        }
+      ]
+    }
+  ]
 }

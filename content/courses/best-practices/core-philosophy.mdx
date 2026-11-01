@@ -1,0 +1,189 @@
+---
+title: Core Philosophy
+description: Clean code principles YAGNI aur KISS, maintainability over speed, explicit over implicit aur kam design surface. Saare rules ke peeche ki soch, Roman Urdu mein.
+keywords:
+  - clean code principles yagni kiss
+  - yagni principle
+  - kiss principle programming
+  - maintainability over speed
+  - explicit over implicit
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Aaj ki zaroorat ko sab se saade, sab se saaf aur sab se kam naye design ke saath poora karo, taake kal ka developer use asaani se badal sake.**
+
+</Callout>
+
+Is course ke saare rules chhe ideas se nikalte hain:
+
+| Idea | Matlab |
+| --- | --- |
+| **Maintainability over speed** | Aaj 10 minute bachana, agar kal 2 ghante khaye, to nuksaan hai |
+| **Simplicity first (KISS, YAGNI)** | Sab se saada hal jo kaam kare. Jo abhi nahi chahiye, woh na banao |
+| **Kam design surface** | Naya table, naya API field, naya flag ya nayi abstraction sirf tab jab zaroorat saabit ho |
+| **Explicit over implicit** | Irada naam aur structure se saaf ho, chhupe hue jadoo se nahi |
+| **Delete over comment** | Purana code comment out na karo, delete karo. Git ke paas history hai |
+| **Self-documenting** | Code naam aur shape se khud samjhaye |
+
+**KISS** ka matlab "Keep It Simple, Stupid". **YAGNI** ka matlab "You Aren't Gonna Need It": future ki imaginary zaroorat ke liye aaj code na likho.
+
+## 2. Kyun zaroori hai?
+
+Software ki asli cost likhne mein nahi, **badalne** mein hai. Ek feature ek dafa likha jata hai aur saalon tak parha, debug aur modify hota hai.
+
+<CompareTable leftTitle="Speed aur cleverness pehle" rightTitle="Simplicity aur clarity pehle">
+
+Future ke liye generic system bana diya jo kabhi use nahi hua | Sirf aaj ka kaam, kal zaroorat aayi to tab banayenge
+Har cheez ke liye config flag | Ek seedha rasta, flag sirf asli runtime farq ke liye
+Clever one-liner jo sirf likhne wala samjhe | Saada code jo naya developer bhi samjhe
+Purana code comment kar ke chhor diya | Delete kiya, Git history mein mehfooz hai
+Bug dhoondne mein ghante | Flow seedha hai, bug jaldi nazar aata hai
+
+</CompareTable>
+
+Har extra abstraction, flag ya table ek **wada** hai jo aapko hamesha nibhana parega. Jitna kam wada, utna kam bojh.
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Bohat zaroori, khaaskar YAGNI | Beginners aksar "scalable architecture" bana kar project kabhi khatam nahi karte |
+| **Production code** | Har PR mein | Har nayi abstraction ya table team ka future bojh hai |
+| **Senior level** | Faisle ki zimmedari | Senior decide karta hai ke kab design surface barhana waqai zaroori hai |
+
+## 4. Bura vs acha code
+
+Task: user ka display name dikhana hai. Aaj sirf first aur last name hai.
+
+```ts
+type NameFormat = "full" | "first" | "last" | "initials" | "reversed";
+
+class NameFormatterFactory {
+  static create(format: NameFormat, options: { uppercase?: boolean; separator?: string } = {}) {
+    return new NameFormatter(format, options);
+  }
+}
+
+const label = NameFormatterFactory.create("full", { separator: " " }).format(user);
+```
+
+```ts
+function displayName(user: User) {
+  return `${user.firstName} ${user.lastName}`;
+}
+
+const label = displayName(user);
+```
+
+| Farq kya hai? | Bura | Acha |
+| --- | --- | --- |
+| Zaroorat | Paanch formats jo kisi ne maange nahi | Sirf woh jo aaj chahiye |
+| Design surface | Factory, class, options object, union type | Ek function |
+| Parhne ka waqt | Teen cheezein samajhni parti hain | Ek nazar |
+| Badalna | Har format ka test aur maintenance | Zaroorat aaye to tab barhao |
+
+YAGNI ka matlab yeh nahi ke future ka bilkul na socho. Matlab hai ke code aisa likho jo **baad mein badalna aasaan** ho, na ke aaj hi har future case pehle se likh do.
+
+### Explicit over implicit
+
+```ts
+export default function (d: any) {
+  return fetch("/api/x", { method: "POST", body: JSON.stringify(d) });
+}
+```
+
+```ts
+export function createInvoice(input: CreateInvoiceInput) {
+  return api.post("/api/invoices", input);
+}
+```
+
+Doosre version mein naam, type aur endpoint sab saaf hain. Kuch andaaza nahi lagana parta.
+
+## 5. Kaise apply karein?
+
+<Flow title="Naya feature banane se pehle">
+
+Aaj ki asli zaroorat ek line mein likho
+↓
+Dekho kya existing code yeh pehle se kar raha hai
+↓
+Sab se saada hal socho jo kaam kare
+↓
+Naya table, field, flag ya abstraction? Saabit karo ke zaroori hai
+↓
+Naam aur types se irada saaf karo
+↓
+Jo code ab kaam ka nahi, delete karo
+
+</Flow>
+
+Ek aasaan sawal har design par poochein: **"Agar yeh cheez na banaun to aaj kya toot jayega?"** Jawab "kuch nahi" ho to mat banao.
+
+## 6. Exceptions aur common mistakes
+
+Kuch faisle baad mein badalna bohat mehenga hai: database schema, public API contract, auth ka design. Yahan thora aage ka sochna YAGNI ke khilaaf nahi, yeh zimmedari hai. Phir bhi banao sirf woh jo zaroori hai, bas use badalne layak rakho.
+
+<Mistake
+  title="Simple ko lazy samajhna"
+  why="Saada code likhna aksar mushkil hota hai. Pehla version complex hota hai, use saada karna asli kaam hai."
+  better="Pehla draft likh kar socho kya hata sakte hain, phir hatao."
+/>
+
+<Mistake
+  title="Har cheez configurable bana dena"
+  why="Har flag code ke raaste double kar deta hai aur testing ke cases barha deta hai."
+  better="Flag sirf tab jab behaviour waqai runtime par badalta ho, warna ek seedha rasta rakho."
+/>
+
+<Mistake
+  title="Purana code comment out kar ke rakhna"
+  why="Parhne wala sochta hai yeh zaroori hai ya nahi, aur woh code dheere dheere galat ho jata hai."
+  better="Delete karo. Wapas chahiye ho to Git history se mil jayega."
+/>
+
+<Mistake
+  title="Speed ke naam par shortcuts"
+  why="Aaj bachaye gaye minute agle mahine debugging aur rework mein ghante ban jate hain."
+  better="Shuru se saaf likho. Yeh pehli dafa thora slow lagta hai, phir tez ho jata hai."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Introduction](/courses/best-practices/introduction) |
+| **Saath mein** | [When to Learn What](/courses/best-practices/learning-path-and-levels) |
+| **Baad mein** | [Self-Documenting Code](/courses/best-practices/self-documenting-code), [DRY Without Tight Coupling](/courses/best-practices/dry-without-coupling), [Fix Root Causes](/courses/best-practices/fix-root-causes) |
+
+<Flow title="Suggested order">
+
+Introduction
+↓
+Core Philosophy
+↓
+When to Learn What
+↓
+Self-Documenting Code
+
+</Flow>
+
+## Final quick revision
+
+| Check | Sawal |
+| --- | --- |
+| Maintainability | Kya 6 mahine baad koi aur ise asaani se badal sakega? |
+| KISS | Kya is se saada hal mumkin hai? |
+| YAGNI | Kya yeh cheez aaj waqai chahiye? |
+| Design surface | Kya naya table, field, flag ya abstraction zaroori hai? |
+| Explicit | Kya irada naam aur type se saaf hai? |
+| Delete | Kya koi mara hua code baqi hai? |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Code ek dafa likha jata hai aur saikron dafa parha jata hai. Parhne wale ke liye likho, aur sirf woh likho jo aaj zaroori hai.
+
+</Callout>

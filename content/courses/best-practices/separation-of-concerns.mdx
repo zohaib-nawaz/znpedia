@@ -1,0 +1,196 @@
+---
+title: Separation of Concerns
+description: Separation of concerns UI aur logic ke darmiyan, component sirf render kare, hook state sambhale, service domain rule aur data ka kaam kare, React examples ke saath.
+keywords:
+  - separation of concerns ui logic
+  - separation of concerns react
+  - presentational and logic separation
+  - pure functions side effects
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Har unit ek hi qism ka kaam kare: dikhana, state sambhalna, domain rule chalana, ya data lana. Agar kisi unit ko bayan karne ke liye "aur" lagana pare, to woh do units hain.**
+
+</Callout>
+
+"Concern" ka matlab hai ek wajah jiski wajah se code badalta hai. Design badla to UI badle, API badli to data layer badle, discount ka rule badla to service badle. Jab yeh sab ek jagah ho to har tabdeeli sab ko chhoti hai.
+
+Ek component jo data fetch kare, us ko transform kare aur render kare, woh teen cheezein hai, ek nahi.
+
+## 2. Kyun zaroori hai?
+
+Asli masla: ek `OrdersTable` component khud `fetch` karta tha, total calculate karta tha aur table dikhata tha. Mobile app ko wahi total chahiye tha, magar logic component mein band thi. Copy hui. Phir tax ka rule badla aur web aur mobile alag total dikhane lage.
+
+<CompareTable leftTitle="Sab kuch ek component mein" rightTitle="Concerns alag">
+
+API ka format badla to UI file khulti hai | Sirf data layer badalti hai
+Total ka rule test karne ke liye component render karo | Pure function ko seedha test karo
+Doosri screen ko logic chahiye to copy paste | Wahi function import karo
+Design change mein logic tootne ka dar | UI file mein logic hai hi nahi
+Har bug ke liye poori file samajhni parti hai | Bug ki qism se pata chalta hai kahan dekhna hai
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Kam az kam data lana aur dikhana alag karein | Yeh pehla aur sab se faidemand split hai |
+| **Production code** | Lazmi: UI, hooks, services, data access alag | Har layer alag wajah se badalti hai aur alag test hoti hai |
+| **Senior level** | Boundaries ko folder structure aur lint se pakka karna | Team bari ho to boundaries khud nahi bachti, enforce karni parti hain |
+
+## 4. Bura vs acha code
+
+### Bura: fetch, transform aur render ek saath
+
+```tsx
+"use client";
+
+import { useEffect, useState } from "react";
+
+export function OrdersSummary() {
+  const [orders, setOrders] = useState<{ amount: number; status: string }[]>([]);
+
+  useEffect(() => {
+    fetch("/api/orders")
+      .then((response) => response.json())
+      .then(setOrders);
+  }, []);
+
+  const paid = orders.filter((order) => order.status === "paid");
+  const revenue = paid.reduce((sum, order) => sum + order.amount, 0) * 1.17;
+
+  return <p>Revenue: Rs {revenue.toFixed(0)}</p>;
+}
+```
+
+Is mein network, tax ka rule (`1.17`), status ki string aur UI sab mix hain. Tax badla to UI file badlegi.
+
+### Acha: har concern apni jagah
+
+```ts
+import { ORDER_STATUS, TAX_RATE, type Order } from "./orders.types";
+
+export function revenue(orders: Order[]) {
+  const paid = orders.filter((order) => order.status === ORDER_STATUS.paid);
+
+  return paid.reduce((sum, order) => sum + order.amount, 0) * (1 + TAX_RATE);
+}
+```
+
+Upar `src/lib/orders/orders.library.ts` ka pure function hai: na network, na UI. Ab page aur component:
+
+```tsx
+import { RevenueCard } from "@/components/RevenueCard/RevenueCard";
+import { list } from "@/lib/orders/orders";
+import { revenue } from "@/lib/orders/orders.library";
+
+export default async function DashboardPage() {
+  const orders = await list();
+
+  return <RevenueCard amount={revenue(orders)} />;
+}
+```
+
+```tsx
+import type { RevenueCardProps } from "./RevenueCard.types";
+
+export function RevenueCard({ amount }: RevenueCardProps) {
+  return <p>Revenue: Rs {amount.toFixed(0)}</p>;
+}
+```
+
+### Farq kya hai?
+
+| Concern | Kahan hai | Kyun |
+| --- | --- | --- |
+| Data lana | `list()` service mein | API ya database badle to sirf yahan |
+| Domain rule | `revenue()` pure function | Bina render ke test, web aur mobile dono use karein |
+| Dikhana | `RevenueCard`, sirf props | Design badle to logic safe |
+| Jorna | Server component page | Sirf layers ko milata hai |
+
+## 5. Kaise apply karein?
+
+<Flow title="Layers upar se neeche">
+
+Component: sirf props le kar render
+↓
+Hook: client state aur callbacks
+↓
+Service: domain rules aur data access
+↓
+Pure library functions: calculation, koi side effect nahi
+
+</Flow>
+
+Ek chhota checklist jab koi file bari lagne lage:
+
+| Sawal | Agar haan |
+| --- | --- |
+| Kya component `fetch` ya query kar raha hai? | Data lana service ya hook mein le jao |
+| Kya component mein koi calculation ya rule hai? | Pure function bana kar `src/lib` mein |
+| Kya ek function calculate bhi karta hai aur save bhi? | Calculation alag, side effect alag |
+| Kya UI ko pata hai ke data kahan se aaya? | Props se do, source chhupao |
+
+## 6. Exceptions aur common mistakes
+
+Separation file type se nahi, wajah se hoti hai. React ne khud HTML aur JS ko ek component mein milaya kyunki dono ek hi wajah se badalte hain. Is liye markup aur us ka chhota sa UI state saath rehna theek hai.
+
+Kuch teams "colocation" ko zyada ahmiyat deti hain aur chhoti features mein sab ek file mein rakhti hain. Yeh shuru mein tez hai. Trade-off yeh hai ke jab doosra caller aata hai to split karna parta hai. Ek do line ke trivial component ko teen files mein torna bhi galat hai: separation tab karein jab concern asal mein alag ho.
+
+<Mistake
+  title="Folders alag kar diye magar logic phir bhi mix"
+  why="components, hooks aur utils folders bana lene se separation nahi hoti agar component ab bhi rule calculate kar raha hai."
+  better="Har file se poocho ke yeh kis wajah se badlegi. Ek se zyada wajah ho to split karo."
+/>
+
+<Mistake
+  title="Pure function ke andar save ya log kar dena"
+  why="Phir woh test mein side effect karta hai aur doosri jagah reuse nahi hota."
+  better="Calculation return kare, aur caller faisla kare ke result ke saath kya side effect karna hai."
+/>
+
+<Mistake
+  title="Component mein seedha fetch likhna"
+  why="Auth headers, error handling aur retries har component mein alag ban jate hain."
+  better="Server par service call karo, client par ek typed fetch client aur hook use karo."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Small Functions & Single Responsibility](/courses/best-practices/small-functions), [Custom Hooks](/courses/react/custom-hooks) |
+| **Saath mein** | [Service Layer & Thin Controllers](/courses/best-practices/service-layer), [React Component Practices](/courses/best-practices/react-component-practices) |
+| **Baad mein** | [Loose Coupling & Dependency Injection](/courses/best-practices/dependency-injection), [One Fetch Client](/courses/best-practices/single-fetch-client) |
+
+<Flow title="Suggested order">
+
+Small Functions
+↓
+Separation of Concerns
+↓
+Service Layer & Thin Controllers
+↓
+Loose Coupling & Dependency Injection
+
+</Flow>
+
+## Final quick revision
+
+| Check | Haan / Nahi |
+| --- | --- |
+| Component sirf props se render | Haan |
+| Component mein `fetch` ya query | Nahi |
+| Domain rule pure function mein | Haan |
+| Calculation aur side effect ek function mein | Nahi |
+| Har file ki badalne ki ek wajah | Haan |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Code ko us ki badalne ki wajah se alag karo, file type se nahi. Dikhana, sambhalna, faisla karna aur lana, char alag kaam hain.
+
+</Callout>

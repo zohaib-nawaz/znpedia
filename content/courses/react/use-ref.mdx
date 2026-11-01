@@ -1,0 +1,189 @@
+---
+title: useRef
+description: React useRef hook kya hai, DOM element tak pohanchna, re-render ke baghair value yaad rakhna aur React 19 mein ref ko prop ki tarah pass karna, Roman Urdu mein.
+keywords:
+  - react useref
+  - useref dom focus
+  - useref vs usestate
+  - ref as prop react 19
+---
+
+## 1. useRef kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**`useRef` ek aisa box deta hai jis ki `.current` value renders ke beech yaad rehti hai, lekin usay badalne se re-render nahi hota.**
+
+</Callout>
+
+`useRef` ke do bare kaam hain:
+
+1. **DOM element** tak seedhi pohanch, jaise input ko focus karna.
+2. Aisi **value yaad rakhna** jo screen par nahi dikhti, jaise timer id.
+
+## 2. Kyun zaroori hai?
+
+Kabhi kabhi aapko value yaad rakhni hoti hai lekin UI update nahi karni. State har change par re-render karti hai, jo yahan faltu hai.
+
+<CompareTable leftTitle="useState" rightTitle="useRef">
+
+Badalne par re-render | Badalne par koi re-render nahi
+Value setter se badalti hai | ref.current seedha assign karo
+UI mein dikhne wala data | Peeche ka data ya DOM node
+Render mein padhna safe | Render ke dauran padhna ya likhna nahi
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Use case | Ref mein kya hai |
+| --- | --- |
+| **Input focus** | Input ka DOM node |
+| **Scroll to section** | Section ka DOM node |
+| **Timer / interval** | `setInterval` ki id |
+| **Video play/pause** | `video` element |
+| **Third-party library** | Chart ya map ka container node |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="DOM ref ka safar">
+
+useRef(null) ek khali box banata hai
+↓
+JSX mein ref attribute se element ko jorte hain
+↓
+React DOM banane ke baad node ko ref.current mein rakhta hai
+↓
+Event handler ya effect mein ref.current use karo
+↓
+Unmount par React ref.current ko null kar deta hai
+
+</Flow>
+
+Ref object har render par **wahi** rehta hai. Isi liye uski value renders ke beech nahi khoti.
+
+## 5. Code example
+
+### Input focus
+
+```jsx
+import { useRef } from "react";
+
+export default function SearchBar() {
+  const inputRef = useRef(null);
+
+  return (
+    <>
+      <input ref={inputRef} placeholder="Search..." />
+      <button onClick={() => inputRef.current.focus()}>Focus</button>
+    </>
+  );
+}
+```
+
+### Timer id yaad rakhna
+
+```jsx
+import { useRef, useState } from "react";
+
+export default function Stopwatch() {
+  const [seconds, setSeconds] = useState(0);
+  const intervalRef = useRef(null);
+
+  function start() {
+    clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);
+  }
+
+  function stop() {
+    clearInterval(intervalRef.current);
+  }
+
+  return (
+    <>
+      <p>{seconds}s</p>
+      <button onClick={start}>Start</button>
+      <button onClick={stop}>Stop</button>
+    </>
+  );
+}
+```
+
+### React 19: ref ek normal prop hai
+
+```jsx
+import { useRef } from "react";
+
+function MyInput({ label, ref }) {
+  return (
+    <label>
+      {label}
+      <input ref={ref} />
+    </label>
+  );
+}
+
+function Form() {
+  const nameRef = useRef(null);
+  return <MyInput label="Naam" ref={nameRef} />;
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `useRef(null)` | Box banta hai, `current` shuru mein `null` |
+| `ref={inputRef}` | React DOM node ko `inputRef.current` mein daal deta hai |
+| `intervalRef.current = ...` | Seedha assign, koi re-render nahi |
+| `{ label, ref }` | React 19 mein `ref` baqi props ki tarah milta hai |
+
+Purane React mein child tak ref bhejne ke liye `forwardRef` lagta tha. React 19 mein iski zaroorat nahi.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Render ke dauran ref.current padhna ya likhna"
+  why="Ref badalne se re-render nahi hota, isliye UI purani value dikha sakti hai aur render impure ho jata hai."
+  better="Ref ko event handlers aur effects mein use karo. Jo value screen par dikhni hai woh state mein rakho."
+/>
+
+<Mistake
+  title="UI wali value ko ref mein rakhna, jaise counter"
+  why="Value badal jati hai lekin screen update nahi hoti."
+  better="Jo cheez render hoti hai woh useState mein rakho, ref sirf peeche ke data ke liye."
+/>
+
+<Mistake
+  title="Pehle render mein hi ref.current.focus() call karna"
+  why="Pehle render ke dauran DOM abhi bana nahi, ref.current null hota hai aur error aata hai."
+  better="DOM ke saath kaam event handler ya useEffect mein karo, jab node attach ho chuka ho."
+/>
+
+### Interview tip
+
+"useRef aur useState mein farq?" Dono renders ke beech value yaad rakhte hain. Farq yeh hai ke state badalne par **re-render** hota hai, ref badalne par nahi.
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Chapters |
+| --- | --- |
+| **Pehle** | [State with useState](/courses/react/state), [useEffect](/courses/react/use-effect) |
+| **Baad mein** | [Custom Hooks](/courses/react/custom-hooks), [Portals](/courses/react/portals) |
+| **Related** | [Forms & Controlled Inputs](/courses/react/forms) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Return | `{ current: value }` object |
+| Re-render | Nahi hota |
+| DOM access | `ref` attribute se node milta hai |
+| Kahan use | Handlers aur effects, render mein nahi |
+| React 19 | `ref` normal prop, `forwardRef` ki zaroorat nahi |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Dikhne wala data **state** mein, peeche ka data aur DOM nodes **ref** mein.
+
+</Callout>

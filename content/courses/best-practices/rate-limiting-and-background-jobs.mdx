@@ -1,0 +1,236 @@
+---
+title: Rate Limiting & Background Jobs
+description: Rate limiting background jobs ke saath, email, SMS, AI aur login endpoints ko limit karein, lamba kaam timeout mein rakhein aur idempotency key lagayein.
+keywords:
+  - rate limiting background jobs
+  - api rate limit nextjs
+  - idempotency key
+  - cron job security
+  - retry-after header
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Jo endpoint email ya SMS bhejta hai, AI tokens kharch karta hai, ya password ya code leta hai, woh hamesha rate limited hota hai. Lamba kaam timeout ke andar ya background job mein hota hai, aur har side effect ka idempotency key hota hai.**
+
+</Callout>
+
+Rate limit ka matlab hai "itni der mein itni requests se zyada nahi". Background job woh kaam hai jo user ki request ke bahar chalta hai, jaise raat ko purane sessions saaf karna ya cron se emails bhejna.
+
+Idempotency ka matlab hai ek hi kaam do dafa chale to bhi asar ek dafa ho. Email do baar chale to user ko ek hi email mile.
+
+## 2. Kyun zaroori hai?
+
+Teen asli kahaniyan jo aksar hoti hain:
+
+- **SMS pumping:** OTP endpoint par limit nahi thi. Bots ne mehnge international numbers par hazaron OTP bhejwaye aur raat bhar mein bara bill aa gaya.
+- **AI bill:** chatbot endpoint public tha, kisi ne script bana kar loop mein chala diya. Subah tak mahine ka budget khatam.
+- **Brute force:** login par limit na hone se ek email par lakhon passwords try hue.
+
+Background side par: cron job beech mein fail hua, dobara chala, aur aadhe users ko newsletter do dafa mil gaya.
+
+<CompareTable leftTitle="Bina limit aur idempotency" rightTitle="Rule ke saath">
+
+Bot raat bhar OTP bhejta hai | Har IP aur har phone par had, phir 429
+In memory limiter, har server instance alag count | Redis ya database store, sab instances ek count
+Store down ho to limit gayab | Production mein store down ho to endpoint refuse karta hai
+Cron dobara chala to email dobara | Idempotency key wali row dobara insert nahi hoti
+Lamba AI call platform timeout par toot jata hai | Apna timeout, quota refund ke saath
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Concept samjhein | Public deploy kiya to bots din mein aa jate hain |
+| **Production code** | Lazmi un endpoints par jo paisa ya credentials chhoote hain | Yahan ka nuqsaan seedha bill ya hacked account hai |
+| **Senior level** | Limits, quotas aur job design tay karna | Kaun si limit kis key par, retries aur refunds ki policy |
+
+Kab seekhein: pehla public deploy karne se pehle, khaas taur par agar app email, SMS ya AI API use karti hai.
+
+## 4. Bura vs acha code
+
+### Bura: koi limit nahi, koi timeout nahi
+
+```ts
+const attempts = new Map<string, number>();
+
+export async function POST(request: Request) {
+  const { phone } = await request.json();
+  const ip = request.headers.get("x-forwarded-for") ?? "unknown";
+
+  attempts.set(ip, (attempts.get(ip) ?? 0) + 1);
+
+  await sendOtpSms(phone);
+
+  return Response.json({ sent: true });
+}
+```
+
+Map sirf ek server process mein hai, serverless par har instance naya count shuru karta hai, aur woh kabhi check bhi nahi hota. Phone number par koi limit nahi.
+
+### Acha: persistent store, do keys, 429
+
+File `lib/rate-limit/rate-limit.ts`, Upstash Ratelimit ke saath:
+
+```ts
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
+
+const redis = Redis.fromEnv();
+
+export const otpByIp = new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(10, "1 h"), prefix: "otp:ip" });
+export const otpByPhone = new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(3, "1 h"), prefix: "otp:phone" });
+```
+
+Handler:
+
+```ts
+export async function POST(request: Request) {
+  const ip = getClientIp(request);
+  const ipLimit = await otpByIp.limit(ip);
+  if (!ipLimit.success) {
+    return tooManyRequests(ipLimit.reset);
+  }
+
+  const parsed = sendOtpSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: OTP_MESSAGES.invalidInput }, { status: 422 });
+  }
+
+  const phoneLimit = await otpByPhone.limit(hashIdentity(parsed.data.phone));
+  if (!phoneLimit.success) {
+    return tooManyRequests(phoneLimit.reset);
+  }
+
+  await sendOtp(parsed.data.phone);
+
+  return NextResponse.json({ sent: true });
+}
+
+function tooManyRequests(resetAt: number) {
+  const retryAfterSeconds = Math.ceil((resetAt - Date.now()) / 1000);
+
+  return NextResponse.json(
+    { error: OTP_MESSAGES.rateLimited },
+    { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } },
+  );
+}
+```
+
+Phone ko key banane se pehle hash kiya, taake Redis mein personal data plain na pare.
+
+### Idempotent background job
+
+```sql
+create table if not exists digest_emails (
+  id bigint generated always as identity primary key,
+  idempotency_key text not null,
+  user_id uuid not null references users (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  constraint digest_emails_idempotency_key_key unique (idempotency_key)
+);
+```
+
+```ts
+export async function sendWeeklyDigest(userId: string, weekStart: string) {
+  const claimed = await pool.query(
+    "insert into digest_emails (idempotency_key, user_id) values ($1, $2) on conflict (idempotency_key) do nothing returning id",
+    [`digest:${userId}:${weekStart}`, userId],
+  );
+  if (claimed.rowCount === 0) {
+    return;
+  }
+
+  await sendDigestEmail(userId);
+}
+```
+
+Job dobara chale to row pehle se hai, insert kuch nahi karta, aur email dobara nahi jati.
+
+### Farq kya hai?
+
+| Cheez | Bura code | Acha code |
+| --- | --- | --- |
+| Store | Process ki memory | Redis, sab instances share karte hain |
+| Keys | Sirf IP, woh bhi check nahi | IP aur hashed phone dono |
+| Jawab | Hamesha 200 | 429 aur `Retry-After` |
+| Dobara chalna | Dobara bhejna | Idempotency key ki wajah se skip |
+
+## 5. Kaise apply karein?
+
+<Flow title="Mehnge endpoint ka rasta">
+
+Caller aur IP pehchano
+↓
+Persistent store mein rate limit, IP aur identity dono par
+↓
+Quota ek SQL statement mein reserve karo
+↓
+Kaam apne timeout ke saath, platform limit se thora kam
+↓
+Fail ho to quota refund, side effect par idempotency key
+
+</Flow>
+
+Background jobs ke liye:
+
+- Recurring kaam ek cron endpoint hai jo platform scheduler se chalta hai, aur `CRON_SECRET` check karta hai. Secret set na ho to 503.
+- Har job dobara chalne par safe ho.
+- Jo kaam request timeout se lamba ho (video, bari AI generation) use queue ya job mein bhejein aur user ko status dikhayein.
+
+## 6. Exceptions aur common mistakes
+
+Local development mein in memory limiter theek hai. Andar ke admin tools jahan sirf team hai, wahan limit sakht na bhi ho to chalta hai. Lekin production mein agar limit ka store hi down ho, to mehnga endpoint chalne dene ke bajaye refuse karna behtar hai.
+
+<Mistake
+  title="Serverless par in memory rate limiter"
+  why="Har instance ka apna count hota hai aur restart par zero, attacker ko asal mein koi limit nahi milti."
+  better="Redis ya database jaisa store use karo jo restarts aur instances ke paar zinda rahe."
+/>
+
+<Mistake
+  title="Sirf IP par limit"
+  why="Bots hazaron IPs badal lete hain aur ek hi email ya phone ko target karte rehte hain."
+  better="IP aur hashed identity, jaise email ya phone, dono par alag limit lagao."
+/>
+
+<Mistake
+  title="Quota pehle check aur baad mein alag se increment"
+  why="Do requests ek saath aayein to dono check pass kar leti hain aur limit toot jati hai."
+  better="Ek statement mein check aur increment karo, jaise update ... where used less than limit returning."
+/>
+
+<Mistake
+  title="Cron job jo dobara chalne par kaam dobara kare"
+  why="Retry ya manual re-run par emails, payments ya webhooks do dafa chale jate hain."
+  better="Har side effect ke liye unique idempotency key column rakho aur conflict par skip karo."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [API Handler Shape](/courses/best-practices/api-handler-shape), [Authentication Patterns](/courses/best-practices/authentication), [Environment Variables](/courses/nextjs/environment-variables) |
+| **Saath mein** | [Query Patterns & Transactions](/courses/best-practices/query-patterns), [Logging](/courses/best-practices/logging) |
+| **Baad mein** | [Security Baseline](/courses/best-practices/security-baseline), [Production Readiness Checklist](/courses/best-practices/production-readiness-checklist) |
+
+## Final quick revision
+
+| Check | Sawal |
+| --- | --- |
+| Kaun se endpoints | Email, SMS, AI tokens aur login sab limited hain? |
+| Store | Kya limit restart aur instances ke paar zinda hai? |
+| Keys | IP aur hashed identity dono? |
+| Jawab | 429 ke saath `Retry-After`? |
+| Quota | Ek statement mein reserve, fail par refund? |
+| Jobs | Cron secret check aur har side effect idempotent? |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Jo endpoint paisa kharch karta hai ya darwaza kholta hai, us par hamesha had lagao. Aur har job ko aise likho ke woh do dafa chal jaye to bhi kuch do dafa na ho.
+
+</Callout>

@@ -1,0 +1,206 @@
+---
+title: Error Handling
+description: JavaScript try catch error handling, finally, throw, custom error classes, Error cause aur async errors ko sahi tareeqe se sambhalna, Roman Urdu mein.
+keywords:
+  - javascript try catch error handling
+  - error handling in urdu
+  - custom error class javascript
+  - error cause
+  - async error handling
+---
+
+## 1. Error Handling kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**Error handling ka matlab hai ghalat hone wali cheezon ko pakarna aur program ko crash hone ki jagah sahi response dena.**
+
+</Callout>
+
+Jab JavaScript koi ghalti dekhti hai (jaise `undefined` par property padhna) to woh ek **error throw** karti hai. Agar koi use na pakre to woh function aur uske callers se upar nikal kar program ko rok deta hai.
+
+`try / catch` se aap error pakarte hain, `throw` se khud error bhejte hain, aur `finally` se cleanup karte hain.
+
+## 2. Kyun zaroori hai?
+
+Network fail hota hai, user ghalat input deta hai, server 500 bhejta hai. Agar yeh handle na ho to user ko khaali screen milti hai aur aapko pata bhi nahi chalta kya hua.
+
+<CompareTable leftTitle="Bina handling" rightTitle="Sahi handling ke saath">
+
+Ek error, poora feature band | Error pakra, baqi app chalti rahe
+User ko khaali screen | Saaf message, retry ka option
+Bug ki wajah pata nahi | Error message, cause aur stack log
+Har error ek jaisa | Custom classes se alag alag response
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Jagah | Example |
+| --- | --- |
+| **API calls** | Network ya HTTP error par message dikhana |
+| **JSON parsing** | `JSON.parse` ghalat text par `SyntaxError` |
+| **Form validation** | `ValidationError` throw karke field highlight |
+| **Libraries** | Ghalat argument par `TypeError` ya `RangeError` |
+| **Logging** | Errors ko monitoring service mein bhejna |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Error ka safar">
+
+try block mein code chalta hai
+↓
+Kahin error throw hota hai
+↓
+Baqi try skip, control catch mein
+↓
+catch error object ke saath chalta hai
+↓
+finally hamesha chalta hai
+
+</Flow>
+
+| Built-in error | Kab aata hai |
+| --- | --- |
+| `TypeError` | Ghalat type par kaam, jaise `null.name` |
+| `ReferenceError` | Variable exist nahi karta |
+| `SyntaxError` | Ghalat syntax, ya `JSON.parse` fail |
+| `RangeError` | Value hadd se bahar |
+| `AggregateError` | Kai errors ek saath, jaise `Promise.any` |
+
+<Callout variant="important" title="Mental model">
+
+**Error tab tak upar jata hai jab tak koi `catch` na mile.** Wahan pakrein jahan aap us ke baare mein kuch kar sakte hon.
+
+</Callout>
+
+## 5. Code example
+
+### try, catch, finally
+
+```js
+function parseSettings(text) {
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    console.warn("Settings kharab, default use:", error.message);
+    return { theme: "light" };
+  } finally {
+    console.log("Parse attempt khatam");
+  }
+}
+
+parseSettings("{ ghalat json");
+```
+
+### Custom error class aur cause
+
+```js
+class ApiError extends Error {
+  constructor(message, { status, cause } = {}) {
+    super(message, { cause });
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
+async function getProfile() {
+  let res;
+  try {
+    res = await fetch("/api/profile");
+  } catch (error) {
+    throw new ApiError("Network fail", { cause: error });
+  }
+  if (!res.ok) throw new ApiError("Profile load fail", { status: res.status });
+  return res.json();
+}
+
+try {
+  await getProfile();
+} catch (error) {
+  if (error instanceof ApiError && error.status === 401) {
+    console.log("Dobara login karein");
+  } else {
+    console.error(error, error.cause);
+  }
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Line | Kya ho raha hai |
+| --- | --- |
+| `JSON.parse(text)` | Ghalat text par `SyntaxError` throw |
+| `finally` | Success ho ya error, hamesha chalta hai |
+| `class ApiError extends Error` | Apni error type, extra `status` ke saath |
+| `super(message, { cause })` | Asli error ko `cause` mein save |
+| `instanceof ApiError` | Error ki qisam dekh kar alag response |
+
+### Interview tip
+
+Sirf `Error` objects throw karein, strings nahi. `throw "fail"` mein stack trace nahi hota aur `error.message` `undefined` aata hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Khaali catch block"
+  why="Error chup chaap nigal liya jata hai aur bug dhoondna namumkin ho jata hai."
+  better="Kam az kam log karein, ya aisa error dobara throw karein jise aap handle nahi kar sakte."
+/>
+
+<Mistake
+  title="Async error ko bahar wale try mein pakarne ki koshish"
+  why="setTimeout callback ya bina await wale promise ka error baad mein aata hai, tab tak try block khatam ho chuka hota hai."
+  better="await use karein, ya callback ke andar apna try catch rakhein."
+/>
+
+<Mistake
+  title="Naya error banate waqt asli error kho dena"
+  why="Sirf naya message bachta hai, asli wajah aur stack gum ho jate hain."
+  better="new Error(message, { cause: originalError }) use karein."
+/>
+
+<Mistake
+  title="Har function mein try catch lagana"
+  why="Code bhaari hota hai aur errors ghalat level par handle hote hain."
+  better="Wahan pakrein jahan user ko response dena ya retry karna mumkin ho."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Classes](/courses/javascript/classes), [Promises](/courses/javascript/promises), [Async / Await](/courses/javascript/async-await) |
+| **Saath mein** | [Fetch API](/courses/javascript/fetch-api), [JSON](/courses/javascript/json) |
+| **Baad mein** | [Forms & Validation](/courses/javascript/forms-and-validation), [Debugging JavaScript](/courses/javascript/debugging) |
+
+<Flow title="Suggested order">
+
+Promises
+↓
+Async Await
+↓
+Fetch API
+↓
+Error Handling
+↓
+Debugging
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `try / catch` | Error pakarna |
+| `finally` | Hamesha chalne wala cleanup |
+| `throw` | Khud error bhejna, hamesha `Error` object |
+| Custom error | `class X extends Error`, `name` set karein |
+| `cause` | Asli error ko naye error ke saath jorna |
+| Async | `await` ke saath `try / catch` ya `.catch()` |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Error ko **chhupayein nahi**, samjhein. Sahi jagah pakrein, `cause` ke saath wrap karein, aur user ko saaf message dein.
+
+</Callout>

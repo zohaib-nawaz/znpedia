@@ -1,0 +1,187 @@
+---
+title: "Linking & Navigation"
+description: "Next.js link navigation: Link component, prefetching, useRouter, usePathname aur redirect se pages ke beech tez client-side navigation seekhein."
+keywords:
+  - next.js link navigation
+  - next.js link component
+  - next.js userouter
+  - next.js prefetching
+  - next.js redirect
+---
+
+## 1. Linking aur navigation kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**`next/link` ka `Link` component pages ke beech client-side navigation karta hai, bina poora page reload kiye, aur visible links ko pehle se prefetch karta hai.**
+
+</Callout>
+
+Navigation ke chaar main tools hain: `Link` (sab se common), `useRouter` (code se navigate), `usePathname` (current URL) aur `redirect` (server par navigate).
+
+## 2. Kyun zaroori hai?
+
+Simple `a` tag har click par poora page reload karta hai. Layout dobara banta hai, state khoti hai aur screen white flash karti hai.
+
+<CompareTable leftTitle="Simple a tag" rightTitle="Next.js Link">
+
+Poora page reload | Sirf badla hua hissa render
+Layout aur state reset | Layout aur state preserve
+Click ke baad download shuru | Viewport mein aate hi prefetch
+Slow feel | App jaisi instant navigation
+
+</CompareTable>
+
+Next.js 16 mein prefetching aur smart ho gayi hai. **Incremental prefetching** sirf woh hissa laati hai jo cache mein nahi, link viewport se nikle to request cancel hoti hai, aur hover par priority milti hai.
+
+## 3. Kahan use hota hai?
+
+| Situation | Tool |
+| --- | --- |
+| **Navbar, cards, menu links** | `Link` |
+| **Form submit ke baad doosre page par** | `useRouter().push` ya Server Action mein `redirect` |
+| **Active link highlight** | `usePathname` |
+| **Login na ho to bhejo** | Server par `redirect("/login")` |
+| **Data refresh bina URL badle** | `router.refresh()` |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Link click ka safar">
+
+Link viewport mein aaya
+   ↓
+Next.js route ka zaroori hissa prefetch karta hai
+   ↓
+User click karta hai
+   ↓
+Shared layouts wahi rehte hain
+   ↓
+Sirf naya page segment render
+   ↓
+URL update, scroll top par
+
+</Flow>
+
+`Link` aur `useRouter` **client** par kaam karte hain. `redirect` server par (Server Component, Server Action, Route Handler) kaam karta hai.
+
+## 5. Code example
+
+### Link aur active state
+
+```tsx
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+const links = [
+  { href: "/", label: "Home" },
+  { href: "/blog", label: "Blog" },
+  { href: "/about", label: "About" },
+];
+
+export function NavBar() {
+  const pathname = usePathname();
+
+  return (
+    <nav>
+      {links.map((link) => (
+        <Link
+          key={link.href}
+          href={link.href}
+          className={pathname === link.href ? "font-bold" : ""}
+        >
+          {link.label}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+```
+
+### Code se navigate aur server redirect
+
+```tsx
+"use client";
+
+import { useRouter } from "next/navigation";
+
+export function BackToCart() {
+  const router = useRouter();
+  return <button onClick={() => router.push("/cart")}>Cart par jao</button>;
+}
+```
+
+```tsx
+import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+
+export default async function AccountPage() {
+  const session = (await cookies()).get("session");
+  if (!session) {
+    redirect("/login");
+  }
+  return <h1>Aap ka account</h1>;
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `Link href` | Client-side navigation, automatic prefetch |
+| `usePathname()` | Current path, active link ke liye |
+| `"use client"` | Hooks sirf Client Component mein |
+| `router.push("/cart")` | Code se navigate, history mein entry |
+| `router.replace` | Navigate lekin history entry replace |
+| `await cookies()` | Next.js 16 mein cookies bhi async |
+| `redirect("/login")` | Server par navigate, aage ka code nahi chalta |
+
+### Interview tip
+
+"`useRouter` kis package se?" App Router mein `next/navigation` se, `next/router` sirf purane Pages Router ka hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Internal links ke liye simple a tag use karna"
+  why="Har click par full reload hota hai aur prefetching ka faida nahi milta."
+  better="App ke andar ke links ke liye hamesha Link use karein, external links ke liye a theek hai."
+/>
+
+<Mistake
+  title="useRouter ko next/router se import karna"
+  why="next/router Pages Router ka hai, App Router mein error deta hai."
+  better="useRouter, usePathname aur useSearchParams next/navigation se import karein."
+/>
+
+<Mistake
+  title="redirect ko try catch ke andar call karna"
+  why="redirect andar se ek special error throw karta hai, catch use pakar leta hai aur redirect nahi hota."
+  better="redirect ko try catch ke bahar, kaam mukammal hone ke baad call karein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Routing & Pages](/courses/nextjs/routing-and-pages), [Layouts & Templates](/courses/nextjs/layouts-and-templates) |
+| **Saath** | [Dynamic Routes](/courses/nextjs/dynamic-routes), [Server & Client Components](/courses/nextjs/server-and-client-components) |
+| **Baad mein** | [Server Actions](/courses/nextjs/server-actions), [Proxy](/courses/nextjs/proxy), [Performance](/courses/nextjs/performance) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Main tool | `Link` from `next/link` |
+| Prefetch | Viewport mein aate hi, Next.js 16 mein incremental |
+| Code se navigate | `useRouter` from `next/navigation` |
+| Current URL | `usePathname` |
+| Server navigate | `redirect` |
+| Layout | Navigation par preserve |
+
+<Callout variant="important" title="Yaad rakhein">
+
+**Client par `Link` aur `useRouter`, server par `redirect`.** Hooks hamesha `next/navigation` se.
+
+</Callout>

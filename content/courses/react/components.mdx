@@ -1,0 +1,178 @@
+---
+title: Components
+description: React components kya hain, function component kaise banate hain, naming rules, export aur components ko jor kar UI banana Roman Urdu mein.
+keywords:
+  - react components
+  - function components react
+  - react component tree
+  - reusable ui components
+---
+
+## 1. Components kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**React component ek JavaScript function hai jo UI ka ek hissa (JSX) return karta hai.**
+
+</Callout>
+
+Har button, card, navbar aur poora page ek component ho sakta hai. Components ko **Lego blocks** ki tarah jor kar poori app banti hai. Modern React mein sirf **function components** likhe jate hain, class components purana tareeqa hain.
+
+## 2. Kyun zaroori hain?
+
+Socho aapki site par 20 jagah ek jaisa product card hai. Bina components ke har jagah wahi HTML copy hoga aur ek design change ke liye 20 jagah edit karna parega.
+
+<CompareTable leftTitle="Bina components" rightTitle="Components ke saath">
+
+Wahi markup baar baar copy | Ek baar likho, har jagah use karo
+Ek change ke liye kai files edit | Ek component badlo, har jagah update
+Ek bari file mein saara UI | Chhote hisson mein saaf code
+Test karna mushkil | Har component alag test ho sakta hai
+
+</CompareTable>
+
+## 3. Kahan use hote hain?
+
+| Level | Example components |
+| --- | --- |
+| **Chhote UI pieces** | `Button`, `Avatar`, `Badge`, `Input` |
+| **Sections** | `Navbar`, `ProductCard`, `CommentList` |
+| **Pages** | `HomePage`, `DashboardPage` |
+| **Layouts** | `Sidebar` ke saath `AppLayout` |
+| **Libraries** | shadcn/ui, MUI jaise ready components |
+
+## 4. Kaise kaam karte hain?
+
+React aap ke component function ko call karta hai, woh JSX return karta hai, aur React us JSX ko screen par dikhata hai. Ek component doosre components ko use karta hai, is se ek **component tree** banta hai.
+
+<Flow title="Component tree">
+
+App
+↓
+Header + ProductList + Footer
+↓
+ProductList ke andar kai ProductCard
+↓
+Har ProductCard ke andar Button
+
+</Flow>
+
+### Component ke rules
+
+| Rule | Wajah |
+| --- | --- |
+| Naam **Capital letter** se | Chhote naam ko React HTML tag samajhta hai |
+| JSX return kare | Ya `null` agar kuch nahi dikhana |
+| Pure ho | Same input par same output, render mein side effects nahi |
+| Top level par define ho | Component ke andar component define na karein |
+
+## 5. Code example
+
+### Component banana aur export
+
+```jsx
+// src/components/Button.jsx
+export function Button({ label }) {
+  return <button className="btn">{label}</button>;
+}
+```
+
+```jsx
+// src/components/ProductCard.jsx
+import { Button } from "./Button.jsx";
+
+export function ProductCard({ name, price }) {
+  return (
+    <article className="card">
+      <h3>{name}</h3>
+      <p>Rs. {price}</p>
+      <Button label="Cart mein daalein" />
+    </article>
+  );
+}
+```
+
+### Components ko jorna
+
+```jsx
+// src/App.jsx
+import { ProductCard } from "./components/ProductCard.jsx";
+
+export default function App() {
+  return (
+    <main>
+      <h1>Hamari Shop</h1>
+      <ProductCard name="Keyboard" price={4500} />
+      <ProductCard name="Mouse" price={1800} />
+    </main>
+  );
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `function Button(...)` | Component sirf ek function hai |
+| `{ label }` | Props ka destructuring, parent se data aata hai |
+| `export function` | Named export, doosri file mein import ho sakta hai |
+| `<Button label="..." />` | Component ko tag ki tarah use karna |
+| `price={4500}` | Number ya JavaScript value braces mein |
+| Do `ProductCard` | Ek hi component, alag data, alag output |
+
+Props ki poori detail [Props](/courses/react/props) chapter mein hai.
+
+### Interview tip
+
+"Component aur element mein farq?" Component ek function hai (`ProductCard`). Element woh object hai jo JSX likhne se banta hai (`<ProductCard />`), yani React ko batana ke yeh component render karo.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Component ka naam chhote letter se rakhna"
+  why="React button ko HTML ka button tag samajhta hai, aap ka component render nahi hota."
+  better="Hamesha PascalCase naam rakhein, jaise ProductCard."
+/>
+
+<Mistake
+  title="Component ke andar doosra component define karna"
+  why="Har render par naya component banta hai, us ki state reset ho jati hai aur performance kharab hoti hai."
+  better="Har component ko file ke top level par define karein."
+/>
+
+<Mistake
+  title="Component function ko khud call karna"
+  why="ProductCard() likhne se React usay component nahi samajhta, hooks aur state theek se kaam nahi karte."
+  better="Hamesha JSX tag ki tarah use karein, jaise ProductCard ko angle brackets mein."
+/>
+
+<Mistake
+  title="Ek component mein saari app likhna"
+  why="File lambi, mushkil aur reuse ke qabil nahi rehti."
+  better="Jab koi hissa repeat ho ya alag kaam kare to usay naya component bana dein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [JSX](/courses/react/jsx), [Functions](/courses/javascript/functions), [Modules](/courses/javascript/modules) |
+| **Saath** | [How React Renders](/courses/react/how-react-renders) |
+| **Baad mein** | [Props](/courses/react/props), [Children & Composition](/courses/react/children-and-composition), [State with useState](/courses/react/state) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Component | Function jo JSX return kare |
+| Naam | PascalCase, jaise `UserCard` |
+| Use | `<UserCard />` tag ki tarah |
+| Data | Props ke through parent se |
+| Structure | Components se component tree |
+| Purana tareeqa | Class components, naye code mein nahi |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Component = **Capital naam wala function jo JSX return kare**. Chhote, reusable aur pure components banayein.
+
+</Callout>

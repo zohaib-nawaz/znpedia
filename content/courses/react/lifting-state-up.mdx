@@ -1,0 +1,159 @@
+---
+title: Lifting State Up
+description: React lifting state up kya hai, do sibling components ke beech state share karne ke liye usay common parent mein le jana, Roman Urdu mein example ke saath.
+keywords:
+  - react lifting state up
+  - share state between components
+  - react sibling communication
+  - single source of truth react
+---
+
+## 1. Lifting State Up kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**Jab do ya zyada components ko same data chahiye, to state ko unke sab se qareebi common parent mein le jate hain aur props se neeche bhejte hain.**
+
+</Callout>
+
+Isay "state ko upar uthana" kehte hain. Parent state ka **owner** banta hai, children ko value props mein milti hai aur update karne ke liye ek function prop.
+
+## 2. Kyun zaroori hai?
+
+Siblings aapas mein seedha baat nahi kar sakte. Data sirf upar se neeche jata hai. Agar dono ki apni alag state ho to woh out of sync ho jati hain.
+
+<CompareTable leftTitle="Har child ki apni state" rightTitle="State parent mein">
+
+Do copies, alag values | Ek hi source of truth
+Ek panel khule to doosra pata nahi | Parent decide karta hai kaunsa khula hai
+Sync karne ke liye jugaar | Automatically sync
+Bugs aur confusion | Predictable data flow
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Use case | Shared state |
+| --- | --- |
+| **Accordion** | Kaunsa panel open hai |
+| **Search + results** | Search query |
+| **Temperature converter** | Celsius aur Fahrenheit ek value se |
+| **Cart icon + product page** | Cart items ka count |
+| **Filters + table** | Selected filters |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="State upar, data neeche, events upar">
+
+State common parent mein rakho
+↓
+Parent value ko props se children ko deta hai
+↓
+Parent update function bhi prop mein deta hai
+↓
+Child event par woh function call karta hai
+↓
+Parent ki state badalti hai, sab children re-render
+
+</Flow>
+
+Is pattern ko yaad rakhne ka formula: **data neeche jata hai, events upar aate hain**.
+
+## 5. Code example
+
+### Accordion: ek waqt mein ek panel
+
+```jsx
+import { useState } from "react";
+
+function Panel({ title, isActive, onShow, children }) {
+  return (
+    <section>
+      <h3>{title}</h3>
+      {isActive ? <p>{children}</p> : <button onClick={onShow}>Show</button>}
+    </section>
+  );
+}
+
+export default function Accordion() {
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  return (
+    <>
+      <Panel
+        title="Delivery"
+        isActive={activeIndex === 0}
+        onShow={() => setActiveIndex(0)}
+      >
+        2 se 4 din mein delivery.
+      </Panel>
+      <Panel
+        title="Returns"
+        isActive={activeIndex === 1}
+        onShow={() => setActiveIndex(1)}
+      >
+        7 din mein return ho sakta hai.
+      </Panel>
+    </>
+  );
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `activeIndex` | State parent `Accordion` mein, children mein nahi |
+| `isActive` prop | Har `Panel` ko sirf boolean milta hai |
+| `onShow` prop | Child ke click ko parent tak le jata hai |
+| `setActiveIndex(1)` | Parent update karta hai, dono panels naye props paate hain |
+
+Ab `Panel` ek **controlled component** hai: uska behaviour parent ke props se control hota hai, apni state se nahi.
+
+## 6. Common mistakes
+
+<Mistake
+  title="State ko har child mein copy kar dena aur effects se sync karna"
+  why="Do sources of truth bante hain, ek update miss ho to UI ghalat data dikhati hai."
+  better="State ek jagah rakho, common parent mein, aur props se baanto."
+/>
+
+<Mistake
+  title="State ko zaroorat se zyada upar le jana, jaise har cheez App mein"
+  why="Chhota sa change poore tree ko re-render karta hai aur App bohot bhaari ho jata hai."
+  better="State ko sirf us parent tak uthao jo un sab components ka sab se qareebi common ancestor ho."
+/>
+
+<Mistake
+  title="Child ko setter seedha dena aur child ko parent ki state ka shape pata hona"
+  why="Child parent ki internal details se jur jata hai aur reuse mushkil ho jata hai."
+  better="Child ko meaningful event prop do, jaise onShow ya onSelect, logic parent mein rakho."
+/>
+
+### Interview tip
+
+"Siblings ke beech data kaise share karein?" Pehla jawab hamesha **lifting state up** hai. Bohot gehra tree ho to context ya state management library.
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Chapters |
+| --- | --- |
+| **Pehle** | [State with useState](/courses/react/state), [Props](/courses/react/props), [Handling Events](/courses/react/events) |
+| **Baad mein** | [useContext](/courses/react/use-context), [useReducer](/courses/react/use-reducer) |
+| **Aage** | [State Management Libraries](/courses/react/state-management) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Kab | Do components ko same data chahiye |
+| Kahan | Sab se qareebi common parent |
+| Data | Props se neeche |
+| Events | Function props se upar |
+| Faida | Single source of truth |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Har state ka **ek owner** ho. Shared state common parent ki hai, children sirf props padhte aur events bhejte hain.
+
+</Callout>

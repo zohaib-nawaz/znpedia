@@ -1,0 +1,191 @@
+---
+title: "Array Methods: map, filter, reduce"
+description: JavaScript map filter reduce ke saath find, some, every aur Object.groupBy, data transform karne ke modern tareeqe Roman Urdu mein examples ke saath.
+keywords:
+  - javascript map filter reduce
+  - array methods urdu
+  - javascript reduce example
+  - object groupby javascript
+  - find some every
+---
+
+## 1. Array Methods kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**`map`, `filter` aur `reduce` array ke methods hain jo loop likhe bina data ko transform, select aur combine karte hain.**
+
+</Callout>
+
+`map` har item ko badal kar naya array deta hai, `filter` sirf pass hone wale items rakhta hai, aur `reduce` poore array ko ek value mein samet deta hai. Teeno asal array ko nahi badalte.
+
+Inke saath `find`, `some`, `every` aur ES2024 ka `Object.groupBy` bhi roz kaam aate hain.
+
+## 2. Kyun zaroori hai?
+
+`for` loop mein counter, khaali array aur `push` sab khud sambhalna parta hai. Array methods kaam ka **iraada** saaf likhte hain.
+
+<CompareTable leftTitle="for loop" rightTitle="Array methods">
+
+Khaali array banao, loop chalao, push karo | Ek line map ya filter
+Index ki ghalti ka khatra | Index ki fikr nahi
+Kya ho raha hai, parh kar samajhna parta | Method ka naam kaam batata hai
+Asal array badalne ka khatra | Naya array, asal safe
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Kaam | Method |
+| --- | --- |
+| Prices mein tax add karna | `map` |
+| Sirf in-stock products dikhana | `filter` |
+| Cart ka total nikalna | `reduce` |
+| ID se ek user dhoondna | `find` |
+| Kya koi item out of stock hai? | `some` |
+| Kya saare fields bhare hain? | `every` |
+| Products ko category ke hisaab se group | `Object.groupBy` |
+
+## 4. Kaise kaam karta hai?
+
+| Method | Callback kya return kare | Result |
+| --- | --- | --- |
+| `map` | Naya value | Same length ka naya array |
+| `filter` | `true` / `false` | Chhota ya barabar array |
+| `reduce` | Naya accumulator | Ek single value |
+| `find` | `true` / `false` | Pehla match ya `undefined` |
+| `some` / `every` | `true` / `false` | `true` ya `false` |
+
+<Flow title="Ek pipeline">
+
+Products ka array
+↓
+filter: sirf in-stock
+↓
+map: sirf price nikalo
+↓
+reduce: sab prices jama karo
+↓
+Ek number: total
+
+</Flow>
+
+`reduce` ka callback do cheezein leta hai: **accumulator** (ab tak ka result) aur **current item**. Doosra argument starting value hai.
+
+<Callout variant="important" title="Mental model">
+
+**map = badlo, filter = chuno, reduce = jama karo.**
+
+</Callout>
+
+## 5. Code example
+
+### map, filter, reduce
+
+```js
+const products = [
+  { name: "Shirt", price: 1500, inStock: true, category: "clothes" },
+  { name: "Shoes", price: 4000, inStock: false, category: "footwear" },
+  { name: "Cap", price: 800, inStock: true, category: "clothes" },
+];
+
+const names = products.map((p) => p.name);
+const available = products.filter((p) => p.inStock);
+const total = available.reduce((sum, p) => sum + p.price, 0);
+
+console.log(names);
+console.log(available.length);
+console.log(total);
+```
+
+### find, some, every, groupBy
+
+```js
+const cap = products.find((p) => p.name === "Cap");
+const anyOut = products.some((p) => !p.inStock);
+const allPriced = products.every((p) => p.price > 0);
+const byCategory = Object.groupBy(products, (p) => p.category);
+
+console.log(cap.price);
+console.log(anyOut, allPriced);
+console.log(Object.keys(byCategory));
+console.log(byCategory.clothes.length);
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `map((p) => p.name)` | `["Shirt", "Shoes", "Cap"]` |
+| `filter((p) => p.inStock)` | Sirf Shirt aur Cap |
+| `reduce((sum, p) => ..., 0)` | `0` se shuru, `2300` total |
+| `find(...)` | Pehla match, Cap object |
+| `some` / `every` | `true` aur `true` |
+| `Object.groupBy` | `clothes` aur `footwear` keys wala object |
+
+### Interview tip
+
+`forEach` kuch return nahi karta (`undefined`). Naya array chahiye to `map`, sirf side effect (jaise log) chahiye to `forEach`. Aur `reduce` mein initial value hamesha dein, khaali array par bina initial value ke `TypeError` aata hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="map ko sirf loop ke liye use karna"
+  why="map naya array banata hai, agar result use nahi ho raha to bekaar memory aur confusing code."
+  better="Side effects ke liye forEach ya for of, naya array chahiye to map."
+/>
+
+<Mistake
+  title="reduce mein initial value na dena"
+  why="Khaali array par error aata hai, aur objects ke array mein pehla object hi accumulator ban jata hai."
+  better="Hamesha doosra argument do, jaise reduce((sum, p) => sum + p.price, 0)."
+/>
+
+<Mistake
+  title="find ki jagah filter()[0]"
+  why="filter poora array check karta hai aur naya array banata hai, sirf pehla item chahiye tha."
+  better="find use karo, pehle match par ruk jata hai."
+/>
+
+<Mistake
+  title="Har cheez reduce se karna"
+  why="Complex reduce parhna mushkil hai jab ke map, filter ya groupBy wahi kaam saaf karte."
+  better="Pehle dekho koi seedha method hai ya nahi. Grouping ke liye Object.groupBy behtar hai."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Arrays](/courses/javascript/arrays), [Arrow Functions](/courses/javascript/arrow-functions) |
+| **Saath mein** | [Higher-Order Functions](/courses/javascript/higher-order-functions), [Objects](/courses/javascript/objects) |
+| **Baad mein** | [Destructuring](/courses/javascript/destructuring), [Map & Set](/courses/javascript/map-and-set), [JSON](/courses/javascript/json) |
+
+<Flow title="Suggested order">
+
+Arrays
+↓
+Array Methods
+↓
+Objects
+↓
+Destructuring
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `map` | Har item badlo, same length |
+| `filter` | Condition pass karne wale items |
+| `reduce` | Ek value mein jama, initial value do |
+| `find` | Pehla match ya `undefined` |
+| `some` / `every` | Koi ek / saare |
+| `Object.groupBy` | Key ke hisaab se groups (ES2024) |
+
+<Callout variant="important" title="Yaad rakhein">
+
+`map`, `filter`, `reduce` asal array ko nahi badalte. Inhein chain karke saaf data pipelines banayein, aur callback mein `return` mat bhoolein.
+
+</Callout>

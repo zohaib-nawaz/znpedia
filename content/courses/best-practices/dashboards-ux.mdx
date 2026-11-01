@@ -1,0 +1,300 @@
+---
+title: Dashboards
+description: Dashboard UX design ke rules, pehli screen par teen sawal, stat cards, scan order, sahi charts, table density aur loading states jo layout na hilayen.
+keywords:
+  - dashboard ux design
+  - stat cards kpi layout
+  - skeleton loading layout shift
+  - data table ux
+  - dashboard chart types
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Dashboard ki pehli screen bina scroll teen sawalon ka jawab de: kya mujhe abhi kisi cheez par dhyan dena hai, main kaisa kar raha hoon, aur ab kya karoon.**
+
+</Callout>
+
+Dashboard (overview, console, admin home) woh screen hai jo user din mein sab se zyada dekhta hai. Is ka kaam ek nazar mein halaat batana hai, report parhwana nahi. Rules ka khulasa:
+
+| Group | Rules |
+| --- | --- |
+| **Kya dikhana hai** | Teen sawal is order mein: attention, status, next action. Jo block kisi ka jawab na de, woh neeche ya page se bahar |
+| **Stat cards** | Ek row, max 4 cards, har card mein label, ek value, ek delta aur comparison period |
+| **Order** | Sab se ahem block top left, alerts trends se pehle |
+| **Charts** | Quantities ke liye bars ya lines, pie aur donut nahi, color akela signal nahi |
+| **Tables** | 40, 48 ya 56 px rows, pehla column insaani naam, numbers right aligned, sticky header, max 2 actions per row |
+| **States** | Loading aur empty state final size par, error har widget ka apna, failure kabhi "No data" nahi |
+| **Messages** | Notification ka wazan us ke kaam jitna, saare banners ek hi budget mein |
+
+## 2. Kyun zaroori hai?
+
+Nielsen Norman Group dashboard ko ek single-screen view kehta hai jo ek nazar mein aisi information de jis par user turant action le sake. Data design ki pattern research ka bhi yahi usool hai: pehle overview, detail maangne par. Log screen F-shape mein scan karte hain: upar ki line, phir left side, aur neeche jate hue chaurai kam parhte hain. Is liye right side neeche rakha alert aksar nazar hi nahi aata.
+
+Charts par research kehti hai ke insaan length aur position ko tez aur sahi parhta hai, lekin area aur angle ko kamzor. Donut ke saat slices mein se kaun bara hai, yeh andaza lagana parta hai. Bar chart mein foran nazar aata hai. Loading par bhi research ke thresholds hain: taqreeban 1 second tak user ko flow tootta mehsoos nahi hota, aur taqreeban 10 second ke baad attention chali jati hai. Skeleton tabhi kaam karta hai jab woh final layout jaisa ho.
+
+<CompareTable leftTitle="Aam dashboard" rightTitle="Rule ke saath dashboard">
+
+Welcome paragraph aur checklist ne pehli screen bhar di | Alert, phir 4 stat cards, phir list
+9 stat cards, 3 rows, kuch mein pie chart | Ek row, 4 cards, value + delta + period
+Overdue items right side, do charts ke neeche | "Needs attention" stat row ke foran neeche
+Ek spinner, phir page 600 px barh jata hai | Har widget ka skeleton, same size
+Request fail hui to "No orders yet" | "Could not load orders" aur Try again
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Skeleton jo layout na hilaye, empty aur error state alag, numbers right aligned | Yeh teen cheezein har data wali screen mein lagti hain aur seekhna asaan hai |
+| **Production code** | Saare rules, khaas taur par teen sawal aur per-widget error | Dashboard par user roz faisle karta hai, galat ya chhupi information mehngi parti hai |
+| **Senior level** | Product ke saath tay karna ke "attention" kya hai aur comparison period kaunsa | Kaunse 4 numbers dikhane hain, yeh design nahi, business decision hai |
+
+Kab seekhein: jab aap pehli admin ya analytics screen bana rahe hon, aur Suspense aur streaming samajh chuke hon.
+
+## 4. Bura vs acha code
+
+### Bura dashboard
+
+```tsx
+"use client";
+
+export default function Overview() {
+  const { data, error, isLoading } = useDashboard();
+  if (isLoading) return <Spinner />;
+  if (error) return <p>Something went wrong</p>;
+
+  return (
+    <div>
+      <h1>Welcome back! Here is everything happening in your workspace today.</h1>
+      <SetupChecklist />
+      <div className="grid grid-cols-3 gap-4">
+        {data.stats.map((stat) => (
+          <div key={stat.label} className="h-52 border p-4">
+            <DonutChart data={stat.breakdown} />
+          </div>
+        ))}
+      </div>
+      <OrdersTable orders={data.orders} />
+    </div>
+  );
+}
+```
+
+### Acha dashboard
+
+Har widget apne Suspense boundary mein, apne skeleton ke saath:
+
+```tsx
+import Link from "next/link";
+import { Suspense } from "react";
+
+export default function OverviewPage() {
+  return (
+    <main className="flex flex-col gap-6 p-6">
+      <header className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Overview</h1>
+        <Link href="/invoices/new" className="rounded-md bg-primary px-4 py-2 text-primary-foreground">Create invoice</Link>
+      </header>
+      <Suspense fallback={<AttentionSkeleton />}>
+        <NeedsAttention />
+      </Suspense>
+      <Suspense fallback={<StatRowSkeleton />}>
+        <StatRow />
+      </Suspense>
+      <Suspense fallback={<TableSkeleton rows={8} />}>
+        <RecentOrders />
+      </Suspense>
+    </main>
+  );
+}
+```
+
+Stat card aur us ka skeleton ek hi size:
+
+```tsx
+export function StatCard({ stat }: { stat: Stat }) {
+  return (
+    <div className="flex h-28 flex-col justify-between rounded-lg border p-4">
+      <p className="text-sm text-muted-foreground">{stat.label}</p>
+      <p className="text-2xl font-semibold tabular-nums">{stat.value}</p>
+      <p className="text-xs text-muted-foreground">{stat.delta} vs {stat.period}</p>
+    </div>
+  );
+}
+
+export function StatRowSkeleton() {
+  return (
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {[1, 2, 3, 4].map((key) => (
+        <div key={key} className="h-28 animate-pulse rounded-lg bg-muted" />
+      ))}
+    </div>
+  );
+}
+```
+
+Error, empty aur data teeno alag states:
+
+```tsx
+export async function RecentOrders() {
+  const result = await getRecentOrders();
+
+  if (!result.ok) {
+    return <WidgetError title="Recent orders" message="Could not load orders." />;
+  }
+  if (result.orders.length === 0) {
+    return <OrdersEmpty />;
+  }
+  return <OrdersTable orders={result.orders} />;
+}
+```
+
+`WidgetError` ek chhota client component hai jo usi frame mein message aur "Try again" button dikhata hai (`router.refresh()` se). Baqi dashboard normal render hota rehta hai.
+
+Table jo scan ho sake:
+
+```tsx
+export function OrdersTable({ orders }: { orders: Order[] }) {
+  return (
+    <div className="max-h-[480px] overflow-auto rounded-lg border">
+      <table className="w-full text-sm">
+        <thead className="sticky top-0 bg-background">
+          <tr className="h-12 text-left">
+            <th className="px-4">Customer</th>
+            <th className="px-4 text-right">Amount</th>
+            <th className="px-4"><span className="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {orders.map((order) => (
+            <tr key={order.id} className="h-12 border-t">
+              <td className="px-4">{order.customerName}</td>
+              <td className="px-4 text-right tabular-nums">{order.amountLabel}</td>
+              <td className="px-4">
+                <div className="flex items-center justify-end gap-2">
+                  <Link href={`/orders/${order.id}`}>Open</Link>
+                  <OrderRowMenu orderId={order.id} />
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+```
+
+### Farq kya hai?
+
+| Bura | Acha | Rule |
+| --- | --- | --- |
+| Poore page ka ek spinner | Har widget ka Suspense + skeleton | Loading final layout pakray |
+| Error par poora page gayab | Widget ke andar error + retry | Error per widget |
+| Welcome paragraph aur checklist upar | Header, alerts, stats | Pehli screen teen sawal |
+| `h-52` cards, donut andar | `h-28` cards, value + delta + period | Stat card max 120 px |
+| `grid-cols-3` aur kai rows | `grid-cols-2 lg:grid-cols-4`, ek row | Max 4 per row, phone par 2 |
+| Koi primary action nahi | Ek "Create invoice" | Ek primary action |
+| Left aligned amounts | `text-right tabular-nums` | Numbers ka column seedha parha jaye |
+| Header scroll ke saath gayab | `sticky top-0` | Orientation bani rahe |
+
+## 5. Kaise apply karein?
+
+<Flow title="Dashboard banane ka tareeqa">
+
+Product ke saath teen sawalon ke jawab likho
+↓
+Attention wale block ko top left rakho
+↓
+Max 4 key numbers, har ek ke saath comparison period
+↓
+Har widget ka loading, empty aur error state same size par
+↓
+1440 by 900 par check karo: teeno jawab bina scroll
+
+</Flow>
+
+Detail ke rules:
+
+| Rule | Detail |
+| --- | --- |
+| **Table rows** | 40 (condensed), 48 (regular) ya 56 (relaxed) px. Admin tables 48 default. 1440 by 900 par header ke baad kam az kam 8 rows nazar aayen |
+| **Stat cards** | 1024 px aur upar max 4 per row, 390 par 2 per row, height max 120 px. Sparkline chal sakti hai, poora chart nahi. Saari values ek size ki |
+| **Scan order** | Sab se ahem top left, agla upar ki line mein, phir left side neeche. Right third mein pehli row ke neeche kuch time-critical nahi |
+| **Charts** | Comparison ke liye bars (length) ya lines (position). Pie, donut, gauge, treemap aur 3D nahi. Color ke saath label ya pattern bhi |
+| **Row actions** | Max 2 visible, baqi ek overflow menu mein. Kai rows par action ke liye checkboxes aur table ke upar bulk bar |
+| **Banners** | Onboarding, announcements, upgrade prompts aur banners mila kar first viewport ka max 25 percent. Do takrayen to jo value ke qareeb hai woh jeete |
+
+Loading kab kya dikhaye:
+
+| Intezar | Kya dikhayein |
+| --- | --- |
+| Taqreeban 1 second se kam | Kuch nahi, indicator khud flicker banta hai |
+| 1 se 10 second | Skeleton (behtar) ya spinner, final layout ke size par |
+| 10 second se zyada | Progress bar, taake user ko andaza ho |
+
+Notification ka wazan:
+
+| Situation | Sahi tareeqa |
+| --- | --- |
+| Ek element ka status | Inline indicator, jaise "Orders" par count wala dot |
+| System event | Notification ya banner |
+| Passive success | Toast, jaise "Saved" |
+| Error | Kabhi toast nahi, woh fade ho kar miss ho jata hai. Inline ya banner |
+| Bara, mehnga faisla | Modal, sirf yahan |
+
+## 6. Exceptions aur common mistakes
+
+| Situation | Kya karein |
+| --- | --- |
+| **Part-to-whole jahan sirf 2 hisse hon** | Ek simple progress bar ya stacked bar, phir bhi donut nahi |
+| **Monitoring wall screen** | Zyada cards chal sakte hain, lekin har card ek value aur ek status |
+
+<Mistake
+  title="Failed request par No data dikhana"
+  why="User samajhta hai sach mein kuch nahi hua, galat faisla karta hai, aur jab baad mein data aata hai to dashboard par bharosa toot jata hai."
+  better="Error aur empty alag states hon. Error widget ke andar message aur Try again ke saath."
+/>
+
+<Mistake
+  title="Ek spinner poore page ke liye"
+  why="Data aate hi page 600 px barh jata hai, cheezein khisakti hain aur sab se slow widget poore page ko rok leta hai."
+  better="Har widget ka apna Suspense boundary aur us ke final size ka skeleton."
+/>
+
+<Mistake
+  title="Payment failed jaisa error toast mein"
+  why="Toast 5 second mein gayab, user ne dekha hi nahi aur masla wahin ka wahin."
+  better="Error inline ya banner mein jo user ke band karne tak rahe. Toast sirf Saved jaisi khabar ke liye."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Visual Hierarchy & Spacing](/courses/best-practices/visual-hierarchy-and-spacing), [Suspense & lazy()](/courses/react/suspense-and-lazy) |
+| **Saath mein** | [Streaming & Suspense](/courses/nextjs/streaming-and-suspense), [Loading, Error & Not Found UI](/courses/nextjs/loading-and-error-ui), [Onboarding & Empty States](/courses/best-practices/onboarding-and-empty-states) |
+| **Baad mein** | [Performance & Core Web Vitals](/courses/nextjs/performance), [Motion & Design Iteration](/courses/best-practices/motion-and-iteration) |
+
+## Final quick revision
+
+| Check | Yaad rakhne wali baat |
+| --- | --- |
+| Pehli screen | Attention, status, next action, bina scroll |
+| Stat cards | Ek row, max 4, label + value + delta + period, max 120 px |
+| Order | Ahem cheez top left, alerts pehle |
+| Charts | Bars ya lines, pie aur donut nahi |
+| Table | 48 px rows, naam pehle, numbers right, sticky header, max 2 row actions |
+| Loading | Skeleton final size par, layout shift zero |
+| Error | Har widget ka apna, kabhi "No data" nahi, kabhi toast nahi |
+| Banners | Sab mila kar max 25 percent |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Dashboard report nahi, ek nazar ka jawab hai. Pehle batao kya toota hai, phir halaat kaise hain, phir agla qadam, aur loading ya error mein bhi layout apni jagah se na hile.
+
+</Callout>

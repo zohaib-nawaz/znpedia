@@ -1,15 +1,29 @@
+export type CourseChapter = {
+  slug: string;
+  title: string;
+};
+
+export type CourseSection = {
+  title: string;
+  chapters: CourseChapter[];
+};
+
 export type CourseMeta = {
   title: string;
   slug: string;
   description: string;
-  chapters: string[];
-  /** Optional short label on course cards (defaults from title). */
+  sections: CourseSection[];
+  chapters: CourseChapter[];
   badge?: string;
+  order?: number;
 };
+
+export type CourseMetaFile = Omit<CourseMeta, "chapters">;
 
 export type ChapterFrontmatter = {
   title?: string;
   description?: string;
+  keywords?: string[];
 };
 
 export type TocHeading = {

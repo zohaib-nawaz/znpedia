@@ -1,0 +1,202 @@
+---
+title: Early Returns & Braces
+description: Early return guard clause se nested if ka pyramid khatam karein, aur har if, else aur loop par braces kyun lagayein. TypeScript examples ke saath.
+keywords:
+  - early return guard clause
+  - guard clauses javascript
+  - avoid nested if
+  - always use curly braces
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Galat ya khaas cases ko function ke shuru mein `return` ya `throw` se nikal do, taake asli kaam bina nesting ke neeche likha ho. Aur har `if`, `else`, `for`, `while` par hamesha braces lagao.**
+
+</Callout>
+
+Is practice ke teen hisse hain:
+
+| Hissa | Matlab |
+| --- | --- |
+| **Guard clause / early return** | Jo case aage nahi chal sakta, use pehle hi wapas bhej do |
+| **Braces always** | Ek line ka body bhi `{ }` ke andar, condition ke saath ek hi line par statement nahi |
+| **Truthy guard** | `if (!user)` likho, `if (user === null)` tab jab `null` aur `undefined` ka farq hi asal baat ho |
+
+## 2. Kyun zaroori hai?
+
+Nested `if` ka pyramid dimaag par bojh hai. Har level par parhne wale ko yaad rakhna parta hai ke kaunsi condition sach thi. Aur bina braces ke `if` mein ek line add karna ek mashhoor bug hai.
+
+<CompareTable leftTitle="Nested if aur bina braces" rightTitle="Early return aur braces">
+
+Asli logic 4 level andar chhupa | Asli logic function ke neeche, seedha
+Har else dhoondna parta hai ke kis if ka hai | Har guard apne aap mein mukammal
+Bina braces wale if mein nayi line add ki, woh hamesha chal gayi | Braces mein jo hai wahi condition par chalta hai
+Diff mein ek line badli to indentation se dhoka | Diff saaf, block ki hadd nazar aati hai
+
+</CompareTable>
+
+Bina braces ka bug aise hota hai:
+
+```ts
+if (!user.isAdmin)
+  logDenied(user);
+  return forbidden();
+```
+
+Indentation kehti hai dono lines `if` ki hain. Asal mein `return forbidden()` **har user** ke liye chalta hai, admin ke liye bhi.
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Bohat zaroori, pehle hafte se | Sab se aasaan rule, aur sab se zyada bugs rokta hai |
+| **Production code** | Lint se enforce | ESLint `curly: ["error", "all"]` yeh kaam khud karta hai |
+| **Senior level** | Review mein nesting ko flag karo | Gehri nesting aksar function ke do kaam karne ka ishara hai |
+
+## 4. Bura vs acha code
+
+```ts
+function ship(order: Order | null) {
+  if (order) {
+    if (order.status === "paid") {
+      if (order.items.length > 0) {
+        if (order.address) {
+          return carrier.book(order);
+        } else {
+          throw new Error("Missing address");
+        }
+      } else {
+        throw new Error("Empty order");
+      }
+    } else return null;
+  }
+  return null;
+}
+```
+
+```ts
+function ship(order: Order | null) {
+  if (!order) {
+    return null;
+  }
+
+  if (order.status !== "paid") {
+    return null;
+  }
+
+  if (order.items.length === 0) {
+    throw new Error(`Order ${order.id} has no items`);
+  }
+
+  if (!order.address) {
+    throw new Error(`Order ${order.id} has no address`);
+  }
+
+  return carrier.book(order);
+}
+```
+
+| Farq kya hai? | Bura | Acha |
+| --- | --- | --- |
+| Nesting | 4 level | 1 level |
+| Asli kaam | Pyramid ke beech mein | Aakhri line, saaf |
+| Error ka jor | `else` dhoondo ke kis `if` ka hai | Har guard ke saath apna error |
+| Braces | `else return null` bina braces | Har block mein braces |
+| Naya case add karna | Pyramid aur gehra | Ek aur guard |
+
+### React mein guard
+
+```tsx
+export function Profile({ user }: { user: User | null }) {
+  if (!user) {
+    return <SignInPrompt />;
+  }
+
+  return <ProfileCard user={user} />;
+}
+```
+
+## 5. Kaise apply karein?
+
+<Flow title="Nested function ko flat karna">
+
+Sab se bahar wali condition dekho
+↓
+Use ulta karo: if (order) ko if (!order) banao
+↓
+Ulti condition mein return ya throw karo
+↓
+Baaqi code ek level bahar aa jata hai
+↓
+Agli condition par yahi dohrao
+↓
+Har if aur else par braces check karo
+
+</Flow>
+
+Lint se pakka karein:
+
+```json
+{
+  "rules": {
+    "curly": ["error", "all"]
+  }
+}
+```
+
+## 6. Exceptions aur common mistakes
+
+Kabhi nesting domain ko behtar dikhati hai, jaise do barabar raaste jo dono kaafi kaam karte hain (`if` paid to yeh, `else` refund to woh). Wahan `if`/`else` theek hai. Early return ka maqsad **guards** ko bahar nikalna hai, har `else` ko khatam karna nahi.
+
+Truthy guard (`if (!count)`) tab galat hai jab `0` ya khaali string valid value ho. Wahan saaf check likho: `if (count === undefined)`.
+
+<Mistake
+  title="Ek line wala if bina braces"
+  why="Baad mein koi doosri line add karega to woh condition ke bahar chalegi, chahe indentation kuch bhi kahe."
+  better="Hamesha braces lagao aur ESLint curly rule on karo."
+/>
+
+<Mistake
+  title="Condition aur statement ek hi line par"
+  why="if (!user) return; scan karte waqt nazar se chhoot jata hai aur debugger mein breakpoint lagana mushkil."
+  better="Statement ko braces ke andar apni line par likho."
+/>
+
+<Mistake
+  title="Return ke baad bhi else likhna"
+  why="Agar if return kar raha hai to else ki zaroorat nahi, bas ek level ki nesting barhti hai."
+  better="else hatao aur us ka code neeche seedha likho."
+/>
+
+<Mistake
+  title="Har jagah truthy guard jab 0 valid ho"
+  why="if (!quantity) zero quantity ko bhi missing samajh leta hai."
+  better="Jab falsy value valid ho to undefined ya null ka saaf check likho."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Conditionals](/courses/javascript/conditionals), [Truthy, Falsy & Equality](/courses/javascript/truthy-falsy-and-equality) |
+| **Saath mein** | [Naming Things](/courses/best-practices/naming) |
+| **Baad mein** | [Conditionals Without Ternaries](/courses/best-practices/conditionals-without-ternaries), [Fail Fast](/courses/best-practices/fail-fast-and-no-fallbacks), [Small Functions](/courses/best-practices/small-functions) |
+
+## Final quick revision
+
+| Check | Sawal |
+| --- | --- |
+| Guards | Kya invalid cases shuru mein nikal gaye? |
+| Nesting | Kya asli logic ek level par hai? |
+| Braces | Kya har if, else, for, while mein braces hain? |
+| Ek line | Kya koi statement condition ki line par hai? |
+| Truthy | Kya if (!x) kisi valid 0 ya khaali string ko pakar raha hai? |
+| Lint | Kya curly rule on hai? |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Pehle bura case bahar nikalo, phir achha kaam seedha likho. Aur braces kabhi mat chhoro, woh ek line aapko ek raat ki debugging se bachati hai.
+
+</Callout>

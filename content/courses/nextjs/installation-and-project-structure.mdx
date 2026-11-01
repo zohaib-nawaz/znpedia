@@ -1,0 +1,179 @@
+---
+title: "Installation & Project Structure"
+description: "Next.js install project structure: create-next-app se Next.js 16 project banana, Node 20.9+ requirement aur app, public, next.config folders samajhna."
+keywords:
+  - next.js install project structure
+  - create-next-app
+  - next.js folder structure
+  - next.js app directory
+  - next.js 16 setup
+---
+
+## 1. Installation aur project structure kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**`create-next-app` ek CLI hai jo ek command mein ready Next.js project banata hai, aur project structure batata hai ke kaunsi file kahan rehti hai.**
+
+</Callout>
+
+Next.js mein folders aur file names sirf organization ke liye nahi hote. `app/` ke andar har folder ek route segment hai aur `page.tsx`, `layout.tsx` jaise special names ka khaas matlab hai. Is liye structure samajhna routing samajhne ka pehla qadam hai.
+
+## 2. Kyun zaroori hai?
+
+Manual setup mein React, bundler, TypeScript, ESLint aur Tailwind alag alag configure karne parte hain. `create-next-app` yeh sab sahi defaults ke saath deta hai.
+
+<CompareTable leftTitle="Manual setup" rightTitle="create-next-app">
+
+Har package khud install | Ek command, sab ready
+Bundler config khud likho | Turbopack default, config nahi
+TypeScript setup alag | TypeScript-first template
+Folder structure apni marzi | App Router convention
+Galat Node version par errors | Node 20.9+ ka clear requirement
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Situation | Kya karein |
+| --- | --- |
+| **Naya project** | `npx create-next-app@latest` |
+| **Purana Next.js 15 project** | `npx @next/codemod@canary upgrade latest` |
+| **Team onboarding** | Structure dekh kar naya developer jaldi samajh jata hai |
+| **Monorepo** | Har app ka apna `app/` aur `next.config.ts` |
+
+## 4. Kaise kaam karta hai?
+
+Pehle Node version check karein. Next.js 16 ko **Node.js 20.9 ya us se naya** chahiye, Node 18 support khatam ho chuka hai.
+
+<Flow title="Setup flow">
+
+node -v se version check
+   ↓
+npx create-next-app@latest
+   ↓
+Recommended defaults choose
+   ↓
+npm run dev
+   ↓
+localhost:3000 par app
+
+</Flow>
+
+Default template mein **App Router, TypeScript, Tailwind CSS aur ESLint** shamil hote hain. Optional `src/` folder bhi choose kar sakte hain, tab `app/` us ke andar chala jata hai.
+
+## 5. Code example
+
+### Project banana
+
+```bash
+node -v
+npx create-next-app@latest my-app
+cd my-app
+npm run dev
+```
+
+### Folder structure
+
+```bash
+my-app/
+  app/
+    layout.tsx
+    page.tsx
+    globals.css
+    favicon.ico
+  public/
+  next.config.ts
+  tsconfig.json
+  eslint.config.mjs
+  postcss.config.mjs
+  package.json
+```
+
+### package.json scripts
+
+```json
+{
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  }
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `app/` | App Router, har folder ek route segment |
+| `app/layout.tsx` | Root layout, `html` aur `body` tags yahin |
+| `app/page.tsx` | `/` route ka page |
+| `public/` | Static files, `/logo.png` jaise seedha URL par |
+| `next.config.ts` | Next.js ki configuration |
+| `next dev` | Turbopack ke saath dev server |
+| `next build` | Turbopack ke saath production build |
+| `next start` | Build hua app production mode mein chalana |
+| `eslint` | Linting ab seedha ESLint se, `next lint` hata diya gaya |
+
+<Callout variant="important" title="Next.js 16 note">
+
+`next lint` command remove ho chuki hai aur `next build` ab lint nahi chalata. Linting ke liye `eslint` ya Biome seedha script mein lagayein.
+
+</Callout>
+
+### Interview tip
+
+Poocha jaye "`public/` aur `app/` mein farq?" to kahein: `public/` static assets ke liye hai jo as-is serve hote hain, `app/` routes aur components ke liye hai jo render hote hain.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Purane Node version par project chalana"
+  why="Next.js 16 Node 20.9 se kam par chalne se inkar karta hai aur confusing errors aate hain."
+  better="node -v check karein aur Node 20.9+ (behtar ho LTS) install karein."
+/>
+
+<Mistake
+  title="Root layout delete kar dena"
+  why="App Router ko html aur body tags wala root layout chahiye, iske baghair app nahi chalti."
+  better="app/layout.tsx hamesha rakhein aur us mein html aur body render karein."
+/>
+
+<Mistake
+  title="Images ko app folder mein rakh kar URL se access karna"
+  why="app folder ki files URL par seedha serve nahi hoti."
+  better="Static images aur files public folder mein rakhein."
+/>
+
+<Mistake
+  title="package.json mein next lint script chhorna"
+  why="Next.js 16 mein yeh command maujood nahi, script fail ho jati hai."
+  better="Script ko eslint par switch karein, codemod next-lint-to-eslint-cli madad karta hai."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Introduction](/courses/nextjs/introduction), [npm aur packages](/courses/javascript/npm-and-packages) |
+| **Saath** | [next.config & Turbopack](/courses/nextjs/next-config-and-turbopack), [Environment Variables](/courses/nextjs/environment-variables) |
+| **Baad mein** | [What's New in Next.js 16](/courses/nextjs/nextjs-16-whats-new), [Routing & Pages](/courses/nextjs/routing-and-pages) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Install command | `npx create-next-app@latest` |
+| Node requirement | 20.9 ya naya |
+| Routes kahan | `app/` folder |
+| Static files | `public/` folder |
+| Dev server | `next dev` (Turbopack) |
+| Linting | `eslint` seedha, `next lint` nahi |
+
+<Callout variant="important" title="Yaad rakhein">
+
+`app/` routes ke liye, `public/` static files ke liye, aur `next.config.ts` configuration ke liye. Node 20.9+ ke baghair Next.js 16 nahi chalega.
+
+</Callout>

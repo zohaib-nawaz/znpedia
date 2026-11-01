@@ -1,0 +1,192 @@
+---
+title: Functions
+description: JavaScript functions kya hain, declaration, expression, parameters, default values aur return kaise kaam karte hain, Roman Urdu mein examples ke saath.
+keywords:
+  - javascript functions
+  - function in javascript urdu
+  - function declaration vs expression
+  - javascript default parameters
+  - javascript return statement
+---
+
+## 1. Functions kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Function code ka ek naam wala block hai jo input leta hai, kaam karta hai aur result wapas deta hai.**
+
+</Callout>
+
+Simple words mein, function ek chhoti machine hai. Aap usay data dete ho (arguments), woh andar kuch kaam karti hai, aur `return` ke zariye result wapas deti hai.
+
+Ek baar function likh lo, phir jitni dafa chahiye call karo. Yahi reusability JavaScript ke har bare program ki buniyad hai.
+
+## 2. Kyun zaroori hai?
+
+Bina functions ke ek hi logic baar baar copy paste karna parta hai. Ek jagah bug fix kiya to baqi copies mein bug reh jata hai.
+
+<CompareTable leftTitle="Bina function" rightTitle="Function ke saath">
+
+Same calculation har jagah copy | Ek jagah likho, har jagah call karo
+Bug fix 5 jagah karna parta hai | Bug fix sirf ek jagah
+Lamba, confusing code | Chhote, naam wale tukre
+Test karna mushkil | Har function alag test ho sakta hai
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Area | Function ka kaam |
+| --- | --- |
+| **E-commerce** | `calculateTotal(cart)` se cart ka total nikalna |
+| **Forms** | `isValidEmail(email)` se input check karna |
+| **UI** | Button click par `handleClick()` chalana |
+| **Formatting** | `formatPrice(1500)` se `Rs 1,500` banana |
+| **React** | Har component asal mein ek function hi hai |
+
+## 4. Kaise kaam karta hai?
+
+Function do hisson mein kaam karta hai: pehle **define** hota hai, phir **call** hota hai. Define karte waqt kuch nahi chalta, sirf call par code run hota hai.
+
+<Flow title="Function call ka safar">
+
+Function define kiya (parameters ke naam)
+↓
+Function call kiya (arguments diye)
+↓
+Parameters ko arguments ki values mil gayin
+↓
+Body ka code run hua
+↓
+return se result wapas aaya
+
+</Flow>
+
+**Parameter** woh naam hai jo definition mein likha, **argument** woh asal value hai jo call karte waqt di.
+
+<Callout variant="important" title="Mental model">
+
+**Input (arguments) → kaam (body) → output (return value)**
+
+</Callout>
+
+## 5. Code example
+
+### Function declaration aur expression
+
+```js
+function greet(name) {
+  return `Assalam o Alaikum, ${name}!`;
+}
+
+const square = function (n) {
+  return n * n;
+};
+
+console.log(greet("Ali"));
+console.log(square(4));
+```
+
+### Default parameters aur early return
+
+```js
+function calculateTotal(price, quantity = 1, discount = 0) {
+  if (price <= 0) {
+    return 0;
+  }
+  const subtotal = price * quantity;
+  return subtotal - subtotal * discount;
+}
+
+console.log(calculateTotal(500));
+console.log(calculateTotal(500, 3, 0.1));
+```
+
+### Object parameter (named arguments)
+
+```js
+function createUser({ name, role = "student", active = true }) {
+  return { name, role, active };
+}
+
+console.log(createUser({ name: "Sara" }));
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `function greet(name)` | Function declaration, poori file mein call ho sakta hai (hoisting) |
+| `const square = function` | Function expression, sirf is line ke baad use ho sakta hai |
+| `quantity = 1` | Default parameter, value na di to `1` use hogi |
+| `return 0` | Early return, function yahin ruk jata hai |
+| `{ name, role = "student" }` | Object destructuring se named arguments |
+| Output | `Assalam o Alaikum, Ali!`, `16`, `500`, `1350` |
+
+### Interview tip
+
+Agar function mein `return` na likho to woh `undefined` return karta hai. Declaration poori tarah hoist hoti hai, expression nahi. Detail ke liye [Scope & Hoisting](/courses/javascript/scope-and-hoisting) dekhein.
+
+## 6. Common mistakes
+
+<Mistake
+  title="return likhna bhool jana"
+  why="Function kaam to karta hai lekin caller ko undefined milta hai, phir aage ka code toot jata hai."
+  better="Jo value bahar chahiye usay return karo. console.log aur return do alag cheezein hain."
+/>
+
+<Mistake
+  title="Function ko call ki jagah reference pass karna ya ulta"
+  why="onClick mein handleClick() likhne se function foran chal jata hai, click ka intezar nahi karta."
+  better="Reference chahiye to handleClick likho, result chahiye to handleClick() likho."
+/>
+
+<Mistake
+  title="Ek function mein bohot saare kaam"
+  why="Lamba function samajhna, test karna aur reuse karna mushkil ho jata hai."
+  better="Har function ka ek clear kaam ho, naam bhi wahi kaam batata ho, jaise formatPrice ya isValidEmail."
+/>
+
+<Mistake
+  title="Bohot zyada positional parameters"
+  why="createUser('Ali', true, false, 3) parh kar samajh nahi aata kaunsi value kis cheez ki hai."
+  better="3 se zyada inputs hon to ek object parameter lo aur destructure karo."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Variables](/courses/javascript/variables), [Data Types](/courses/javascript/data-types), [Conditionals](/courses/javascript/conditionals) |
+| **Saath mein** | [Arrow Functions](/courses/javascript/arrow-functions), [Scope & Hoisting](/courses/javascript/scope-and-hoisting) |
+| **Baad mein** | [Closures](/courses/javascript/closures), [Higher-Order Functions](/courses/javascript/higher-order-functions), [Callbacks](/courses/javascript/callbacks) |
+
+<Flow title="Suggested order">
+
+Functions
+↓
+Arrow Functions
+↓
+Scope & Hoisting
+↓
+Closures
+↓
+Higher-Order Functions
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Function kya hai | Reusable, naam wala code block |
+| Parameter vs argument | Definition ka naam vs call ki value |
+| Default parameter | Value missing ho to fallback |
+| `return` | Result wapas deta hai aur function rok deta hai |
+| Bina `return` | Result `undefined` hota hai |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Function **define** karne se kuch nahi chalta, **call** karne par chalta hai. Chhote, ek kaam wale, achhe naam wale functions likhein.
+
+</Callout>

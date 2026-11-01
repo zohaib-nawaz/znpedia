@@ -1,0 +1,177 @@
+---
+title: Breathing Room & Transient Locals
+description: Code readability formatting ke do rules. Logic blocks ke beech blank line, return se pehle khaali line, aur ek dafa use hone wale variables ko inline karna.
+keywords:
+  - code readability formatting
+  - blank lines between code blocks
+  - inline temporary variable
+  - padding line between statements
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Har logic block ke beech ek blank line chhoro aur har `return` se pehle bhi. Jo value sirf ek dafa assign ho kar ek dafa use ho, use alag variable mat banao, seedha inline karo.**
+
+</Callout>
+
+Yeh do chhote rules hain jo saath kaam karte hain:
+
+| Rule | Matlab |
+| --- | --- |
+| **Breathing room** | Function chhote alag steps ki tarah parhe, ek ghana paragraph nahi |
+| **Return se pehle blank line** | Function ka nateeja hamesha alag nazar aaye |
+| **No transient locals** | Ek dafa use hone wali value ka naam nahi, seedha istemal |
+| **Naam kab do** | Jo value ek se zyada dafa use ho, accumulator ho, ya aisi condition jise samajhne mein waqt lage |
+
+## 2. Kyun zaroori hai?
+
+Blank lines code ke paragraphs hain. Bina paragraphs ki kitaab parhna thaka deta hai. Aur bekaar variables parhne wale ko har naam yaad rakhne par majboor karte hain, chahe woh dobara kabhi na aaye.
+
+<CompareTable leftTitle="Ghana code aur extra variables" rightTitle="Saans leta code">
+
+20 lines ek block, steps ki hadd nazar nahi aati | Har step alag, aankh khud tukre pehchanti hai
+return beech mein chhup jata hai | return hamesha alag, nateeja foran dikhe
+5 naam jo sirf ek dafa aaye | Sirf woh naam jo zaroori hain
+Parhne wala har variable track karta hai | Kam naam, kam yaaddasht ka bojh
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Blank lines ki aadat abhi daalo | Sab se aasaan readability jeet hai |
+| **Production code** | Lint aur formatter se enforce | Insaan ko formatting yaad rakhne ki zaroorat na ho |
+| **Senior level** | Transient locals par judgement | Kab naam madad karta hai aur kab shor hai, yeh tajurba se aata hai |
+
+## 4. Bura vs acha code
+
+```ts
+async function publish(postId: string, editor: User) {
+  const post = await posts.require(postId);
+  const isOwner = post.authorId === editor.id;
+  const role = editor.role;
+  const isEditor = role === "editor";
+  if (!isOwner && !isEditor) {
+    throw new ForbiddenError("Cannot publish");
+  }
+  const now = new Date();
+  const data = { status: "published", publishedAt: now };
+  const updated = await db.post.update({ where: { id: postId }, data });
+  const url = `/blog/${updated.slug}`;
+  await cache.invalidate(url);
+  return updated;
+}
+```
+
+```ts
+async function publish(postId: string, editor: User) {
+  const post = await posts.require(postId);
+  const canPublish = post.authorId === editor.id || editor.role === "editor";
+
+  if (!canPublish) {
+    throw new ForbiddenError(`User ${editor.id} cannot publish post ${postId}`);
+  }
+
+  const updated = await db.post.update({
+    where: { id: postId },
+    data: { status: "published", publishedAt: new Date() },
+  });
+
+  await cache.invalidate(`/blog/${updated.slug}`);
+
+  return updated;
+}
+```
+
+| Farq kya hai? | Bura | Acha |
+| --- | --- | --- |
+| Blank lines | Koi nahi, ek ghana block | Load, check, update, invalidate, return, sab alag |
+| `role`, `now`, `data`, `url` | Ek dafa use, phir bhi naam | Inline, parhne wale ko kam naam yaad rakhne |
+| `isOwner`, `isEditor` | Do aadhe predicates | Ek poora `canPublish`, condition ka matlab naam mein |
+| `post`, `updated` | Naam theek | Naam theek, kyunki ek se zyada dafa use |
+
+`canPublish` ek **predicate** hai: is ke bina parhne wale ko `||` wali condition decode karni parti. Is liye yeh naam ke laayak hai. `now` ka naam kuch nahi batata jo `new Date()` nahi batata.
+
+## 5. Kaise apply karein?
+
+<Flow title="Function ko saans dena">
+
+Function ko steps mein socho: load, check, kaam, side effect, return
+↓
+Har step ke baad blank line
+↓
+return se pehle hamesha blank line
+↓
+Har variable dekho: kitni dafa use hua?
+↓
+Ek dafa aur naam kuch naya nahi batata? Inline karo
+↓
+Mushkil condition? Predicate ka naam rakho
+
+</Flow>
+
+Lint config se yeh khud ho jata hai:
+
+```json
+{
+  "rules": {
+    "padding-line-between-statements": [
+      "error",
+      { "blankLine": "always", "prev": "*", "next": "return" }
+    ]
+  }
+}
+```
+
+Baaqi formatting (indentation, quotes, semicolons) Prettier jaisa formatter sambhale. Insaan sirf meaning wale faisle kare: kahan step khatam hua.
+
+## 6. Exceptions aur common mistakes
+
+Ek line ka function jis mein sirf `return` ho, us ke upar blank line ki zaroorat nahi.
+
+**Honest baat:** "no transient locals" ek strict opinion hai. Bohat si teams aur mashhoor refactoring kitaabein "explaining variable" ko achha maanti hain: ek lamba expression ek naam mein tod do taake parhna aasaan ho. Yeh rule usi ko allow karta hai jab naam waqai kuch samjhata ho (predicate). Jo nahi karta, woh hai `const data = ...; return data;` jaisa naam jo kuch nahi batata. Ek aur trade-off: debugger mein local variable ki value dekhna aasaan hota hai. Jab inline expression bohat lamba ho jaye, to naam rakhna behtar hai.
+
+<Mistake
+  title="Har cheez ko pehle variable mein daalna"
+  why="const result = compute(x); return result; mein result kuch naya nahi batata, bas ek line aur ek naam barha."
+  better="Seedha return compute(x) likho."
+/>
+
+<Mistake
+  title="Mushkil condition ko inline chhor dena"
+  why="Lamba && aur || wala if parhne wale ko decode karna parta hai."
+  better="Us condition ko isX ya canX naam do, yeh predicate naam ke laayak hai."
+/>
+
+<Mistake
+  title="Har line ke baad blank line"
+  why="Har jagah khaali line ho to koi grouping nazar nahi aati, ghane code jitna hi bura."
+  better="Blank line sirf ek logical step khatam hone par."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Small Functions](/courses/best-practices/small-functions), [Naming Things](/courses/best-practices/naming) |
+| **Saath mein** | [Early Returns & Braces](/courses/best-practices/early-returns-and-braces) |
+| **Baad mein** | [Constants & Magic Values](/courses/best-practices/constants-and-magic-values), [Refactoring Safely](/courses/best-practices/refactoring-safely) |
+
+## Final quick revision
+
+| Check | Sawal |
+| --- | --- |
+| Steps | Kya har logic step ke baad blank line hai? |
+| Return | Kya return se pehle blank line hai? |
+| Transient | Kya koi variable ek dafa use hua aur naam kuch nahi batata? |
+| Predicate | Kya mushkil condition ka naam hai? |
+| Tooling | Kya formatter aur padding lint rule on hain? |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Blank line ek full stop hai, aur har naam parhne wale par ek bojh. Steps ko alag karo, aur naam sirf wahan do jahan woh kuch samjhata ho.
+
+</Callout>

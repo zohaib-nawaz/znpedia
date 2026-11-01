@@ -1,0 +1,177 @@
+---
+title: Debounce & Throttle
+description: JavaScript debounce throttle kya hain, dono mein farq, aur search input, scroll aur resize events ko control karne ka tareeqa Roman Urdu mein.
+keywords:
+  - javascript debounce throttle
+  - debounce vs throttle
+  - search input debounce
+  - scroll event performance
+---
+
+## 1. Debounce aur Throttle kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Debounce function ko tab chalata hai jab events rukne ke baad kuch der guzar jaye. Throttle function ko ek fixed time mein zyada se zyada ek baar chalata hai.**
+
+</Callout>
+
+Dono techniques un events ke liye hain jo **bohot tez fire** hote hain, jaise typing, scroll, resize aur mouse move. Dono ek function ko wrap kar ke naya function return karti hain.
+
+## 2. Kyun zaroori hain?
+
+User search box mein "javascript" type kare to 10 keystrokes hote hain. Agar har keystroke par API call ho to 10 requests jati hain, jabke chahiye sirf aakhri wali.
+
+<CompareTable leftTitle="Bina control" rightTitle="Debounce ya throttle ke saath">
+
+Har keystroke par API call | Typing rukne par sirf ek call
+Scroll par second mein 100 se zyada handler calls | Har 200ms mein ek call
+Server par bekar load | Kam requests, kam kharcha
+UI atak sakti hai | Smooth UI
+
+</CompareTable>
+
+## 3. Kahan use hote hain?
+
+| Situation | Technique | Wajah |
+| --- | --- | --- |
+| **Search suggestions** | Debounce | Sirf typing rukne ke baad search |
+| **Form auto save** | Debounce | User ruke to save karo |
+| **Window resize** | Debounce | Aakhri size par layout calculate |
+| **Infinite scroll** | Throttle | Scroll ke dauran regular checks |
+| **Mouse move tracking** | Throttle | Fixed rate par position update |
+| **Button double click** | Throttle | Ek waqt mein ek hi submit |
+
+## 4. Kaise kaam karte hain?
+
+Dono ke andar ek **closure** hota hai jo timer ya aakhri call ka waqt yaad rakhta hai.
+
+<Flow title="Debounce ka flow">
+
+Event aaya
+↓
+Purana timer cancel
+↓
+Naya timer set, maslan 300ms
+↓
+300ms tak naya event nahi aaya
+↓
+Function chal gaya
+
+</Flow>
+
+<Flow title="Throttle ka flow">
+
+Event aaya
+↓
+Kya pichli call ko 200ms guzar gaye?
+↓
+Haan to function chalao aur waqt note karo
+↓
+Nahi to is event ko ignore karo
+
+</Flow>
+
+Asaan misaal: debounce lift ka darwaza hai jo har naye aadmi par dobara intezar karta hai. Throttle bus hai jo har 10 minute baad chalti hai, chahe kitne log aayein.
+
+## 5. Code example
+
+### Debounce
+
+```js
+function debounce(fn, delay = 300) {
+  let timerId;
+  return (...args) => {
+    clearTimeout(timerId);
+    timerId = setTimeout(() => fn(...args), delay);
+  };
+}
+
+const search = debounce((query) => {
+  console.log("API call for:", query);
+}, 400);
+
+input.addEventListener("input", (e) => search(e.target.value));
+```
+
+### Throttle
+
+```js
+function throttle(fn, interval = 200) {
+  let lastRun = 0;
+  return (...args) => {
+    const now = Date.now();
+    if (now - lastRun >= interval) {
+      lastRun = now;
+      fn(...args);
+    }
+  };
+}
+
+const onScroll = throttle(() => {
+  console.log("scrollY:", window.scrollY);
+}, 200);
+
+window.addEventListener("scroll", onScroll);
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `let timerId` | Closure mein timer ka ID yaad rehta hai |
+| `clearTimeout(timerId)` | Har naye event par purana timer cancel |
+| `setTimeout(..., delay)` | Delay ke baad hi asli function chalta hai |
+| `lastRun` | Throttle aakhri call ka waqt yaad rakhta hai |
+| `now - lastRun >= interval` | Kaafi waqt guzra to hi function chalta hai |
+| `...args` | Event ya query asli function tak pohanchti hai |
+
+Production mein aap `lodash-es` ke `debounce` aur `throttle` bhi use kar sakte hain. Un mein leading, trailing aur cancel jaise options hote hain.
+
+### Interview tip
+
+"Debounce aur throttle khud likh kar dikhao" bohot common sawal hai. Upar wala code yaad rakhein aur yeh bata dein ke dono closures aur timers par based hain.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Har event par naya debounced function banana"
+  why="Har baar naya closure aur naya timer banta hai, is liye purana timer kabhi cancel nahi hota aur debounce kaam nahi karta."
+  better="Debounced function ek baar banayein aur event listener mein wohi reuse karein."
+/>
+
+<Mistake
+  title="Galat technique chun lena"
+  why="Scroll par debounce lagane se user ke scroll karte waqt kuch update nahi hota, sirf rukne par hota hai."
+  better="Aakhri value chahiye to debounce, beech beech mein regular updates chahiye to throttle."
+/>
+
+<Mistake
+  title="Delay bohot lamba rakhna"
+  why="1 second ka debounce search ko slow aur toota hua mehsoos karata hai."
+  better="Search ke liye 250 se 400ms aur scroll ke liye 100 se 200ms aam taur par theek rehte hain."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Closures](/courses/javascript/closures), [Timers](/courses/javascript/timers), [DOM Events](/courses/javascript/dom-events) |
+| **Saath** | [Higher-Order Functions](/courses/javascript/higher-order-functions), [Event Loop](/courses/javascript/event-loop) |
+| **Baad mein** | [Fetch API](/courses/javascript/fetch-api), [React useEffect](/courses/react/use-effect) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Debounce | Events rukne ke baad ek call |
+| Throttle | Fixed interval mein zyada se zyada ek call |
+| Andar kya hai | Closure + `setTimeout` ya timestamp |
+| Debounce use | Search, auto save, resize |
+| Throttle use | Scroll, mouse move, drag |
+
+<Callout variant="important" title="Yaad rakhein">
+
+**Debounce = intezar karo phir chalao. Throttle = har interval mein sirf ek baar chalao.**
+
+</Callout>

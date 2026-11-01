@@ -1,0 +1,202 @@
+---
+title: Objects
+description: JavaScript objects kya hain, properties, methods, dot aur bracket access, Object.entries, structuredClone aur reference ka concept, Roman Urdu mein seekhein.
+keywords:
+  - javascript objects
+  - object in javascript urdu
+  - object entries keys values
+  - structuredclone javascript
+  - object reference vs copy
+---
+
+## 1. Objects kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Object key-value pairs ka collection hai jo ek cheez ki saari maloomat ek jagah naam ke saath rakhta hai.**
+
+</Callout>
+
+Array items ko number (index) se rakhta hai, object unhein **naam (key)** se rakhta hai. Jaise ek user ka `name`, `email` aur `age`. Jab property ki value function ho to usay **method** kehte hain.
+
+JavaScript mein almost har cheez object hai ya object jaisi behave karti hai: arrays, functions, dates sab.
+
+## 2. Kyun zaroori hai?
+
+Related data alag alag variables mein bikhra ho to sambhalna aur pass karna mushkil hota hai.
+
+<CompareTable leftTitle="Alag variables" rightTitle="Ek object">
+
+userName, userEmail, userAge | user.name, user.email, user.age
+Function ko 5 arguments | Function ko ek user object
+Data ka rishta wazeh nahi | Saari maloomat ek group mein
+JSON API se match nahi | API ka JSON seedha object ban jata hai
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Area | Object |
+| --- | --- |
+| **User profile** | `{ name, email, role }` |
+| **API response** | Server ka JSON data |
+| **Settings** | `{ theme: "dark", language: "ur" }` |
+| **Lookup table** | `{ PK: "Pakistan", AE: "UAE" }` |
+| **React** | Props aur state objects |
+
+## 4. Kaise kaam karta hai?
+
+| Kaam | Syntax |
+| --- | --- |
+| Parhna (dot) | `user.name` |
+| Parhna (bracket, dynamic key) | `user[key]` |
+| Add / update | `user.age = 25` |
+| Delete | `delete user.age` |
+| Check | `"email" in user` ya `Object.hasOwn(user, "email")` |
+| Loop | `Object.entries(user)` |
+
+### Reference ka concept
+
+Object variable mein khud object nahi, us ka **reference (address)** hota hai. Doosre variable mein assign karne se copy nahi banti, dono same object ko point karte hain.
+
+<Flow title="Reference vs copy">
+
+const a = user object
+↓
+const b = a
+↓
+a aur b dono same object ko point karte hain
+↓
+b.name badla to a.name bhi badal gaya
+↓
+Alag copy chahiye to spread ya structuredClone
+
+</Flow>
+
+<Callout variant="important" title="Mental model">
+
+**Object = labeled drawers wali almari. Variable mein almari ka pata hota hai, almari khud nahi.**
+
+</Callout>
+
+## 5. Code example
+
+### Banana, parhna, methods
+
+```js
+const user = {
+  name: "Ali",
+  age: 24,
+  skills: ["js", "react"],
+  greet() {
+    return `Hi, I am ${this.name}`;
+  },
+};
+
+const field = "age";
+console.log(user.name, user[field]);
+console.log(user.greet());
+
+user.city = "Lahore";
+console.log(Object.hasOwn(user, "city"));
+
+for (const [key, value] of Object.entries(user)) {
+  console.log(key, typeof value);
+}
+```
+
+### Copy: shallow vs deep
+
+```js
+const original = { name: "Sara", address: { city: "Karachi" } };
+
+const shallow = { ...original };
+const deep = structuredClone(original);
+
+shallow.address.city = "Quetta";
+
+console.log(original.address.city);
+console.log(deep.address.city);
+console.log(Object.keys(original), Object.values(deep).length);
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `user[field]` | Key variable mein ho to bracket notation, `24` |
+| `greet()` | Method, `this` = `user` |
+| `Object.hasOwn` | Apni property hai ya nahi, `true` |
+| `Object.entries` | `[key, value]` pairs ka array |
+| `{ ...original }` | Shallow copy, nested `address` ab bhi shared |
+| `structuredClone` | Deep copy, nested objects bhi alag |
+| Output | `Quetta` (original badal gaya) aur `Karachi` (deep copy safe) |
+
+### Interview tip
+
+`{ ...obj }` aur `Object.assign` sirf pehle level ki copy banate hain. Nested data ki poori copy ke liye `structuredClone` use karein. Yeh functions aur class methods copy nahi karta, sirf data.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Object assign karne ko copy samajhna"
+  why="const copy = user se sirf reference copy hota hai, copy badlo to user bhi badal jata hai."
+  better="Shallow copy ke liye spread, deep copy ke liye structuredClone(user)."
+/>
+
+<Mistake
+  title="Dynamic key ke liye dot notation"
+  why="user.key ka matlab literally key naam ki property hai, variable ki value nahi."
+  better="Key variable mein ho to user[key] likho."
+/>
+
+<Mistake
+  title="Objects ko == ya === se compare karna"
+  why="Do alag objects same data ke saath bhi barabar nahi hote, kyunki reference alag hai."
+  better="Specific fields compare karo, ya zaroorat ho to deep-equal utility use karo."
+/>
+
+<Mistake
+  title="JSON.parse(JSON.stringify(obj)) se deep copy"
+  why="Date string ban jati hai, undefined, Map aur Set gum ho jate hain."
+  better="Modern code mein structuredClone use karo."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Data Types](/courses/javascript/data-types), [Arrays](/courses/javascript/arrays) |
+| **Saath mein** | [Destructuring](/courses/javascript/destructuring), [Spread & Rest](/courses/javascript/spread-and-rest), [The this Keyword](/courses/javascript/this-keyword) |
+| **Baad mein** | [Optional Chaining & Nullish Coalescing](/courses/javascript/optional-chaining-and-nullish), [JSON](/courses/javascript/json), [Classes](/courses/javascript/classes) |
+
+<Flow title="Suggested order">
+
+Arrays
+↓
+Objects
+↓
+Destructuring
+↓
+Spread & Rest
+↓
+JSON
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Object | Key-value pairs |
+| Access | `obj.key` ya `obj[key]` |
+| Property check | `Object.hasOwn(obj, key)` |
+| Loop | `Object.entries`, `Object.keys`, `Object.values` |
+| Shallow copy | `{ ...obj }` |
+| Deep copy | `structuredClone(obj)` |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Object variable mein reference hota hai. Data badalne se pehle socho ke copy chahiye ya nahi, aur nested data ke liye `structuredClone` use karo.
+
+</Callout>

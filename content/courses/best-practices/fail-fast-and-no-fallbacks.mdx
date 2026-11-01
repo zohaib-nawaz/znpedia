@@ -1,0 +1,190 @@
+---
+title: Fail Fast, No Defensive Fallbacks
+description: Fail fast defensive programming ka farq. Missing data ko ?? [] se chhupane ki bajaye saaf error kyun do, aur ?? kab theek hai. TypeScript examples.
+keywords:
+  - fail fast defensive programming
+  - fail fast principle
+  - nullish coalescing fallback
+  - hiding errors with defaults
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Jo value contract ke mutabiq hamesha honi chahiye, us par `?? []` ya `?? {}` mat lagao. Woh missing ho to yeh bug hai: saaf error do aur bug ko us jagah theek karo jahan value banti hai.**
+
+</Callout>
+
+"Defensive" code har jagah default laga kar crash rokta hai. Sunne mein achha hai, lekin crash rokna aur bug rokna alag cheezein hain. Fail fast ka matlab: galti ko **jaldi aur zor se** saamne lao, jahan woh hui.
+
+| Situation | Sahi tareeqa |
+| --- | --- |
+| Value waqai optional hai (user ka nickname, config ka option) | `value ?? default` bilkul theek |
+| Value honi chahiye (database row, required field) | `if (!value)` aur `throw` |
+| Do valid raaste hain | Saaf `if` / `else`, dono jaan boojh kar |
+
+## 2. Kyun zaroori hai?
+
+Fallback crash ko rokta hai, bug ko nahi. Bug chhup kar aage chalta hai aur kahin aur, kisi aur shakal mein nikalta hai, jahan us ki wajah dhoondna bohat mushkil hai.
+
+<CompareTable leftTitle="Defensive fallback" rightTitle="Fail fast">
+
+order.items ?? [], order khaali dikha, customer ne paise de diye the | Error: order 42 has no items, foran pata chala
+Dashboard 0 revenue dikhata hai, sab sochte hain sales nahi hui | API ka bug pehle din pakra gaya
+Bug hafton baad support ticket se pata chalta hai | Bug development ya pehle deploy par pata chalta hai
+Galat data database mein save ho jata hai | Kaam ruk jata hai, ganda data nahi banta
+Error kahin aur, wajah kahin aur | Error wahi jahan masla hai
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Samjho ke `??` kab chhupata hai | Beginner har error ko `??` se "fix" karta hai, yeh aadat jaldi todo |
+| **Production code** | Bohat zaroori | Chhupe hue bugs ganda data aur galat paise banate hain |
+| **Senior level** | Producer tak trace karo | Senior symptom nahi, wajah theek karwata hai |
+
+## 4. Bura vs acha code
+
+```ts
+async function invoiceTotal(invoiceId: string) {
+  const invoice = await db.invoice.findUnique({ where: { id: invoiceId } });
+  const lines = invoice?.lines ?? [];
+  const rate = invoice?.customer?.taxRate ?? 0;
+
+  try {
+    return lines.reduce((sum, line) => sum + line.amount, 0) * (1 + rate);
+  } catch {
+    return 0;
+  }
+}
+```
+
+```ts
+async function invoiceTotal(invoiceId: string) {
+  const invoice = await db.invoice.findUnique({
+    where: { id: invoiceId },
+    include: { lines: true, customer: true },
+  });
+
+  if (!invoice) {
+    throw new NotFoundError(`Invoice ${invoiceId} not found`);
+  }
+
+  return subtotal(invoice.lines) * (1 + invoice.customer.taxRate);
+}
+```
+
+| Farq kya hai? | Bura | Acha |
+| --- | --- | --- |
+| Invoice na mile | Total `0`, koi nahi jaanta kyun | Saaf `NotFoundError` |
+| Tax rate missing | Chupke se `0`, galat bill | Schema mein required, missing ho hi nahi sakta |
+| Khaali `catch` | Har error nigal liya | Error upar jata hai, log hota hai |
+| Debugging | "Total 0 kyun hai?" ghanton | Error message mein id aur wajah |
+
+### `?? throw` kyun nahi
+
+Kuch log helper bana kar ek line mein throw karte hain:
+
+```ts
+const user = (await users.find(id)) ?? fail("User missing");
+```
+
+Strict house style is ki jagah saaf check maangta hai, taake har throw ek nazar mein dikhe aur guard pattern har jagah ek jaisa ho:
+
+```ts
+const user = await users.find(id);
+
+if (!user) {
+  throw new NotFoundError(`User ${id} not found`);
+}
+```
+
+### Error ko context ke saath aage bhejo
+
+```ts
+try {
+  await payments.charge(order);
+} catch (error) {
+  throw new Error(`Charging order ${order.id} failed`, { cause: error });
+}
+```
+
+`cause` asli error ko saath rakhta hai, aur message batata hai kis kaam mein fail hua.
+
+## 5. Kaise apply karein?
+
+<Flow title="Fallback likhne se pehle">
+
+Kya yeh value contract ke mutabiq optional hai?
+↓
+Haan: ?? default theek hai
+↓
+Nahi: missing hona bug hai
+↓
+Guard lagao aur saaf message ke saath throw karo
+↓
+Pata karo value kahan banti hai
+↓
+Bug wahan theek karo, symptom par patch nahi
+
+</Flow>
+
+Frontend par aksar backend ki galti `?? []` se chhupai jati hai. Asli fix backend mein hai: woh field hamesha bheje, ya contract mein optional ho aur UI saaf "empty state" dikhaye.
+
+## 6. Exceptions aur common mistakes
+
+User ke saamne poori app crash nahi honi chahiye. Fail fast ka matlab white screen nahi. Error ko ek **boundary** par pakro (React error boundary, API ka error handler), log karo, aur user ko saaf message do. Bas beech mein chupke se nigal kar fake value mat banao.
+
+Network jaisi cheezon par retry aur graceful fallback (cached data dikhana) ek soocha samjha design hai, chhupa hua bug nahi. Farq yeh hai ke woh jaan boojh kar aur log ke saath hota hai.
+
+<Mistake
+  title="Required data par ?? [] ya ?? {}"
+  why="Bug crash ki jagah galat UI ya galat hisaab ban jata hai aur der se pakra jata hai."
+  better="Guard aur throw karo, phir producer mein bug theek karo."
+/>
+
+<Mistake
+  title="Khaali catch block"
+  why="Har error, network se le kar typo tak, chupke se gayab ho jata hai."
+  better="Error ko context ke saath log karo ya cause ke saath dobara throw karo."
+/>
+
+<Mistake
+  title="Optional chaining ki zanjeer har jagah"
+  why="a?.b?.c?.d batata hai ke aapko data ki shape ka pata nahi, aur undefined chupke se aage chala jata hai."
+  better="Boundary par data parse karo, uske baad types par bharosa karo."
+/>
+
+<Mistake
+  title="Error message mein koi context nahi"
+  why="Something went wrong se pata nahi chalta kaunsa record, kaunsa user, kaunsa kaam."
+  better="Message mein id aur kaam ka naam likho, aur cause attach karo."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Optional Chaining & Nullish](/courses/javascript/optional-chaining-and-nullish), [Error Handling](/courses/javascript/error-handling) |
+| **Saath mein** | [Early Returns & Braces](/courses/best-practices/early-returns-and-braces), [Strict Typing](/courses/best-practices/strict-typing) |
+| **Baad mein** | [Fix Root Causes](/courses/best-practices/fix-root-causes), [Input Validation](/courses/best-practices/input-validation), [Error Handling & Error Envelope](/courses/best-practices/error-handling-and-envelope) |
+
+## Final quick revision
+
+| Check | Sawal |
+| --- | --- |
+| Optional? | Kya `??` sirf waqai optional value par hai? |
+| Required | Kya required value missing hone par throw hota hai? |
+| Catch | Kya koi khaali catch hai? |
+| Context | Kya error message mein id aur kaam hai? |
+| Root cause | Kya bug producer par theek hua? |
+| Boundary | Kya user ko crash ki jagah saaf message milta hai? |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Fallback crash ko chhupata hai, bug ko nahi. Jo galat hai use jaldi aur saaf batao, taake woh wahin theek ho jahan paida hua.
+
+</Callout>

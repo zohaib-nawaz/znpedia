@@ -1,12 +1,185 @@
 ---
 title: Introduction
-description: Placeholder for the Introduction chapter.
+description: What is JavaScript, web ki programming language kyun hai aur browser, server aur apps mein kahan use hoti hai. Roman Urdu mein simple shuruat.
+keywords:
+  - what is javascript
+  - javascript in urdu
+  - javascript for beginners
+  - learn javascript roman urdu
 ---
 
-# Introduction
+## 1. JavaScript kya hai?
 
-This chapter is a placeholder. Course content will be added here later.
+<Callout variant="tip" title="Short definition">
 
-<Callout>
-Educational content for this section has not been written yet.
+**JavaScript ek programming language hai jo web pages ko interactive banati hai aur aaj browser ke ilawa server aur apps mein bhi chalti hai.**
+
+</Callout>
+
+HTML page ka structure banata hai, CSS usay design deta hai, aur JavaScript usay **behavior** deti hai. Button click par kuch hona, form check karna, data load karna, yeh sab JavaScript ka kaam hai.
+
+<Flow title="Web page ke teen hisse">
+
+HTML (structure)
+   +
+CSS (design)
+   +
+JavaScript (behavior)
+   ↓
+Complete interactive page
+
+</Flow>
+
+JavaScript ka official standard **ECMAScript** kehlata hai. Har saal naya version aata hai (ES2024, ES2025), is liye aap aksar "ES6" ya "modern JavaScript" jaise words sunte hain.
+
+## 2. Kyun zaroori hai?
+
+Sirf HTML aur CSS se page static rehta hai. User kuch bhi kare, page wahi dikhata hai jo pehle se likha hai. JavaScript page ko **zinda** bana deti hai.
+
+<CompareTable leftTitle="Bina JavaScript" rightTitle="JavaScript ke saath">
+
+Page sirf dikhta hai | Page user ke action par react karta hai
+Form ghalat ho to server tak jata hai | Form browser mein hi turant check ho jata hai
+Naya data ke liye poora page reload | Data background mein load, page reload nahi
+Koi animation ya live update nahi | Live search, notifications, animations
+
+</CompareTable>
+
+Ek aur bari wajah: JavaScript **har browser mein built-in** hai. Kuch install kiye bina yeh Chrome, Firefox, Safari sab mein chalti hai. Is liye frontend development ke liye yeh zaroori language hai.
+
+## 3. Kahan use hota hai?
+
+| Area | JavaScript ka kaam |
+| --- | --- |
+| **Websites** | Menus, sliders, forms, modals, live search |
+| **Web apps** | React, Next.js jaise tools se poori apps |
+| **Server / backend** | Node.js, Deno, Bun ke zariye APIs aur databases |
+| **Mobile apps** | React Native se Android aur iOS apps |
+| **Desktop apps** | Electron se apps jaise VS Code |
+| **Tools** | Build tools, scripts, automation |
+
+Matlab ek language seekh kar aap frontend, backend aur mobile teeno taraf kaam kar sakte hain.
+
+## 4. Kaise kaam karta hai?
+
+JavaScript code ek **engine** chalata hai. Browser ke andar yeh engine hota hai (Chrome mein V8). Engine code parhta hai, machine ke samajhne layak banata hai aur run karta hai.
+
+<Flow title="Code se result tak">
+
+Aap JavaScript code likhte hain
+     ↓
+Browser ya Node.js code load karta hai
+     ↓
+JavaScript engine code run karta hai
+     ↓
+Page update ya output show
+
+</Flow>
+
+Is process ki detail [How JavaScript Runs](/courses/javascript/how-javascript-runs) chapter mein hai. Abhi bas yeh yaad rakhein ke JavaScript ko chalane ke liye ek **runtime** chahiye, jaise browser ya Node.js.
+
+<Callout variant="important" title="Mental model">
+
+**JavaScript = instructions. Engine = woh jo instructions chalata hai. Runtime = engine + extra features (jaise DOM ya file system).**
+
+</Callout>
+
+## 5. Code example
+
+Sab se chhota JavaScript program, jo console mein message print karta hai:
+
+```js
+console.log("Assalam o Alaikum, JavaScript!");
+```
+
+Thora sa interactive example, jo browser mein button click par text badalta hai:
+
+```html
+<button id="greet">Click karein</button>
+<p id="message">Abhi kuch nahi hua</p>
+
+<script>
+  const button = document.querySelector("#greet");
+  const message = document.querySelector("#message");
+
+  button.addEventListener("click", () => {
+    message.textContent = "Shukriya, aap ne click kiya!";
+  });
+</script>
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `console.log()` | Value ko console mein print karta hai |
+| `document.querySelector()` | Page se ek element dhoondta hai |
+| `const` | Ek variable jo dobara assign nahi hota |
+| `addEventListener("click", ...)` | Click hone par function chalata hai |
+| `textContent` | Element ka text badalta hai |
+
+Abhi har line samajhna zaroori nahi. Agle chapters mein [Variables](/courses/javascript/variables), [DOM Basics](/courses/javascript/dom-basics) aur [DOM Events](/courses/javascript/dom-events) detail se aayenge.
+
+### Interview tip
+
+Agar pucha jaye "JavaScript aur Java mein kya farq hai?" to jawab: dono bilkul alag languages hain. Naam sirf marketing ki wajah se milta julta hai. JavaScript dynamically typed hai aur zyada tar browser aur Node.js mein chalti hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="JavaScript ko Java ka chhota version samajhna"
+  why="Dono ka syntax, typing system aur use case alag hai. Yeh confusion shuru mein ghalat expectations banata hai."
+  better="JavaScript ko ek alag language ki tarah seekhein jo web ke liye bani thi."
+/>
+
+<Mistake
+  title="Seedha framework se shuru karna"
+  why="React ya Next.js mein har cheez JavaScript par based hai. Basics kamzor hon to har error mushkil lagta hai."
+  better="Pehle variables, functions, arrays, objects aur async basics mazboot karein, phir framework par jayein."
+/>
+
+<Mistake
+  title="Purane tutorials se var aur purana syntax seekhna"
+  why="Bohot se purane tutorials var aur callbacks par chalte hain jo aaj ke code mein kam use hote hain."
+  better="Modern syntax seekhein: let, const, arrow functions, template literals, async aur await."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | Basic HTML aur CSS, computer aur browser chalana |
+| **Is ke baad** | [How JavaScript Runs](/courses/javascript/how-javascript-runs), [Setup & First Program](/courses/javascript/setup-and-first-program) |
+| **Phir basics** | [Variables](/courses/javascript/variables), [Data Types](/courses/javascript/data-types), [Operators](/courses/javascript/operators) |
+
+<Flow title="Suggested order">
+
+Introduction
+     ↓
+How JavaScript Runs
+     ↓
+Setup aur pehla program
+     ↓
+Variables aur data types
+     ↓
+Functions, arrays, objects
+     ↓
+Async JavaScript aur DOM
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| JavaScript kya hai | Web ki programming language |
+| Kaam | Page ko interactive banana, logic chalana |
+| Kahan chalti hai | Browser, Node.js, Deno, Bun |
+| Standard ka naam | ECMAScript (ES2024, ES2025) |
+| Java se rishta | Koi nahi, alag language |
+
+<Callout variant="important" title="Yaad rakhein">
+
+HTML structure hai, CSS design hai, aur **JavaScript behavior** hai. Ek hi language se aap frontend, backend aur mobile apps bana sakte hain.
+
 </Callout>

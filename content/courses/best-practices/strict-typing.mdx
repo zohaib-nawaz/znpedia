@@ -1,0 +1,195 @@
+---
+title: Strict Typing
+description: TypeScript strict mode aur no any ka rule, unchecked casts se bachna aur API input ko boundary par parse karna, bugs ke real examples ke saath.
+keywords:
+  - typescript strict no any
+  - typescript strict mode
+  - avoid any typescript
+  - zod parse boundary
+  - type assertion as
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**`strict: true` on rakhein, `any` na likhein, `as` se type ka jhoot na bolein, aur bahar se aane wala data boundary par parse kar ke typed banayein.**
+
+</Callout>
+
+TypeScript ka faida tabhi hai jab compiler ko sach bataya jaye. `any` likhte hi compiler us value ki checking band kar deta hai, aur `as User` likhne se data User nahi ban jata, sirf compiler chup ho jata hai.
+
+Strict typing ka matlab hai: jo cheez aap ke control mein nahi (API response, form, `JSON.parse`, env), us ko pehle check karo, phir andar ka saara code bharose se typed chale.
+
+## 2. Kyun zaroori hai?
+
+Asli bug aksar yeh hota hai: API ne `price` string mein bheja (`"500"`), code ne `as Product` likh diya, aur cart ka total `0 + "500"` ban kar `"0500"` ho gaya. Compiler ne kuch nahi kaha kyunki usay bataya hi galat gaya tha.
+
+<CompareTable leftTitle="any aur casts ke saath" rightTitle="Strict typing ke saath">
+
+Galat shape runtime par kahin door crash karti hai | Galat shape boundary par foran pakri jati hai
+any ek file se doosri files mein phailta hai | Har value ka type compiler ko pata hai
+Field rename par kuch nahi tootta, bug production mein | Field rename par build fail, sab jagah fix
+Refactor karte hue dar lagta hai | Compiler batata hai kya kya badalna hai
+Editor autocomplete kaam nahi karta | Autocomplete aur jump to definition sahi chalte hain
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | `strict: true` pehle din se, `any` se bachne ki aadat | Galat aadat baad mein chhorna mushkil hai. Error samajhna hi TypeScript seekhna hai |
+| **Production code** | Lazmi. CI mein `tsc --noEmit` aur lint rule `no-explicit-any` | Ek `any` poore data flow ki guarantee khatam kar deta hai |
+| **Senior level** | Types se contract design karna, boundary par parsing ka pattern team mein set karna | Senior ka kaam sirf apna code nahi, poore codebase ki type safety hai |
+
+## 4. Bura vs acha code
+
+### Bura: any aur cast
+
+```ts
+type Product = {
+  id: string;
+  price: number;
+};
+
+export async function getProduct(id: string) {
+  const response = await fetch(`/api/products/${id}`);
+  const data: any = await response.json();
+
+  return data as Product;
+}
+
+const product = await getProduct("p1");
+const total = 0 + product.price;
+```
+
+Yahan `data` kuch bhi ho sakta hai. `as Product` sirf compiler ko chup karata hai. Agar server ne `price: "500"` bheja to `total` string ban jata hai aur bug cart page par nazar aata hai, fetch wali jagah par nahi.
+
+### Acha: boundary par parse
+
+```ts
+import { z } from "zod";
+
+const productSchema = z.object({
+  id: z.string(),
+  price: z.number(),
+});
+
+type Product = z.infer<typeof productSchema>;
+
+export async function getProduct(id: string): Promise<Product> {
+  const response = await fetch(`/api/products/${id}`);
+
+  return productSchema.parse(await response.json());
+}
+```
+
+Ab galat shape aayi to `parse` wahin error throw karega jahan data aaya. Andar ka har function `Product` par bharosa kar sakta hai.
+
+### Farq kya hai?
+
+| Cheez | Bura code | Acha code |
+| --- | --- | --- |
+| Response ka type | `any`, phir `as Product` | `unknown` se parse ho kar `Product` |
+| Galat data | Kahin aur, baad mein crash | Boundary par foran error |
+| Type ka source | Haath se likha, schema se alag | Schema se `z.infer`, ek hi source |
+| Compiler | Chup karaya gaya | Asal mein check kar raha hai |
+
+## 5. Kaise apply karein?
+
+<Flow title="Strict typing apply karne ke steps">
+
+tsconfig mein strict true
+↓
+ESLint mein no-explicit-any error
+↓
+Har boundary par unknown ko schema se parse karo
+↓
+Andar ke functions sirf typed values lein
+↓
+CI mein tsc --noEmit chalao
+
+</Flow>
+
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true
+  }
+}
+```
+
+Boundaries yeh hain: `fetch` ka response, form data, URL params, `JSON.parse`, `localStorage`, env variables aur third-party webhooks. In sab ko `unknown` samjhein jab tak parse na ho.
+
+`catch (error)` mein `error` bhi `unknown` hota hai. Use `if (error instanceof Error)` se narrow karein, `any` se nahi.
+
+## 6. Exceptions aur common mistakes
+
+Kuch cheezein cast jaisi lagti hain magar theek hain: `as const` (value ko literal banata hai, jhoot nahi bolta) aur `satisfies` (shape check karta hai, type nahi badalta).
+
+Kayi teams test files mein `any` ya `@ts-expect-error` allow karti hain, ya prototype mein strict mode baad mein on karti hain. Yeh shuru mein tez lagta hai, magar har chhoot baad mein dhoondh kar nikalni parti hai. Is course ka rule sakht hai: production code mein koi chhoot nahi.
+
+Agar koi library ke types kharab hain to ek typed wrapper function banayein. Cast sirf us ek jagah ho, poore app mein nahi.
+
+<Mistake
+  title="Error hatane ke liye as likh dena"
+  why="Cast runtime par kuch check nahi karta, sirf compiler ki aankh band karta hai. Bug wahin rehta hai, bas chhup jata hai."
+  better="Value ko schema ya type guard se narrow karo taake compiler sach mein jaane ke shape kya hai."
+/>
+
+<Mistake
+  title="Non-null assertion se jaan chhurana, jaise user!.name"
+  why="Agar user waqai undefined aaya to crash hoga aur error message bhi kuch nahi batayega."
+  better="Saaf null check likho aur missing value par wazeh error throw karo ya early return karo."
+/>
+
+<Mistake
+  title="JSON.parse ka result seedha use karna"
+  why="JSON.parse any return karta hai, is liye bina check ke woh any poore code mein phail jata hai."
+  better="Result ko unknown maan kar schema ke parse se guzaro."
+/>
+
+<Mistake
+  title="ts-ignore ya ts-expect-error chhor dena"
+  why="Aaj ka error chhup gaya, kal ka naya error bhi usi line par chhup jayega."
+  better="Asal type masla theek karo. Agar library ka bug hai to wrapper mein band karo aur upgrade par dobara dekho."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [TypeScript with React](/courses/react/typescript-with-react), [Fail Fast, No Defensive Fallbacks](/courses/best-practices/fail-fast-and-no-fallbacks) |
+| **Saath mein** | [Types Beside Logic](/courses/best-practices/types-beside-logic), [Input Validation at the Boundary](/courses/best-practices/input-validation) |
+| **Baad mein** | [Generated Database Types](/courses/best-practices/generated-types), [Shared API Contracts](/courses/best-practices/shared-api-contracts) |
+
+<Flow title="Suggested order">
+
+Fail Fast
+↓
+Strict Typing
+↓
+Input Validation at the Boundary
+↓
+Generated Database Types
+
+</Flow>
+
+## Final quick revision
+
+| Check | Haan / Nahi |
+| --- | --- |
+| `tsconfig` mein `strict: true` | Hona chahiye |
+| Code mein `any` | Nahi |
+| Error chhupane wala `as` cast | Nahi |
+| `@ts-ignore` / `@ts-expect-error` | Nahi |
+| Bahar ka data parse ho kar andar aata hai | Haan |
+| Type aur schema ek hi source se | Haan, `z.infer` |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Type compiler se kiya gaya wada hai. `any` aur `as` wada torte hain, parse wada nibhata hai. Data ko darwaze par check karo, andar sab bharose se chalega.
+
+</Callout>

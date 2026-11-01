@@ -1,0 +1,169 @@
+---
+title: Debugging JavaScript
+description: JavaScript debugging devtools ke saath kaise karein, console methods, breakpoints, debugger keyword aur Network tab Roman Urdu mein seekhein.
+keywords:
+  - javascript debugging devtools
+  - chrome devtools breakpoints
+  - console log methods
+  - debugger keyword javascript
+---
+
+## 1. Debugging kya hai?
+
+<Callout variant="tip" title="Short definition">
+
+**Debugging code mein galati (bug) dhoondne, samajhne aur theek karne ka process hai.**
+
+</Callout>
+
+JavaScript mein sab se bara tool browser ka **DevTools** hai. Chrome, Edge aur Firefox mein `F12` ya `Cmd + Option + I` (Mac) se khulta hai. Is mein Console, Sources, Network aur Elements jaise panels hote hain.
+
+## 2. Kyun zaroori hai?
+
+Har developer bugs likhta hai. Farq yeh hai ke achha developer unhein **jaldi dhoond leta hai**. Andaze se code badalna waqt zaya karta hai, debugging tools seedha wajah tak le jate hain.
+
+<CompareTable leftTitle="Andaze se fix" rightTitle="Proper debugging">
+
+Code badlo aur dua karo | Pehle bug ko reproduce karo
+Har jagah console.log | Breakpoint par poori state dekho
+Pata nahi value kahan badli | Step by step code chala kar dekho
+API ka masla samajh nahi aata | Network tab mein request aur response dekho
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Masla | Tool |
+| --- | --- |
+| **Value galat aa rahi hai** | Console ya breakpoint |
+| **Error aa raha hai** | Console mein error message aur stack trace |
+| **API data nahi aa raha** | Network tab, status code aur response |
+| **Element ghalat dikh raha hai** | Elements panel, CSS aur DOM |
+| **Page slow hai** | Performance panel |
+
+## 4. Kaise kaam karta hai?
+
+Debugging ka ek simple process hai jo har bug par lagta hai:
+
+<Flow title="Debugging ka process">
+
+Bug ko reproduce karo
+↓
+Error message aur stack trace parho
+↓
+Shak wali line par breakpoint lagao
+↓
+Variables aur call stack check karo
+↓
+Wajah samjho aur fix karo
+↓
+Dobara test karo
+
+</Flow>
+
+**Stack trace** batata hai ke error kis file, kis line aur kis function chain se aaya. Error message ki sab se upar wali line aur pehli apni file wali line par dhyan dein.
+
+## 5. Code example
+
+### Console methods
+
+```js
+const user = { name: "Ali", age: 22 };
+const users = [user, { name: "Sara", age: 25 }];
+
+console.log("user:", user);
+console.table(users);
+console.warn("Yeh sirf warning hai");
+console.error("Kuch ghalat ho gaya");
+
+console.time("loop");
+for (let i = 0; i < 100000; i++) {}
+console.timeEnd("loop");
+```
+
+### debugger keyword
+
+```js
+function calculateTotal(items) {
+  let total = 0;
+  for (const item of items) {
+    debugger;
+    total += item.price * item.qty;
+  }
+  return total;
+}
+
+calculateTotal([{ price: 100, qty: 2 }, { price: 50 }]);
+```
+
+DevTools khula ho to code `debugger` wali line par ruk jayega. Wahan `item` dekhne par pata chalega ke doosre item mein `qty` hai hi nahi, is liye `total` `NaN` ban raha hai.
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `console.log("user:", user)` | Label ke saath value, pehchanna asaan |
+| `console.table` | Array of objects ko table mein dikhata hai |
+| `console.warn` / `console.error` | Peeli aur laal lines, filter karna asaan |
+| `console.time` / `timeEnd` | Code ka chalne ka waqt naapta hai |
+| `debugger` | DevTools khula ho to yahan pause hota hai |
+| Step over (`F10`) | Agli line par jao |
+| Step into (`F11`) | Function ke andar jao |
+
+### Breakpoints bina code badle
+
+Sources panel mein file kholein aur line number par click karein. **Conditional breakpoint** ke liye right click kar ke condition likhein, jaise `item.qty === undefined`. Is tarah code tab hi rukega jab masla ho.
+
+### Interview tip
+
+"Aap bug kaise dhoondte hain?" ka jawab sirf console.log na ho. Reproduce, stack trace, breakpoints, Network tab aur fix ke baad test ka process batayein.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Error message parhe bina code badalna"
+  why="Error message aksar bilkul seedha batata hai ke kya undefined hai aur kis line par."
+  better="Pehle poora error aur stack trace parhein, phir us line par jayein."
+/>
+
+<Mistake
+  title="console.log aur debugger production mein chhor dena"
+  why="Users ke console mein faltu data aata hai aur kabhi sensitive information bhi leak hoti hai."
+  better="Commit se pehle hata dein, ya ESLint ka no-console aur no-debugger rule lagayein."
+/>
+
+<Mistake
+  title="Object ko log kar ke baad mein expand karna"
+  why="Console mein object reference hota hai, expand karne par current value dikhti hai, log ke waqt wali nahi."
+  better="Us waqt ki value chahiye to structuredClone(obj) ya JSON.stringify(obj) log karein, ya breakpoint lagayein."
+/>
+
+<Mistake
+  title="Network tab ko ignore karna"
+  why="Bohot se bugs frontend mein nahi, API ke 401, 404 ya 500 response mein hote hain."
+  better="Fetch wale bug par pehle Network tab mein status code aur response body check karein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Setup & First Program](/courses/javascript/setup-and-first-program), [Functions](/courses/javascript/functions) |
+| **Saath** | [Error Handling](/courses/javascript/error-handling), [Fetch API](/courses/javascript/fetch-api) |
+| **Baad mein** | [Event Loop](/courses/javascript/event-loop), [Testing React Apps](/courses/react/testing) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| DevTools | `F12`, Console, Sources, Network, Elements |
+| Console | `log`, `table`, `warn`, `error`, `time` |
+| Breakpoint | Line par click ya `debugger` keyword |
+| Stack trace | Error ka raasta batata hai |
+| Network | Status code aur response check |
+
+<Callout variant="important" title="Yaad rakhein">
+
+**Pehle samjho, phir fix karo.** Bug reproduce karein, error parhein, breakpoint lagayein, aur fix ke baad dobara test karein.
+
+</Callout>

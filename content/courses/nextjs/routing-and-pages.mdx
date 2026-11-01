@@ -1,0 +1,172 @@
+---
+title: "Routing & Pages"
+description: "Next.js app router pages: folders se routes kaise bante hain, page.tsx ka role, nested routes aur searchParams ko await karna, Roman Urdu mein."
+keywords:
+  - next.js app router pages
+  - next.js file based routing
+  - next.js page.tsx
+  - next.js nested routes
+  - next.js searchparams
+---
+
+## 1. Routing aur pages kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**App Router mein `app/` ke andar har folder ek URL segment hai, aur jis folder mein `page.tsx` ho woh route public ho jata hai.**
+
+</Callout>
+
+Is ko **file-based routing** kehte hain. Aap koi route list ya router config nahi likhte. Folder banao, us mein `page.tsx` rakho, route ban gaya.
+
+## 2. Kyun zaroori hai?
+
+Client-side routers mein routes code mein define hote hain aur app barhne ke saath list lambi aur confusing ho jati hai.
+
+<CompareTable leftTitle="Config-based routing" rightTitle="Next.js file-based routing">
+
+Routes ek lambi list mein | Folder structure hi route map
+Naya page = config edit | Naya page = naya folder
+URL aur file ka rishta yaad rakho | URL dekh kar file mil jati hai
+Code splitting khud karo | Har route automatically split
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| URL | File |
+| --- | --- |
+| `/` | `app/page.tsx` |
+| `/about` | `app/about/page.tsx` |
+| `/blog` | `app/blog/page.tsx` |
+| `/dashboard/settings` | `app/dashboard/settings/page.tsx` |
+| `/blog/hello` | `app/blog/[slug]/page.tsx` (dynamic route) |
+
+## 4. Kaise kaam karta hai?
+
+Folder banane se route **segment** banta hai, lekin woh public tab hota hai jab us ke andar `page.tsx` (ya `route.ts`) ho. Baghair `page.tsx` ke folder sirf organization ke liye hai.
+
+<Flow title="URL se page tak">
+
+Browser /dashboard/settings kholta hai
+   ↓
+app folder
+   ↓
+dashboard folder
+   ↓
+settings folder
+   ↓
+page.tsx render hota hai
+
+</Flow>
+
+Ek route segment mein aur special files bhi ho sakti hain:
+
+| File | Kaam |
+| --- | --- |
+| `page.tsx` | Route ka unique UI |
+| `layout.tsx` | Shared UI jo navigation par bana rehta hai |
+| `loading.tsx` | Loading state |
+| `error.tsx` | Error boundary |
+| `not-found.tsx` | 404 UI |
+| `route.ts` | API endpoint (Route Handler) |
+
+## 5. Code example
+
+### Simple page
+
+```tsx
+export default function AboutPage() {
+  return (
+    <main>
+      <h1>About us</h1>
+      <p>Yeh page app/about/page.tsx se aa raha hai.</p>
+    </main>
+  );
+}
+```
+
+### searchParams ke saath page
+
+URL `/products?sort=price&page=2` ke query values page ko `searchParams` prop mein milti hain. Next.js 16 mein yeh **Promise** hai.
+
+```tsx
+export default async function ProductsPage({
+  searchParams,
+}: PageProps<"/products">) {
+  const { sort = "newest", page = "1" } = await searchParams;
+
+  return (
+    <main>
+      <h1>Products</h1>
+      <p>
+        Sort: {sort}, Page: {page}
+      </p>
+    </main>
+  );
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `export default` | Page ka component default export hona zaroori hai |
+| `app/about/page.tsx` | `/about` route |
+| `PageProps<"/products">` | Global type helper, route ke hisaab se props type |
+| `await searchParams` | Query string values, Next.js 16 mein async |
+| `sort = "newest"` | Default value agar URL mein query na ho |
+
+<Callout variant="important" title="Dhyan rakhein">
+
+`searchParams` use karne se page **request time** par render hota hai, kyunke query values pehle se maloom nahi hoti.
+
+</Callout>
+
+### Interview tip
+
+"Folder aur route mein kya rishta hai?" Jawab: folder segment banata hai, lekin route tab public hota hai jab segment mein `page` ya `route` file ho.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Page component ko named export karna"
+  why="Next.js sirf default export ko page samajhta hai, named export par route 404 deta hai."
+  better="export default function PageName() likhein."
+/>
+
+<Mistake
+  title="Folder banaya lekin page.tsx nahi rakha"
+  why="Baghair page file ke segment public route nahi banta."
+  better="Har public route ke folder mein page.tsx zaroor rakhein."
+/>
+
+<Mistake
+  title="searchParams ko seedha object samajh kar parhna"
+  why="Next.js 16 mein yeh Promise hai, seedha property access undefined deta hai."
+  better="Server Component mein await searchParams, Client Component mein useSearchParams hook."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Installation & Project Structure](/courses/nextjs/installation-and-project-structure), [React components](/courses/react/components) |
+| **Saath** | [Layouts & Templates](/courses/nextjs/layouts-and-templates), [Linking & Navigation](/courses/nextjs/linking-and-navigation) |
+| **Baad mein** | [Dynamic Routes](/courses/nextjs/dynamic-routes), [Route Groups](/courses/nextjs/route-groups-and-private-folders), [Loading & Error UI](/courses/nextjs/loading-and-error-ui) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Routing type | File-based, `app/` folder |
+| Route public kab | Folder mein `page.tsx` ho |
+| Export | Default export component |
+| Query string | `searchParams`, await karein |
+| Type helper | `PageProps<"/route">` |
+
+<Callout variant="important" title="Yaad rakhein">
+
+**Folder = segment, `page.tsx` = public route.** Query values ke liye `await searchParams`.
+
+</Callout>

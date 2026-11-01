@@ -1,0 +1,199 @@
+---
+title: Arrays
+description: JavaScript arrays ki buniyad, banana, index se access, at(), push, pop, includes, loop aur toSorted jaise non-mutating methods, Roman Urdu mein.
+keywords:
+  - javascript arrays
+  - array in javascript urdu
+  - javascript array push pop
+  - javascript array at method
+  - toSorted toReversed
+---
+
+## 1. Arrays kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Array ek ordered list hai jo kayi values ko ek variable mein index ke saath store karti hai.**
+
+</Callout>
+
+Array mein har item ka ek number hota hai jise **index** kehte hain, aur index `0` se shuru hota hai. Array mein numbers, strings, objects, hatta ke doosre arrays bhi rakh sakte ho.
+
+JavaScript mein array asal mein ek khaas qisam ka object hai, is liye `typeof []` ka jawab `"object"` aata hai. Array check karne ke liye `Array.isArray()` use karein.
+
+## 2. Kyun zaroori hai?
+
+Agar 50 products hon to 50 alag variables banana na-mumkin hai. Array ek hi naam ke neeche poori list sambhalta hai.
+
+<CompareTable leftTitle="Alag alag variables" rightTitle="Ek array">
+
+product1, product2, product3 | products list
+Count rakhna mushkil | length khud batata hai
+Loop nahi chala sakte | for of se har item par loop
+Naya item = naya variable | push se naya item add
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Area | Array mein kya hota hai |
+| --- | --- |
+| **E-commerce** | Cart items, product list |
+| **Social apps** | Posts, comments, notifications |
+| **Forms** | Selected checkboxes, uploaded files |
+| **APIs** | Server se aane wali JSON lists |
+| **React** | `items.map(...)` se list render |
+
+## 4. Kaise kaam karta hai?
+
+Array values ko line mein rakhta hai. `length` hamesha aakhri index se ek zyada hoti hai.
+
+<Flow title="Array ka structure">
+
+const fruits = apple, banana, mango
+↓
+Index 0 = apple, 1 = banana, 2 = mango
+↓
+length = 3
+↓
+Aakhri item = index length minus 1, ya at(-1)
+
+</Flow>
+
+### Mutating vs non-mutating
+
+Kuch methods asal array ko **badal dete** hain, kuch **naya array** dete hain. React aur state management mein yeh farq bohot ahem hai.
+
+| Kaam | Asal badalta hai (mutating) | Naya array (ES2023+) |
+| --- | --- | --- |
+| Sort | `sort()` | `toSorted()` |
+| Reverse | `reverse()` | `toReversed()` |
+| Remove / insert | `splice()` | `toSpliced()` |
+| Ek index replace | `arr[i] = x` | `with(i, x)` |
+
+<Callout variant="important" title="Mental model">
+
+**Array = numbered dabbon ki line. Index 0 se shuru, `length` = dabbon ki ginti.**
+
+</Callout>
+
+## 5. Code example
+
+### Banana, parhna aur badalna
+
+```js
+const cart = ["shirt", "shoes"];
+
+cart.push("cap");
+cart.unshift("watch");
+console.log(cart);
+
+console.log(cart[0]);
+console.log(cart.at(-1));
+console.log(cart.length);
+
+const removed = cart.pop();
+console.log(removed, cart.includes("shoes"), cart.indexOf("shirt"));
+
+for (const item of cart) {
+  console.log(item);
+}
+```
+
+### Non-mutating methods
+
+```js
+const scores = [72, 95, 40];
+
+const sorted = scores.toSorted((a, b) => b - a);
+const updated = scores.with(1, 99);
+
+console.log(scores);
+console.log(sorted);
+console.log(updated);
+
+const ids = Array.from({ length: 3 }, (_, i) => i + 1);
+console.log(ids, Array.isArray(ids));
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `push` / `pop` | Aakhir mein add / remove |
+| `unshift` / `shift` | Shuru mein add / remove |
+| `cart.at(-1)` | Aakhri item, negative index support |
+| `includes` / `indexOf` | Item hai ya nahi, aur kis index par |
+| `for...of` | Har value par seedha loop |
+| `toSorted((a, b) => b - a)` | Naya array, bari se chhoti value, `scores` wesa hi |
+| `with(1, 99)` | Index 1 badla hua naya array |
+| `Array.from(...)` | `[1, 2, 3]` generate kiya |
+
+### Interview tip
+
+`const` array ko freeze nahi karta. `const cart = []` ke baad `cart.push()` chal jata hai, sirf `cart = []` dobara assign nahi ho sakta.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Index 1 se shuru samajhna"
+  why="Pehla item index 0 par hota hai, arr[arr.length] hamesha undefined deta hai."
+  better="Pehla item arr[0], aakhri item arr.at(-1) ya arr[arr.length - 1]."
+/>
+
+<Mistake
+  title="Numbers ko sort() se bina compare function sort karna"
+  why="sort default mein values ko string bana kar compare karta hai, [10, 9, 1].sort() ka result [1, 10, 9] aata hai."
+  better="Compare function do: toSorted((a, b) => a - b)."
+/>
+
+<Mistake
+  title="React state array ko seedha mutate karna"
+  why="push ya sort se same array reference rehta hai aur React re-render miss kar sakta hai."
+  better="Naya array banao: [...items, newItem], toSorted(), toSpliced() ya with()."
+/>
+
+<Mistake
+  title="Array check ke liye typeof use karna"
+  why="typeof [] bhi object deta hai, is liye array aur object mein farq nahi hota."
+  better="Array.isArray(value) use karo."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Data Types](/courses/javascript/data-types), [Loops](/courses/javascript/loops) |
+| **Saath mein** | [Objects](/courses/javascript/objects), [Destructuring](/courses/javascript/destructuring) |
+| **Baad mein** | [Array Methods: map, filter, reduce](/courses/javascript/array-methods), [Spread & Rest](/courses/javascript/spread-and-rest), [Map & Set](/courses/javascript/map-and-set) |
+
+<Flow title="Suggested order">
+
+Loops
+↓
+Arrays
+↓
+Array Methods
+↓
+Objects
+↓
+Destructuring
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Index | `0` se shuru |
+| Aakhri item | `arr.at(-1)` |
+| Add / remove | `push`, `pop`, `shift`, `unshift` |
+| Search | `includes`, `indexOf` |
+| Safe copies | `toSorted`, `toReversed`, `toSpliced`, `with` |
+| Array check | `Array.isArray()` |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Index `0` se shuru hota hai. Jahan asal data badalna nahi chahiye, wahan `toSorted`, `with` aur spread jaise non-mutating tareeqe use karein.
+
+</Callout>

@@ -1,7 +1,182 @@
 {
   "title": "React.js",
+  "order": 2,
   "slug": "react",
-  "description": "Structured React.js course documentation — chapters and lessons coming soon.",
+  "description": "React 19 Roman Urdu mein, components, JSX, props, state, hooks, performance aur React Compiler tak, har topic ek chhota chapter.",
   "badge": "RC",
-  "chapters": ["introduction"]
+  "sections": [
+    {
+      "title": "Getting Started",
+      "chapters": [
+        {
+          "slug": "introduction",
+          "title": "Introduction"
+        },
+        {
+          "slug": "setup-with-vite",
+          "title": "Setup with Vite"
+        },
+        {
+          "slug": "jsx",
+          "title": "JSX"
+        },
+        {
+          "slug": "components",
+          "title": "Components"
+        },
+        {
+          "slug": "how-react-renders",
+          "title": "How React Renders"
+        }
+      ]
+    },
+    {
+      "title": "Core Concepts",
+      "chapters": [
+        {
+          "slug": "props",
+          "title": "Props"
+        },
+        {
+          "slug": "children-and-composition",
+          "title": "Children & Composition"
+        },
+        {
+          "slug": "state",
+          "title": "State with useState"
+        },
+        {
+          "slug": "events",
+          "title": "Handling Events"
+        },
+        {
+          "slug": "conditional-rendering",
+          "title": "Conditional Rendering"
+        },
+        {
+          "slug": "lists-and-keys",
+          "title": "Lists & Keys"
+        },
+        {
+          "slug": "forms",
+          "title": "Forms & Controlled Inputs"
+        },
+        {
+          "slug": "styling",
+          "title": "Styling in React"
+        },
+        {
+          "slug": "lifting-state-up",
+          "title": "Lifting State Up"
+        }
+      ]
+    },
+    {
+      "title": "Hooks",
+      "chapters": [
+        {
+          "slug": "rules-of-hooks",
+          "title": "Rules of Hooks"
+        },
+        {
+          "slug": "use-effect",
+          "title": "useEffect"
+        },
+        {
+          "slug": "use-ref",
+          "title": "useRef"
+        },
+        {
+          "slug": "use-context",
+          "title": "useContext"
+        },
+        {
+          "slug": "use-reducer",
+          "title": "useReducer"
+        },
+        {
+          "slug": "use-memo-and-use-callback",
+          "title": "useMemo & useCallback"
+        },
+        {
+          "slug": "custom-hooks",
+          "title": "Custom Hooks"
+        },
+        {
+          "slug": "use-effect-event",
+          "title": "useEffectEvent"
+        },
+        {
+          "slug": "use-transition",
+          "title": "useTransition & useDeferredValue"
+        },
+        {
+          "slug": "use-hook",
+          "title": "The use() API"
+        },
+        {
+          "slug": "actions-and-form-hooks",
+          "title": "Actions, useActionState & useOptimistic"
+        }
+      ]
+    },
+    {
+      "title": "Advanced Patterns",
+      "chapters": [
+        {
+          "slug": "memo-and-performance",
+          "title": "React.memo & Performance"
+        },
+        {
+          "slug": "react-compiler",
+          "title": "React Compiler"
+        },
+        {
+          "slug": "error-boundaries",
+          "title": "Error Boundaries"
+        },
+        {
+          "slug": "suspense-and-lazy",
+          "title": "Suspense & lazy()"
+        },
+        {
+          "slug": "portals",
+          "title": "Portals"
+        },
+        {
+          "slug": "activity",
+          "title": "Activity Component"
+        },
+        {
+          "slug": "server-components",
+          "title": "Server Components"
+        }
+      ]
+    },
+    {
+      "title": "Ecosystem",
+      "chapters": [
+        {
+          "slug": "data-fetching",
+          "title": "Data Fetching"
+        },
+        {
+          "slug": "react-router",
+          "title": "Routing with React Router"
+        },
+        {
+          "slug": "state-management",
+          "title": "State Management Libraries"
+        },
+        {
+          "slug": "typescript-with-react",
+          "title": "TypeScript with React"
+        },
+        {
+          "slug": "testing",
+          "title": "Testing React Apps"
+        }
+      ]
+    }
+  ]
 }

@@ -1,0 +1,205 @@
+---
+title: Service Layer & Thin Controllers
+description: Service layer aur thin controllers ka rule, route handler sirf auth, validation aur ek service call kare, saari business logic src/lib mein rahe.
+keywords:
+  - service layer thin controllers
+  - business logic layer
+  - thin route handlers nextjs
+  - fat controller problem
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Route handler, server action ya controller sirf chaar kaam kare: caller authenticate, input validate, ek service function call, response shape. Har calculation, query aur domain decision service layer mein.**
+
+</Callout>
+
+Service layer woh jagah hai jahan product ka asal rawayya likha hota hai: order kaise banta hai, discount kab lagta hai, kaun kya kar sakta hai. Next.js mein yeh `src/lib/<module>/<module>.ts` hai.
+
+Services plain functions hote hain. Un ke signature mein `Request`, `NextResponse` ya koi framework type nahi hota, taake route, cron job, script aur test sab unhe ek hi tarah call kar sakein.
+
+## 2. Kyun zaroori hai?
+
+Asli kahani: checkout route mein discount ka rule likha gaya. Do mahine baad admin panel se manual order banane ki zaroorat pari. Kisi ne woh rule copy kar diya. Phir discount badla, ek jagah update hua, doosri jagah nahi. Ab ek hi cart ke do alag total.
+
+Jab logic handler mein ho to use test karne ke liye poora HTTP request banana parta hai, aur reuse ke liye copy paste.
+
+<CompareTable leftTitle="Fat controller" rightTitle="Thin controller + service">
+
+Business rule route ke andar dafan | Rule service mein, ek naam ke saath
+Cron aur admin ko rule copy karna parta hai | Sab ek hi service function call karte hain
+Logic test karne ke liye fake HTTP request | Service ko seedha function ki tarah test karo
+Product ka rawayya samajhne ke liye har route parho | Sirf src/lib parho, poori product samajh aa jati hai
+Handler 150 lines, if else ka jungle | Handler ek screen mein, padhte hi samajh aaye
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Ek do routes mein handler ke andar logic chal jata hai. Doosra caller aate hi nikal lein | Pehle samjhein request se response tak kya hota hai, phir layers |
+| **Production code** | Lazmi. Handler mein koi query ya domain `if` nahi | Ek rule ek jagah. Test aur reuse dono asaan |
+| **Senior level** | Layering ko lint se enforce karna, jaise `no-restricted-imports` | Review mein har baar pakarne se behtar hai tool khud rok de |
+
+## 4. Bura vs acha code
+
+### Bura: handler mein sab kuch
+
+```ts
+import { NextResponse } from "next/server";
+
+import { db } from "@/lib/db";
+
+export async function POST(request: Request) {
+  const body = await request.json();
+  const cart = await db.cart.findUnique({ where: { id: body.cartId } });
+
+  if (!cart) {
+    return NextResponse.json({ error: "Cart not found" }, { status: 404 });
+  }
+
+  let total = cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+  if (total > 5000) {
+    total = total * 0.9;
+  }
+
+  const order = await db.order.create({ data: { cartId: cart.id, total } });
+
+  return NextResponse.json(order);
+}
+```
+
+Na auth, na validation, aur discount ka rule (`5000` par 10%) handler mein chhupa hai.
+
+### Acha: thin handler, logic service mein
+
+```ts
+import { NextResponse } from "next/server";
+
+import { requireUser } from "@/lib/auth/auth";
+import { place } from "@/lib/orders/orders";
+import { placeOrderSchema } from "@/lib/orders/orders.types";
+
+export async function POST(request: Request) {
+  const user = await requireUser();
+  const parsed = placeOrderSchema.safeParse(await request.json());
+
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.message }, { status: 422 });
+  }
+
+  return NextResponse.json(await place(user.id, parsed.data));
+}
+```
+
+```ts
+import { db } from "@/lib/db";
+
+import { DISCOUNT_RATE, DISCOUNT_THRESHOLD, type CartItem, type PlaceOrderInput } from "./orders.types";
+
+export function total(items: CartItem[]) {
+  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+  if (subtotal <= DISCOUNT_THRESHOLD) {
+    return subtotal;
+  }
+
+  return subtotal * (1 - DISCOUNT_RATE);
+}
+
+export async function place(userId: string, input: PlaceOrderInput) {
+  const cart = await db.cart.findFirstOrThrow({ where: { id: input.cartId, userId } });
+
+  return db.order.create({ data: { cartId: cart.id, userId, total: total(cart.items) } });
+}
+```
+
+### Farq kya hai?
+
+| Cheez | Fat handler | Thin handler + service |
+| --- | --- | --- |
+| Discount rule | Handler ke andar literal | `total()` mein, named constants ke saath |
+| Ownership check | Nahi | Query mein `userId`, service ke andar |
+| Test | HTTP mock karna parta | `total()` seedha test, koi server nahi |
+| Admin ya cron | Code copy karo | `place()` call karo |
+
+## 5. Kaise apply karein?
+
+<Flow title="Thin handler ki shape">
+
+Authenticate: caller kaun hai
+↓
+Validate: input schema se parse
+↓
+Delegate: ek service function call
+↓
+Respond: status aur JSON
+
+</Flow>
+
+Naya kaam shuru karne se pehle service layer mein dhoondhein: kya same entity par same verb pehle se hai? Koi function jo aadha kaam kar deta hai? Use extend karein. Jaldi mein milta julta doosra function likhna do behaviours paida karta hai jo waqt ke saath alag ho jate hain.
+
+Ek simple test: kya handler ek screen mein parha ja sakta hai, aur kya use apne unit test ki zaroorat nahi? Agar haan, to woh thin hai. Test karne layak sab kuch service mein hai.
+
+## 6. Exceptions aur common mistakes
+
+Bohat si teams aur frameworks doosra rasta lete hain. Kuch "fat model" pattern use karti hain jahan logic model class mein hoti hai. Kuch mazeed layers banati hain (repository, use case, domain). Chhote app mein handler ke andar thori logic bhi chal jati hai. Trade-off: zyada layers zyada files, kam layers zyada copy paste. Yahan ka rule beech ka hai: ek service layer, plain functions, aur handler bilkul patla.
+
+<Mistake
+  title="Service function mein Request ya NextResponse lena"
+  why="Phir cron job, script aur test usay call nahi kar sakte bina fake HTTP object banaye."
+  better="Service plain values le, jaise userId aur parsed input, aur plain data return kare."
+/>
+
+<Mistake
+  title="Handler file mein helper functions likhna"
+  why="Helper wahin phans jata hai, doosra caller use import nahi karta aur copy banti hai."
+  better="Handler mein sirf exported actions. Jo bhi nikalne layak ho woh service function bane."
+/>
+
+<Mistake
+  title="Handler mein domain ka if likhna, jaise order shipped hai to cancel mat karo"
+  why="Yeh business rule hai. Admin panel ya cron is rule ko bypass kar dega kyunki rule route mein hai."
+  better="Rule service mein rakho aur service galat state par wazeh error throw kare."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Small Functions & Single Responsibility](/courses/best-practices/small-functions), [Route Handlers (API)](/courses/nextjs/route-handlers) |
+| **Saath mein** | [Separation of Concerns](/courses/best-practices/separation-of-concerns), [API Handler Shape](/courses/best-practices/api-handler-shape) |
+| **Baad mein** | [Loose Coupling & Dependency Injection](/courses/best-practices/dependency-injection), [Endpoint Tests First](/courses/best-practices/endpoint-tests-first) |
+
+<Flow title="Suggested order">
+
+Small Functions
+↓
+Service Layer & Thin Controllers
+↓
+Input Validation at the Boundary
+↓
+Endpoint Tests First
+
+</Flow>
+
+## Final quick revision
+
+| Check | Haan / Nahi |
+| --- | --- |
+| Handler: auth, validate, ek call, respond | Haan |
+| Handler mein database query | Nahi |
+| Handler mein domain `if` | Nahi |
+| Service signature mein framework types | Nahi |
+| Naya function likhne se pehle service mein search | Haan |
+| Cron, route aur test same function call karte hain | Haan |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Controller darwaza hai, ghar nahi. Darwaze par pehchan aur check hoti hai, asal kaam andar service mein hota hai jahan har caller pohanch sakta hai.
+
+</Callout>

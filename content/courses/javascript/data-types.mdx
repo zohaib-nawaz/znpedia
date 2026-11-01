@@ -1,0 +1,176 @@
+---
+title: Data Types
+description: JavaScript data types ki poori list, 7 primitives aur objects, typeof operator aur value vs reference ka farq. Roman Urdu mein beginner guide.
+keywords:
+  - javascript data types
+  - primitive vs reference javascript
+  - typeof operator
+  - null vs undefined
+  - javascript bigint symbol
+---
+
+## 1. Data types kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Data type batata hai ke value kis qism ki hai, jaise text, number, true/false ya object, aur us par kya operations ho sakte hain.**
+
+</Callout>
+
+JavaScript mein **8 data types** hain. Saat **primitive** hain aur ek **object**.
+
+| Type | Example | Kis liye |
+| --- | --- | --- |
+| `string` | `"Lahore"` | Text |
+| `number` | `42`, `3.14` | Integers aur decimals dono |
+| `bigint` | `9007199254740993n` | Bohot bare integers |
+| `boolean` | `true`, `false` | Haan ya nahi |
+| `undefined` | `undefined` | Value abhi di hi nahi gayi |
+| `null` | `null` | Jaan boojh kar "koi value nahi" |
+| `symbol` | `Symbol("id")` | Unique key |
+| `object` | `{}`, `[]`, functions, `Date` | Data ka collection |
+
+## 2. Kyun zaroori hai?
+
+JavaScript **dynamically typed** hai. Variable ka type value se tay hota hai aur badal bhi sakta hai. Agar types samajh na aayein to `"5" + 1` jaise results surprise karte hain.
+
+<CompareTable leftTitle="Types na samajhna" rightTitle="Types samajhna">
+
+Text aur number mix karke ajeeb result | Pehle type check, phir operation
+null aur undefined ko same samajhna | Dono ka alag matlab samajh kar use
+Object copy samajh kar original badal dena | Reference ka pata, zaroorat ho to copy
+Bugs runtime par aate hain | typeof se pehle hi check
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Real use | Type |
+| --- | --- |
+| **User ka naam, email** | `string` |
+| **Price, quantity, rating** | `number` |
+| **Login hai ya nahi** | `boolean` |
+| **Database ki bari ID** | `bigint` |
+| **User profile, product** | `object` |
+| **Products ki list** | Array, jo `object` hi hai |
+| **Optional field jo khaali hai** | `null` |
+
+## 4. Kaise kaam karta hai?
+
+Primitives **value** ki tarah copy hote hain. Objects **reference** ki tarah copy hote hain, yaani dono variables ek hi object ko point karte hain.
+
+<Flow title="Value vs reference">
+
+let a = 10, let b = a
+     ↓
+b badla, a wahi rehta hai (primitive copy)
+     ↓
+const x = object, const y = x
+     ↓
+y badla, x bhi badal gaya (same reference)
+
+</Flow>
+
+Primitives **immutable** hain. String ka koi character andar se badla nahi ja sakta, naya string banta hai. Kisi value ka type jaanne ke liye `typeof` operator use hota hai.
+
+<Callout variant="important" title="Mental model">
+
+**Primitive = value ki photocopy. Object = ghar ka address. Address copy karne se ghar wahi rehta hai.**
+
+</Callout>
+
+## 5. Code example
+
+```js
+console.log(typeof "hello");
+console.log(typeof 42);
+console.log(typeof 10n);
+console.log(typeof true);
+console.log(typeof undefined);
+console.log(typeof Symbol("id"));
+console.log(typeof { a: 1 });
+console.log(typeof []);
+console.log(typeof null);
+console.log(typeof function () {});
+```
+
+Output: `string`, `number`, `bigint`, `boolean`, `undefined`, `symbol`, `object`, `object`, `object`, `function`.
+
+Value aur reference ka farq:
+
+```js
+let a = 10;
+let b = a;
+b = 20;
+console.log(a);
+
+const user = { name: "Hina" };
+const copy = user;
+copy.name = "Zara";
+console.log(user.name);
+
+const realCopy = structuredClone(user);
+realCopy.name = "Nida";
+console.log(user.name);
+```
+
+Output: `10`, `Zara`, `Zara`.
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `typeof null` | `"object"` deta hai, yeh JavaScript ka purana bug hai |
+| `typeof []` | `"object"`, array check ke liye `Array.isArray()` use karein |
+| `typeof function` | `"function"`, lekin function bhi object hi hai |
+| `b = a` | Primitive ki copy, alag value |
+| `copy = user` | Same object ka reference |
+| `structuredClone()` | Object ki deep copy banata hai |
+
+### Interview tip
+
+"`null` aur `undefined` mein farq?" `undefined` ka matlab value abhi set nahi hui (JavaScript khud deta hai). `null` developer jaan boojh kar lagata hai ke "yahan koi value nahi". `typeof null` ka `"object"` aana ek historical bug hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="typeof se null ya array check karna"
+  why="Dono ke liye typeof 'object' deta hai, is liye check ghalat pass ho jata hai."
+  better="null ke liye value === null aur array ke liye Array.isArray(value) use karein."
+/>
+
+<Mistake
+  title="Object ko = se copy samajhna"
+  why="Sirf reference copy hota hai, ek jagah change dono jagah dikhta hai."
+  better="Shallow copy ke liye spread syntax, deep copy ke liye structuredClone use karein."
+/>
+
+<Mistake
+  title="Bare integers ke liye number use karna"
+  why="number sirf 2 ki power 53 tak integers exactly rakh sakta hai, us ke baad precision kho jati hai."
+  better="Bohot bari IDs ya counts ke liye BigInt use karein, jaise 9007199254740993n."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Variables](/courses/javascript/variables) |
+| **Is ke baad** | [Type Conversion](/courses/javascript/type-conversion), [Strings & Template Literals](/courses/javascript/strings), [Numbers & Math](/courses/javascript/numbers-and-math) |
+| **Aage** | [Objects](/courses/javascript/objects), [Arrays](/courses/javascript/arrays), [Spread & Rest](/courses/javascript/spread-and-rest) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Total types | 8 (7 primitives + object) |
+| Primitives | string, number, bigint, boolean, undefined, null, symbol |
+| `typeof null` | `"object"`, purana bug |
+| Primitive copy | Value copy hoti hai |
+| Object copy | Reference copy hota hai |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Arrays aur functions bhi objects hain. **Primitive value se copy hote hain, objects reference se.** Deep copy chahiye to `structuredClone()`.
+
+</Callout>

@@ -1,0 +1,180 @@
+---
+title: Environment Variables
+description: Next.js environment variables .env files mein kaise rakhein, NEXT_PUBLIC_ prefix ka matlab, server secrets ko browser se kaise bachayein, Roman Urdu mein.
+keywords:
+  - next.js environment variables
+  - next_public prefix
+  - next.js env local
+  - next.js secrets server only
+---
+
+## 1. Environment Variables kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Environment variables woh settings aur secrets hain jo code ke bahar `.env` files ya hosting platform mein rakhe jate hain, aur code `process.env.NAME` se parhta hai.**
+
+</Callout>
+
+Database URL, API keys, payment secret, site ka URL, yeh sab har environment mein alag hote hain: aapki machine, staging aur production. Inhein code mein hardcode karna khatarnak aur mushkil hai.
+
+Next.js `.env` files ko khud load karta hai. Koi extra package nahi chahiye.
+
+## 2. Kyun zaroori hai?
+
+<CompareTable leftTitle="Hardcoded values" rightTitle="Environment variables">
+
+API key Git mein commit ho jati hai | Secret sirf .env.local ya platform par
+Har environment ke liye code badlo | Same code, alag values
+Key leak hone par poora history saaf karo | Sirf value rotate karo
+Browser mein secret pohanch sakta hai | Bina NEXT_PUBLIC_ variable server tak mehdood
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Variable | Kahan chahiye | Prefix |
+| --- | --- | --- |
+| `DATABASE_URL` | Sirf server | Koi nahi |
+| `AUTH_SECRET` | Sirf server | Koi nahi |
+| `STRIPE_SECRET_KEY` | Sirf server | Koi nahi |
+| `NEXT_PUBLIC_SITE_URL` | Server aur browser | `NEXT_PUBLIC_` |
+| `NEXT_PUBLIC_ANALYTICS_ID` | Browser script | `NEXT_PUBLIC_` |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Env variable ka safar">
+
+.env files load hoti hain
+↓
+Server code process.env se parhta hai
+↓
+next build ke waqt NEXT_PUBLIC_ values JS bundle mein inline
+↓
+Browser ko sirf NEXT_PUBLIC_ values milti hain
+
+</Flow>
+
+### Files aur priority
+
+Next.js in jagahon se values dhoondta hai, pehla match jeet jata hai:
+
+| Order | Source |
+| --- | --- |
+| 1 | `process.env` (platform ya shell mein set) |
+| 2 | `.env.development.local` ya `.env.production.local` |
+| 3 | `.env.local` (test environment mein load nahi hoti) |
+| 4 | `.env.development` ya `.env.production` |
+| 5 | `.env` |
+
+`.env*.local` files secrets ke liye hain aur Git mein commit nahi hoti. `.env` mein sirf safe defaults rakhein.
+
+<Callout variant="important" title="Mental model">
+
+**Bina prefix = server ka raaz. `NEXT_PUBLIC_` = sab ke saamne, build ke waqt bundle mein likh diya jata hai.**
+
+</Callout>
+
+## 5. Code example
+
+### Step 1: .env.local file
+
+```bash
+DATABASE_URL="postgresql://user:password@localhost:5432/shop"
+AUTH_SECRET="openssl-rand-base64-32-se-banayi-value"
+NEXT_PUBLIC_SITE_URL="http://localhost:3000"
+```
+
+### Step 2: Server par validate aur use karna
+
+```ts
+import "server-only";
+import * as z from "zod";
+
+const EnvSchema = z.object({
+  DATABASE_URL: z.url(),
+  AUTH_SECRET: z.string().min(32),
+});
+
+export const env = EnvSchema.parse({
+  DATABASE_URL: process.env.DATABASE_URL,
+  AUTH_SECRET: process.env.AUTH_SECRET,
+});
+```
+
+### Step 3: Client Component mein public variable
+
+```tsx
+"use client";
+
+export function ShareButton({ path }: { path: string }) {
+  const url = `${process.env.NEXT_PUBLIC_SITE_URL}${path}`;
+  return <button onClick={() => navigator.clipboard.writeText(url)}>Link copy</button>;
+}
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `.env.local` | Local secrets, Git ignore mein |
+| `import "server-only"` | Yeh file galti se Client Component mein import ho to build fail |
+| `EnvSchema.parse(...)` | App start par hi missing ya galat variable pakar lo |
+| `process.env.NEXT_PUBLIC_SITE_URL` | Build ke waqt asli string se replace ho jata hai |
+| `AUTH_SECRET` client mein | `undefined` milega, browser tak nahi jata |
+
+`NEXT_PUBLIC_` values **build time** par freeze ho jati hain. Value badalne ke baad dobara `next build` zaroori hai. Server side variables dynamic rendering mein request time par parhe jate hain.
+
+### Interview tip
+
+"`process.env[key]` client mein kyun kaam nahi karta?" Jawab: Next.js sirf seedhe likhe `process.env.NEXT_PUBLIC_X` ko build time par replace karta hai. Dynamic lookup inline nahi hota.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Secret key par NEXT_PUBLIC_ prefix laga dena"
+  why="Woh value JavaScript bundle mein chali jati hai aur koi bhi browser mein dekh sakta hai."
+  better="Secrets ko bina prefix rakho aur sirf server code mein use karo."
+/>
+
+<Mistake
+  title=".env.local ko Git mein commit karna"
+  why="Database password aur API keys public repo mein leak ho jate hain."
+  better=".env*.local ko .gitignore mein rakho aur .env.example mein sirf naam likho."
+/>
+
+<Mistake
+  title="Production mein NEXT_PUBLIC_ value badal kar rebuild na karna"
+  why="Public values build ke waqt inline hoti hain, purani value hi chalti rahegi."
+  better="Public variable badalne ke baad naya build aur deploy karo."
+/>
+
+<Mistake
+  title="Missing variable ko runtime tak pata na chalna"
+  why="App chalti rehti hai aur pehli request par ajeeb crash hota hai."
+  better="Zod se env ko startup par validate karo taake ghalti fauran nazar aaye."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Installation & Project Structure](/courses/nextjs/installation-and-project-structure), [Server & Client Components](/courses/nextjs/server-and-client-components) |
+| **Saath mein** | [next.config & Turbopack](/courses/nextjs/next-config-and-turbopack) |
+| **Baad mein** | [Authentication](/courses/nextjs/authentication), [Database Integration](/courses/nextjs/database-integration), [Deployment](/courses/nextjs/deployment) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Parhna | `process.env.NAME` |
+| Browser ke liye | `NEXT_PUBLIC_` prefix, build time inline |
+| Secrets | Bina prefix, sirf server |
+| Local secrets | `.env.local`, Git mein nahi |
+| Safety | `server-only` + Zod validation |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Jo variable `NEXT_PUBLIC_` se shuru ho woh public hai. Baqi sab server ka raaz hai, aur raaz kabhi Git ya browser tak nahi jana chahiye.
+
+</Callout>

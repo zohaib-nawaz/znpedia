@@ -1,0 +1,189 @@
+---
+title: Callbacks
+description: JavaScript callbacks kya hain, sync aur async callbacks ka farq, error-first pattern aur callback hell se kaise bachein, Roman Urdu mein.
+keywords:
+  - javascript callbacks
+  - callback function in urdu
+  - callback hell
+  - async callbacks javascript
+---
+
+## 1. Callbacks kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Callback woh function hai jo doosre function ko argument ke taur par diya jata hai, taake woh use baad mein call kare.**
+
+</Callout>
+
+JavaScript mein functions values hain, is liye unhein variables ki tarah pass kiya ja sakta hai. Jab aap kehte hain "yeh kaam ho jaye to yeh function chala dena", to woh function callback hai.
+
+Callbacks do qisam ke hote hain: **sync** (foran chalte hain, jaise `map`) aur **async** (baad mein chalte hain, jaise `setTimeout` ya click handler).
+
+## 2. Kyun zaroori hai?
+
+Callbacks se aap ek function ko flexible bana sakte hain. Function ko pata nahi hota ke kaam ke baad kya karna hai, yeh faisla caller karta hai.
+
+<CompareTable leftTitle="Bina callback" rightTitle="Callback ke saath">
+
+Har kaam ke liye alag function likho | Ek function, behaviour caller deta hai
+Async result ka intezar mushkil | Kaam khatam hone par callback chalta hai
+Events handle karna mumkin nahi | Click par apna function chalao
+Code repeat hota hai | Reusable higher-order functions
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Jagah | Example |
+| --- | --- |
+| **Array methods** | `arr.map((x) => x * 2)` |
+| **Events** | `button.addEventListener("click", handleClick)` |
+| **Timers** | `setTimeout(showToast, 2000)` |
+| **Node.js APIs** | `fs.readFile(path, (err, data) => ...)` |
+| **Libraries** | Hooks, plugins, custom sort compare functions |
+
+## 4. Kaise kaam karta hai?
+
+<Flow title="Async callback ka flow">
+
+Aap function ko callback dete hain
+↓
+Function apna kaam shuru karta hai
+↓
+Kaam background mein chalta hai
+↓
+Kaam khatam, callback result ke saath call hota hai
+
+</Flow>
+
+<Callout variant="important" title="Mental model">
+
+**"Mujhe call back karna jab kaam ho jaye."** Callback ka control aap doosre function ko de dete hain.
+
+</Callout>
+
+## 5. Code example
+
+### Apna higher-order function
+
+```js
+function repeat(times, callback) {
+  for (let i = 1; i <= times; i++) {
+    callback(i);
+  }
+}
+
+repeat(3, (n) => console.log(`Round ${n}`));
+```
+
+### Error-first callback pattern
+
+```js
+function loadUser(id, callback) {
+  setTimeout(() => {
+    if (id <= 0) {
+      callback(new Error("Invalid id"));
+      return;
+    }
+    callback(null, { id, name: "Ali" });
+  }, 500);
+}
+
+loadUser(1, (error, user) => {
+  if (error) {
+    console.error(error.message);
+    return;
+  }
+  console.log(user.name);
+});
+```
+
+### Callback hell ki shakal
+
+```js
+loadUser(1, (err, user) => {
+  loadOrders(user.id, (err, orders) => {
+    loadInvoice(orders[0].id, (err, invoice) => {
+      console.log(invoice);
+    });
+  });
+});
+```
+
+### Code kaise kaam kar raha hai?
+
+| Line | Kya ho raha hai |
+| --- | --- |
+| `repeat(3, ...)` | Sync callback, loop ke andar foran chalta hai |
+| `callback(new Error(...))` | Pehla argument error, Node.js style convention |
+| `callback(null, user)` | Error `null`, doosra argument data |
+| `if (error) return` | Pehle error check, phir data use |
+| Nested callbacks | Har step andar ghusta hai, isay callback hell kehte hain |
+
+### Interview tip
+
+Callback hell ka hal: [Promises](/courses/javascript/promises) aur [Async / Await](/courses/javascript/async-await). Aaj kal naye APIs callbacks ki jagah promises return karti hain, jaise `fetch` aur `fs/promises`.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Callback pass karne ki jagah call kar dena"
+  why="doTask(done()) mein done foran chal jata hai aur uska result pass hota hai."
+  better="Reference pass karein: doTask(done)."
+/>
+
+<Mistake
+  title="Error argument ignore karna"
+  why="Error aane par data undefined hota hai aur aage crash hota hai."
+  better="Har error-first callback mein pehle if (error) check karein."
+/>
+
+<Mistake
+  title="Callback ko do dafa call kar dena"
+  why="Error ke baad return bhool jao to success callback bhi chal jata hai."
+  better="Error par callback call karte hi return karein."
+/>
+
+<Mistake
+  title="Gehri nesting ko normal samajhna"
+  why="Callback hell mein code padhna, errors handle karna aur test karna mushkil hota hai."
+  better="Async kaam ke liye promises aur async await use karein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Functions](/courses/javascript/functions), [Higher-Order Functions](/courses/javascript/higher-order-functions), [Timers](/courses/javascript/timers) |
+| **Baad mein** | [Promises](/courses/javascript/promises), [Async / Await](/courses/javascript/async-await), [DOM Events](/courses/javascript/dom-events) |
+
+<Flow title="Suggested order">
+
+Functions
+↓
+Higher-Order Functions
+↓
+Callbacks
+↓
+Promises
+↓
+Async Await
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Callback | Function jo argument ke taur par diya jaye |
+| Sync callback | Foran chalta hai, jaise `map` |
+| Async callback | Baad mein chalta hai, jaise timers aur events |
+| Error-first | `(error, data)` signature |
+| Callback hell | Gehri nesting, promises se hal |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Callback **pass** hota hai, **call** nahi. Async kaam ke liye naye code mein promises aur async await behtar hain.
+
+</Callout>

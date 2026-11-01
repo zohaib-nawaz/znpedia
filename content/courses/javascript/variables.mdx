@@ -1,0 +1,178 @@
+---
+title: "Variables: let, const, var"
+description: JavaScript let const var ka farq, block scope, reassignment aur kab kaunsa use karein. Roman Urdu mein modern examples ke saath variables seekhein.
+keywords:
+  - javascript let const var
+  - javascript variables urdu
+  - let vs const
+  - block scope javascript
+---
+
+## 1. Variables kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Variable ek naam wala dabba hai jis mein aap value rakhte hain taake baad mein use ya update kar sakein.**
+
+</Callout>
+
+JavaScript mein variable banane ke teen keywords hain:
+
+| Keyword | Kab aaya | Aaj ka status |
+| --- | --- | --- |
+| `const` | ES2015 | Default choice |
+| `let` | ES2015 | Jab value badalni ho |
+| `var` | Shuru se | Purana tareeqa, naye code mein avoid karein |
+
+## 2. Kyun zaroori hai?
+
+Variables ke bina har value ko bar bar likhna padta. Naam dene se code parhne layak banta hai aur ek jagah badalne se poora program update ho jata hai.
+
+<CompareTable leftTitle="Purana var style" rightTitle="Modern let aur const">
+
+Function scope, block ke bahar leak hota hai | Block scope, sirf curly braces ke andar
+Same naam dobara declare ho jata hai | Dobara declare karne par SyntaxError
+Declare se pehle use par undefined | Declare se pehle use par ReferenceError
+Har value badal sakti hai | const se pata chalta hai ke value nahi badlegi
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Situation | Keyword | Example |
+| --- | --- | --- |
+| **API URL, config** | `const` | `const API_URL = "/api/users"` |
+| **Counter, total** | `let` | `let total = 0` |
+| **DOM element reference** | `const` | `const btn = document.querySelector("button")` |
+| **Loop counter** | `let` | `for (let i = 0; i < 5; i++)` |
+| **Array ya object jis ke andar change ho** | `const` | `const cart = []` phir `cart.push(item)` |
+
+## 4. Kaise kaam karta hai?
+
+Variable ki zindagi teen steps mein hoti hai: **declare**, **assign**, **use**.
+
+<Flow title="Variable ka safar">
+
+Declare (let score)
+     ↓
+Assign (score = 10)
+     ↓
+Use (console.log(score))
+     ↓
+Reassign, sirf let ke saath (score = 20)
+
+</Flow>
+
+**Scope** ka matlab hai variable kahan tak dikhta hai. `let` aur `const` **block scoped** hain, yaani curly braces ke block tak mehdood. `var` **function scoped** hai aur `if` ya `for` block ke bahar bhi nikal aata hai.
+
+<Callout variant="important" title="Mental model">
+
+**const = label pakka chipka hua. let = label badla ja sakta hai. var = purana label jo block ki deewar nahi maanta.**
+
+</Callout>
+
+Ek aur concept: `let` aur `const` declare hone se pehle **Temporal Dead Zone (TDZ)** mein hote hain. Us waqt access karne par error aata hai. Detail [Scope & Hoisting](/courses/javascript/scope-and-hoisting) mein hai.
+
+## 5. Code example
+
+```js
+const appName = "ZnPedia";
+let visitors = 0;
+
+visitors = visitors + 1;
+visitors += 1;
+
+console.log(appName, visitors);
+```
+
+`const` ke saath object ke andar change allowed hai, lekin naya value assign nahi:
+
+```js
+const user = { name: "Sara", age: 21 };
+
+user.age = 22;
+console.log(user.age);
+
+user = { name: "Ali" };
+```
+
+Aakhri line `TypeError: Assignment to constant variable` degi.
+
+Block scope ka farq:
+
+```js
+if (true) {
+  var oldWay = "bahar bhi dikhega";
+  let newWay = "sirf andar";
+}
+
+console.log(oldWay);
+console.log(newWay);
+```
+
+Pehla log chal jayega, doosra `ReferenceError: newWay is not defined` dega.
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `const appName` | Value dobara assign nahi ho sakti |
+| `let visitors` | Value badal sakti hai, `+=` se update |
+| `user.age = 22` | Object ke andar property badalna allowed hai |
+| `user = ...` | Naya value assign karna `const` mein mana hai |
+| `var oldWay` | Block ke bahar leak ho jata hai |
+| `let newWay` | Block ke andar hi rehta hai |
+
+### Interview tip
+
+"`const` object ko immutable bana deta hai?" Nahi. `const` sirf **binding** ko lock karta hai, yaani variable kisi aur value ko point nahi kar sakta. Object ko poora freeze karna ho to `Object.freeze()` use hota hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Har jagah let likhna"
+  why="Parhne wale ko pata nahi chalta kaunsi value badlegi, aur ghalti se reassign hone ka chance rehta hai."
+  better="Default mein const likhein, let sirf tab jab value sach mein badalni ho."
+/>
+
+<Mistake
+  title="Naye code mein var use karna"
+  why="var block scope nahi maanta aur hoisting ki wajah se undefined jaise ajeeb bugs deta hai."
+  better="var ki jagah let ya const use karein. var sirf purana code parhne ke liye samjhein."
+/>
+
+<Mistake
+  title="const ko poori tarah immutable samajhna"
+  why="const array mein push ya object ki property badalna phir bhi kaam karta hai, is se confusion hoti hai."
+  better="Yaad rakhein const sirf reassignment rokta hai. Data ko freeze karna ho to Object.freeze use karein."
+/>
+
+<Mistake
+  title="Declare se pehle variable use karna"
+  why="let aur const TDZ mein hote hain, is liye ReferenceError aata hai."
+  better="Variables ko use se pehle upar declare karein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Setup & First Program](/courses/javascript/setup-and-first-program) |
+| **Is ke baad** | [Data Types](/courses/javascript/data-types), [Operators](/courses/javascript/operators) |
+| **Aage depth** | [Scope & Hoisting](/courses/javascript/scope-and-hoisting), [Closures](/courses/javascript/closures) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `const` | Default choice, reassign nahi hota |
+| `let` | Badalne wali values ke liye, block scoped |
+| `var` | Purana, function scoped, avoid karein |
+| Block scope | Curly braces ke andar tak mehdood |
+| TDZ | Declare se pehle `let` / `const` access par error |
+
+<Callout variant="important" title="Yaad rakhein">
+
+**Pehle `const`, zaroorat ho to `let`, aur `var` kabhi nahi.** `const` value ko nahi, sirf variable ki binding ko lock karta hai.
+
+</Callout>

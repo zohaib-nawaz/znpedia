@@ -1,0 +1,198 @@
+---
+title: Scope & Hoisting
+description: JavaScript scope hoisting samjhein, global, function aur block scope, var let const ka farq aur Temporal Dead Zone, Roman Urdu mein simple examples ke saath.
+keywords:
+  - javascript scope hoisting
+  - block scope vs function scope
+  - temporal dead zone
+  - var let const hoisting
+  - lexical scope javascript
+---
+
+## 1. Scope & Hoisting kya hain?
+
+<Callout variant="tip" title="Short definition">
+
+**Scope batata hai ke koi variable kahan se nazar aata hai. Hoisting woh behavior hai jis mein declarations code chalne se pehle register ho jati hain.**
+
+</Callout>
+
+JavaScript code chalane se pehle har scope ko scan karta hai aur usme declare kiye gaye variables aur functions ko yaad kar leta hai. Isi ko hoisting kehte hain. Code physically upar move nahi hota, sirf engine pehle se jaanta hai ke kaunsa naam kis scope ka hai.
+
+## 2. Kyun zaroori hai?
+
+Scope na samjho to variables ek doosre ko overwrite karte hain aur ajeeb `undefined` ya `ReferenceError` aate hain.
+
+<CompareTable leftTitle="Purana var wala code" rightTitle="Modern let aur const">
+
+var block ke bahar leak ho jata hai | let aur const sirf apne block mein
+Declare se pehle use karo to undefined | Declare se pehle use karo to saaf error
+Loop ke callbacks sab aakhri value dekhte | Har iteration ki apni value
+Same naam dobara declare ho jata | Duplicate declaration par error
+
+</CompareTable>
+
+## 3. Kahan use hota hai?
+
+| Situation | Scope ka role |
+| --- | --- |
+| **Loops** | `let i` har iteration ke liye naya binding banata hai |
+| **Modules** | Har file ka apna module scope, globals pollute nahi hote |
+| **Functions** | Andar ke variables bahar se private rehte hain |
+| **Closures** | Inner function bahar wale scope ke variables yaad rakhta hai |
+| **Debugging** | `ReferenceError` aur TDZ errors samajhna |
+
+## 4. Kaise kaam karta hai?
+
+### Scope ke levels
+
+| Scope | Kaun banata hai | Kis ke liye |
+| --- | --- | --- |
+| **Global** | File ka top level (script) | Har jagah se accessible |
+| **Module** | `import` / `export` wali file | Sirf us file mein |
+| **Function** | Har function | `var`, `let`, `const` sab |
+| **Block** | `{ }`, `if`, `for` | Sirf `let`, `const`, `class` |
+
+Jab variable dhoondha jata hai to engine andar se bahar ki taraf chalta hai. Isay **scope chain** kehte hain. JavaScript **lexical scope** use karta hai, yani scope wahan se tay hota hai jahan code **likha** gaya, wahan se nahi jahan call hua.
+
+<Flow title="Variable lookup (scope chain)">
+
+Current block scope
+↓
+Bahar wala function scope
+↓
+Module ya global scope
+↓
+Na mila to ReferenceError
+
+</Flow>
+
+### Hoisting ka behavior
+
+| Declaration | Hoist hota hai? | Declare se pehle access |
+| --- | --- | --- |
+| `function foo()` | Haan, poora function | Kaam karta hai |
+| `var x` | Haan, value `undefined` | `undefined` milta hai |
+| `let` / `const` | Haan, lekin uninitialized | `ReferenceError` (TDZ) |
+| `class` | Haan, lekin uninitialized | `ReferenceError` (TDZ) |
+| `const fn = () => {}` | `const` wala rule | `ReferenceError` (TDZ) |
+
+**Temporal Dead Zone (TDZ)** block ke shuru se declaration line tak ka hissa hai. Is dauran `let` ya `const` variable ko chhoona error deta hai.
+
+<Callout variant="important" title="Mental model">
+
+**Scope = variable kahan dikhta hai. Hoisting = engine pehle se naam jaanta hai, lekin value baad mein milti hai.**
+
+</Callout>
+
+## 5. Code example
+
+### Hoisting dekhein
+
+```js
+console.log(sayHi());
+console.log(count);
+
+function sayHi() {
+  return "Hi";
+}
+
+var count = 5;
+
+try {
+  console.log(total);
+} catch (error) {
+  console.log(error.name);
+}
+
+let total = 10;
+```
+
+### Block scope aur loop
+
+```js
+for (var i = 0; i < 3; i++) {
+  setTimeout(() => console.log("var:", i), 0);
+}
+
+for (let j = 0; j < 3; j++) {
+  setTimeout(() => console.log("let:", j), 0);
+}
+
+if (true) {
+  const secret = "block only";
+}
+console.log(typeof secret);
+```
+
+### Code kaise kaam kar raha hai?
+
+| Cheez | Matlab |
+| --- | --- |
+| `sayHi()` pehle call | Function declaration poori hoist hoti hai, `Hi` print hota hai |
+| `count` pehle log | `var` hoist hua lekin value `undefined` |
+| `total` pehle access | TDZ mein hai, `ReferenceError` print hota hai |
+| `var i` loop | Ek hi `i` share hua, teeno baar `3` print hota hai |
+| `let j` loop | Har iteration ka naya `j`, `0 1 2` print hota hai |
+| `typeof secret` | Block ke bahar nazar nahi aata, `undefined` |
+
+### Interview tip
+
+"Kya `let` hoist hota hai?" ka sahi jawab: haan, lekin initialize nahi hota, is liye TDZ mein access par `ReferenceError` aata hai. `var` hoist hokar `undefined` se initialize hota hai.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Naye code mein var use karna"
+  why="var function scoped hai, block se leak hota hai aur loops ke callbacks mein galat value deta hai."
+  better="Default const rakho, value badalni ho to let. var sirf purana code samajhne ke liye seekho."
+/>
+
+<Mistake
+  title="Function expression ko declaration se pehle call karna"
+  why="const handler = () => ... TDZ mein hota hai, declaration line se pehle call par ReferenceError aata hai."
+  better="Expressions ko pehle define karo, phir use karo. Ya function declaration likho agar upar call karna ho."
+/>
+
+<Mistake
+  title="Andar aur bahar same naam ka variable"
+  why="Inner variable bahar wale ko shadow kar deta hai, aap samajhte ho bahar wala badla lekin nahi badla."
+  better="Alag, wazeh naam rakho aur linter ka no-shadow rule on karo."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Variables: let, const, var](/courses/javascript/variables), [Functions](/courses/javascript/functions) |
+| **Saath mein** | [Arrow Functions](/courses/javascript/arrow-functions) |
+| **Baad mein** | [Closures](/courses/javascript/closures), [The this Keyword](/courses/javascript/this-keyword), [Modules](/courses/javascript/modules) |
+
+<Flow title="Suggested order">
+
+Variables
+↓
+Functions
+↓
+Scope & Hoisting
+↓
+Closures
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Scope | Variable kahan se accessible hai |
+| Lexical scope | Code kahan likha gaya, us se scope tay |
+| Block scope | `let`, `const`, `class` |
+| `var` | Function scoped, hoist hokar `undefined` |
+| TDZ | `let` / `const` declare line se pehle access par error |
+| Function declaration | Poori hoist, upar se call ho sakti hai |
+
+<Callout variant="important" title="Yaad rakhein">
+
+`const` aur `let` use karein, variables ko use se pehle declare karein, aur scope ko chhota rakhein. Isse hoisting ke zyada tar surprises khud khatam ho jate hain.
+
+</Callout>

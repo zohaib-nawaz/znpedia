@@ -1,50 +1,37 @@
-import type { AdjacentChapter, CourseMeta } from "@/types/course";
-import { slugToTitle } from "@/lib/utils";
+import type { AdjacentChapter, CourseChapter, CourseMeta } from "@/types/course";
 
-export function getChapterTitle(
+export function getChapterHref(courseSlug: string, chapterSlug: string): string {
+  return `/courses/${courseSlug}/${chapterSlug}`;
+}
+
+function toAdjacent(
   course: CourseMeta,
-  chapterSlug: string,
-  frontmatterTitle?: string
-): string {
-  if (frontmatterTitle) {
-    return frontmatterTitle;
+  chapter: CourseChapter | undefined
+): AdjacentChapter {
+  if (!chapter) {
+    return null;
   }
-  return slugToTitle(chapterSlug);
+  return {
+    slug: chapter.slug,
+    title: chapter.title,
+    href: getChapterHref(course.slug, chapter.slug),
+  };
 }
 
 export function getAdjacentChapters(
   course: CourseMeta,
   currentSlug: string
 ): { previous: AdjacentChapter; next: AdjacentChapter } {
-  const index = course.chapters.indexOf(currentSlug);
+  const index = course.chapters.findIndex((chapter) => chapter.slug === currentSlug);
   if (index === -1) {
     return { previous: null, next: null };
   }
-
-  const previousSlug = index > 0 ? course.chapters[index - 1] : null;
-  const nextSlug =
-    index < course.chapters.length - 1 ? course.chapters[index + 1] : null;
-
-  const base = `/courses/${course.slug}`;
-
   return {
-    previous: previousSlug
-      ? {
-          slug: previousSlug,
-          title: slugToTitle(previousSlug),
-          href: `${base}/${previousSlug}`,
-        }
-      : null,
-    next: nextSlug
-      ? {
-          slug: nextSlug,
-          title: slugToTitle(nextSlug),
-          href: `${base}/${nextSlug}`,
-        }
-      : null,
+    previous: toAdjacent(course, course.chapters[index - 1]),
+    next: toAdjacent(course, course.chapters[index + 1]),
   };
 }
 
 export function getDefaultChapterSlug(course: CourseMeta): string {
-  return course.chapters[0] ?? "introduction";
+  return course.chapters[0]?.slug ?? "introduction";
 }
