@@ -2,6 +2,7 @@ import type { MDXComponents } from "mdx/types";
 
 import { Callout } from "@/components/callout";
 import { CodeBlock } from "@/components/code-block";
+import { HeadingAnchor } from "@/components/heading-anchor";
 import { CompareTable } from "@/components/mdx-compare-table";
 import { Flow } from "@/components/mdx-flow";
 import { Mistake } from "@/components/mdx-mistake";
@@ -13,6 +14,8 @@ export const mdxComponents: MDXComponents = {
   Flow,
   Mistake,
   pre: (props) => <CodeBlock {...props} />,
+  h2: (props) => <HeadingAnchor as="h2" {...props} />,
+  h3: (props) => <HeadingAnchor as="h3" {...props} />,
   table: ({ className, ...props }) => (
     <div className="my-5 overflow-x-auto pl-3">
       <table

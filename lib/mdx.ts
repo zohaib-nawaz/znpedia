@@ -5,6 +5,7 @@ import { compileMDX } from "next-mdx-remote/rsc";
 import rehypeSlug from "rehype-slug";
 import remarkGfm from "remark-gfm";
 
+import { estimateReadingMinutes } from "@/lib/catalog";
 import { getChapterPath } from "@/lib/courses";
 import { mdxComponents } from "@/components/mdx-components";
 import { filterTocHeadings } from "@/lib/docs-config";
@@ -71,5 +72,6 @@ export async function getChapterMDX(courseSlug: string, chapterSlug: string) {
     content,
     frontmatter: { ...frontmatter, title, description },
     toc: filterTocHeadings(headings),
+    readingMinutes: estimateReadingMinutes(source),
   };
 }

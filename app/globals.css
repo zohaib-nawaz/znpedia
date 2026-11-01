@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -7,6 +9,8 @@
   --muted-foreground: #71717a;
   --border: #e4e4e7;
   --accent: #2d6a4f;
+  --accent-foreground: #ffffff;
+  --accent-soft: #e8f3ed;
   --card: #ffffff;
   --code-fg: #24292e;
   --code-comment: #77746b;
@@ -28,6 +32,8 @@
   --muted-foreground: #a1a1aa;
   --border: #27272a;
   --accent: #52b788;
+  --accent-foreground: #08130d;
+  --accent-soft: #12241a;
   --card: #111111;
   --code-fg: #e1e4e8;
   --code-comment: #737985;
@@ -49,6 +55,8 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
   --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-soft: var(--accent-soft);
   --color-card: var(--card);
   --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);
@@ -62,6 +70,51 @@ body {
 
 html {
   scroll-behavior: smooth;
+}
+
+.surface-inverse {
+  background-color: #07110c;
+  color: var(--foreground);
+}
+
+html.dark .surface-inverse {
+  background-color: #0f1a14;
+}
+
+.bg-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--border) 60%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--border) 60%, transparent) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+.docs-prose a.heading-anchor {
+  text-decoration: none;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--foreground);
+}
+
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 .syntax-highlighted {

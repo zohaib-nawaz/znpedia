@@ -10,15 +10,18 @@
       "chapters": [
         {
           "slug": "introduction",
-          "title": "Introduction"
+          "title": "Introduction",
+          "level": "Beginner"
         },
         {
           "slug": "core-philosophy",
-          "title": "Core Philosophy"
+          "title": "Core Philosophy",
+          "level": "Beginner"
         },
         {
           "slug": "learning-path-and-levels",
-          "title": "When to Learn What"
+          "title": "When to Learn What",
+          "level": "Beginner"
         }
       ]
     },
@@ -27,47 +30,58 @@
       "chapters": [
         {
           "slug": "self-documenting-code",
-          "title": "Self-Documenting Code (No Comments)"
+          "title": "Self-Documenting Code (No Comments)",
+          "level": "Beginner"
         },
         {
           "slug": "naming",
-          "title": "Naming Things"
+          "title": "Naming Things",
+          "level": "Beginner"
         },
         {
           "slug": "early-returns-and-braces",
-          "title": "Early Returns & Braces"
+          "title": "Early Returns & Braces",
+          "level": "Beginner"
         },
         {
           "slug": "conditionals-without-ternaries",
-          "title": "Conditionals Without Ternaries"
+          "title": "Conditionals Without Ternaries",
+          "level": "Intermediate"
         },
         {
           "slug": "small-functions",
-          "title": "Small Functions & Single Responsibility"
+          "title": "Small Functions & Single Responsibility",
+          "level": "Beginner"
         },
         {
           "slug": "file-size-and-organization",
-          "title": "File Size & Organization"
+          "title": "File Size & Organization",
+          "level": "Intermediate"
         },
         {
           "slug": "dry-without-coupling",
-          "title": "DRY Without Tight Coupling"
+          "title": "DRY Without Tight Coupling",
+          "level": "Intermediate"
         },
         {
           "slug": "fail-fast-and-no-fallbacks",
-          "title": "Fail Fast, No Defensive Fallbacks"
+          "title": "Fail Fast, No Defensive Fallbacks",
+          "level": "Intermediate"
         },
         {
           "slug": "readable-formatting",
-          "title": "Breathing Room & Transient Locals"
+          "title": "Breathing Room & Transient Locals",
+          "level": "Beginner"
         },
         {
           "slug": "constants-and-magic-values",
-          "title": "Constants & Magic Values"
+          "title": "Constants & Magic Values",
+          "level": "Beginner"
         },
         {
           "slug": "refactoring-safely",
-          "title": "Refactoring Safely"
+          "title": "Refactoring Safely",
+          "level": "Intermediate"
         }
       ]
     },
@@ -76,35 +90,43 @@
       "chapters": [
         {
           "slug": "strict-typing",
-          "title": "Strict Typing"
+          "title": "Strict Typing",
+          "level": "Intermediate"
         },
         {
           "slug": "types-beside-logic",
-          "title": "Types Beside Logic"
+          "title": "Types Beside Logic",
+          "level": "Intermediate"
         },
         {
           "slug": "service-layer",
-          "title": "Service Layer & Thin Controllers"
+          "title": "Service Layer & Thin Controllers",
+          "level": "Intermediate"
         },
         {
           "slug": "separation-of-concerns",
-          "title": "Separation of Concerns"
+          "title": "Separation of Concerns",
+          "level": "Intermediate"
         },
         {
           "slug": "dependency-injection",
-          "title": "Loose Coupling & Dependency Injection"
+          "title": "Loose Coupling & Dependency Injection",
+          "level": "Advanced"
         },
         {
           "slug": "project-structure",
-          "title": "Project Structure"
+          "title": "Project Structure",
+          "level": "Intermediate"
         },
         {
           "slug": "following-existing-patterns",
-          "title": "Following Existing Patterns"
+          "title": "Following Existing Patterns",
+          "level": "Advanced"
         },
         {
           "slug": "fix-root-causes",
-          "title": "Fix Root Causes, Remove Don't Gate"
+          "title": "Fix Root Causes, Remove Don't Gate",
+          "level": "Advanced"
         }
       ]
     },
@@ -113,39 +135,48 @@
       "chapters": [
         {
           "slug": "api-handler-shape",
-          "title": "API Handler Shape"
+          "title": "API Handler Shape",
+          "level": "Intermediate"
         },
         {
           "slug": "input-validation",
-          "title": "Input Validation at the Boundary"
+          "title": "Input Validation at the Boundary",
+          "level": "Intermediate"
         },
         {
           "slug": "error-handling-and-envelope",
-          "title": "Error Handling & Error Envelope"
+          "title": "Error Handling & Error Envelope",
+          "level": "Intermediate"
         },
         {
           "slug": "shared-api-contracts",
-          "title": "Shared API Contracts"
+          "title": "Shared API Contracts",
+          "level": "Advanced"
         },
         {
           "slug": "single-fetch-client",
-          "title": "One Fetch Client"
+          "title": "One Fetch Client",
+          "level": "Intermediate"
         },
         {
           "slug": "authentication",
-          "title": "Authentication Patterns"
+          "title": "Authentication Patterns",
+          "level": "Advanced"
         },
         {
           "slug": "authorization-and-tenancy",
-          "title": "Authorization & Multi-Tenancy"
+          "title": "Authorization & Multi-Tenancy",
+          "level": "Advanced"
         },
         {
           "slug": "rate-limiting-and-background-jobs",
-          "title": "Rate Limiting & Background Jobs"
+          "title": "Rate Limiting & Background Jobs",
+          "level": "Advanced"
         },
         {
           "slug": "logging",
-          "title": "Logging"
+          "title": "Logging",
+          "level": "Intermediate"
         }
       ]
     },
@@ -154,19 +185,23 @@
       "chapters": [
         {
           "slug": "database-design",
-          "title": "Database Naming & Design"
+          "title": "Database Naming & Design",
+          "level": "Intermediate"
         },
         {
           "slug": "migrations",
-          "title": "Safe Migrations"
+          "title": "Safe Migrations",
+          "level": "Advanced"
         },
         {
           "slug": "generated-types",
-          "title": "Generated Database Types"
+          "title": "Generated Database Types",
+          "level": "Intermediate"
         },
         {
           "slug": "query-patterns",
-          "title": "Query Patterns & Transactions"
+          "title": "Query Patterns & Transactions",
+          "level": "Advanced"
         }
       ]
     },
@@ -175,19 +210,23 @@
       "chapters": [
         {
           "slug": "secrets-management",
-          "title": "Secrets Management"
+          "title": "Secrets Management",
+          "level": "Beginner"
         },
         {
           "slug": "security-baseline",
-          "title": "Security Baseline"
+          "title": "Security Baseline",
+          "level": "Intermediate"
         },
         {
           "slug": "common-vulnerabilities",
-          "title": "Common Vulnerabilities (OWASP)"
+          "title": "Common Vulnerabilities (OWASP)",
+          "level": "Advanced"
         },
         {
           "slug": "dependency-security",
-          "title": "Dependencies & Supply Chain"
+          "title": "Dependencies & Supply Chain",
+          "level": "Advanced"
         }
       ]
     },
@@ -196,15 +235,18 @@
       "chapters": [
         {
           "slug": "react-component-practices",
-          "title": "React Component Practices"
+          "title": "React Component Practices",
+          "level": "Intermediate"
         },
         {
           "slug": "nextjs-practices",
-          "title": "Next.js Practices"
+          "title": "Next.js Practices",
+          "level": "Intermediate"
         },
         {
           "slug": "design-tokens-and-ui",
-          "title": "Design Tokens & UI Consistency"
+          "title": "Design Tokens & UI Consistency",
+          "level": "Intermediate"
         }
       ]
     },
@@ -213,23 +255,28 @@
       "chapters": [
         {
           "slug": "visual-hierarchy-and-spacing",
-          "title": "Visual Hierarchy & Spacing"
+          "title": "Visual Hierarchy & Spacing",
+          "level": "Intermediate"
         },
         {
           "slug": "forms-ux",
-          "title": "Forms & Funnels"
+          "title": "Forms & Funnels",
+          "level": "Intermediate"
         },
         {
           "slug": "onboarding-and-empty-states",
-          "title": "Onboarding & Empty States"
+          "title": "Onboarding & Empty States",
+          "level": "Intermediate"
         },
         {
           "slug": "dashboards-ux",
-          "title": "Dashboards"
+          "title": "Dashboards",
+          "level": "Advanced"
         },
         {
           "slug": "motion-and-iteration",
-          "title": "Motion & Design Iteration"
+          "title": "Motion & Design Iteration",
+          "level": "Advanced"
         }
       ]
     },
@@ -238,19 +285,23 @@
       "chapters": [
         {
           "slug": "definition-of-done",
-          "title": "Definition of Done"
+          "title": "Definition of Done",
+          "level": "Beginner"
         },
         {
           "slug": "testing-pyramid",
-          "title": "Testing Pyramid"
+          "title": "Testing Pyramid",
+          "level": "Intermediate"
         },
         {
           "slug": "endpoint-tests-first",
-          "title": "Endpoint Tests First"
+          "title": "Endpoint Tests First",
+          "level": "Advanced"
         },
         {
           "slug": "performance-measure-first",
-          "title": "Performance: Measure First"
+          "title": "Performance: Measure First",
+          "level": "Advanced"
         }
       ]
     },
@@ -259,27 +310,33 @@
       "chapters": [
         {
           "slug": "git-branches-and-commits",
-          "title": "Git Branches & Commits"
+          "title": "Git Branches & Commits",
+          "level": "Beginner"
         },
         {
           "slug": "pull-requests-and-code-review",
-          "title": "Pull Requests & Code Review"
+          "title": "Pull Requests & Code Review",
+          "level": "Intermediate"
         },
         {
           "slug": "ci-cd-and-environments",
-          "title": "CI/CD & Environments"
+          "title": "CI/CD & Environments",
+          "level": "Intermediate"
         },
         {
           "slug": "documentation-and-decisions",
-          "title": "Documentation & Decision Records"
+          "title": "Documentation & Decision Records",
+          "level": "Intermediate"
         },
         {
           "slug": "working-with-ai-agents",
-          "title": "Working with AI Coding Agents"
+          "title": "Working with AI Coding Agents",
+          "level": "Advanced"
         },
         {
           "slug": "production-readiness-checklist",
-          "title": "Production Readiness Checklist"
+          "title": "Production Readiness Checklist",
+          "level": "Advanced"
         }
       ]
     }

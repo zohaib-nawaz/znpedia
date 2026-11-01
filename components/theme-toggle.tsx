@@ -2,34 +2,58 @@
 
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
+
+const subscribe = () => () => {};
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
+  const mounted = useSyncExternalStore(subscribe, () => true, () => false);
 
   if (!mounted) {
     return (
-      <span className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border" />
+      <span
+        className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border"
+        aria-hidden
+      />
     );
   }
 
   const isDark = resolvedTheme === "dark";
 
+  const renderIcon = () => {
+    if (isDark) {
+      return <Sun className="h-4 w-4" aria-hidden />;
+    }
+
+    return <Moon className="h-4 w-4" aria-hidden />;
+  };
+
+  const describe = () => {
+    if (isDark) {
+      return "Switch to light mode";
+    }
+
+    return "Switch to dark mode";
+  };
+
+  const toggle = () => {
+    if (isDark) {
+      setTheme("light");
+      return;
+    }
+
+    setTheme("dark");
+  };
+
   return (
     <button
       type="button"
-      onClick={() => setTheme(isDark ? "light" : "dark")}
-      className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-      aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      onClick={toggle}
+      className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md border border-border text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground"
+      aria-label={describe()}
     >
-      {isDark ? (
-        <Sun className="h-4 w-4" aria-hidden />
-      ) : (
-        <Moon className="h-4 w-4" aria-hidden />
-      )}
+      {renderIcon()}
     </button>
   );
 }

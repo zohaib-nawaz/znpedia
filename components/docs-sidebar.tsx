@@ -11,9 +11,14 @@ type DocsSidebarProps = {
 export function DocsSidebar({ course, className, onNavigate }: DocsSidebarProps) {
   return (
     <nav className={className} aria-label={`${course.title} chapters`}>
-      <p className="mb-3 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-        {course.title}
-      </p>
+      <ActiveLink
+        href={`/courses/${course.slug}`}
+        onClick={onNavigate}
+        className="mb-4 block rounded-md px-2 py-1.5 text-[13.5px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        activeClassName="bg-muted text-foreground"
+      >
+        Course overview
+      </ActiveLink>
       <div className="space-y-5">
         {course.sections.map((section) => (
           <div key={section.title}>
