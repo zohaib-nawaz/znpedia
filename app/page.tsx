@@ -32,6 +32,7 @@ export default function HomePage() {
       <SiteHeader />
       <main id="main-content" className="flex-1">
         <Hero
+          badge={`${stats.chapterCount} chapters, ${stats.courseCount} courses, Roman Urdu mein`}
           startHref="/courses/javascript/introduction"
           stats={[
             { value: String(stats.courseCount), label: "Courses" },

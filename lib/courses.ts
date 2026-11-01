@@ -1,8 +1,10 @@
 import fs from "fs";
 import path from "path";
 
+import matter from "gray-matter";
+
 import { estimateReadingMinutes } from "@/lib/catalog";
-import type { CourseChapter, CourseMeta, CourseMetaFile } from "@/types/course";
+import type { ChapterFrontmatter, CourseChapter, CourseMeta, CourseMetaFile } from "@/types/course";
 
 const CONTENT_DIR = path.join(process.cwd(), "content/courses");
 
@@ -75,4 +77,13 @@ export function getCourseReadingMinutes(course: CourseMeta): number {
     .map((chapter) => getChapterPath(course.slug, chapter.slug))
     .filter((filePath) => fs.existsSync(filePath))
     .reduce((sum, filePath) => sum + estimateReadingMinutes(fs.readFileSync(filePath, "utf8")), 0);
+}
+
+export function getChapterFrontmatter(courseSlug: string, chapterSlug: string): ChapterFrontmatter {
+  const filePath = getChapterPath(courseSlug, chapterSlug);
+  if (!fs.existsSync(filePath)) {
+    return {};
+  }
+
+  return matter(fs.readFileSync(filePath, "utf8")).data as ChapterFrontmatter;
 }

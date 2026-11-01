@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { MobileSidebar } from "@/components/mobile-sidebar";
+import { SearchDialog } from "@/components/search/search-dialog";
 import { SiteLogo } from "@/components/site-logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import type { CourseMeta } from "@/types/course";
@@ -38,7 +39,8 @@ export function DocsHeader({ course }: DocsHeaderProps) {
             About
           </Link>
         </nav>
-        <div className="ml-auto md:ml-0">
+        <div className="ml-auto flex items-center gap-2 md:ml-0">
+          <SearchDialog />
           <ThemeToggle />
         </div>
       </div>

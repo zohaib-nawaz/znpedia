@@ -9,7 +9,7 @@ type SiteFooterProps = {
 
 export function SiteFooter({ chapterCount }: SiteFooterProps) {
   return (
-    <footer className="border-t border-border bg-muted/30">
+    <footer className="dark surface-inverse border-t border-border">
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.4fr_repeat(3,1fr)]">
         <div className="max-w-xs">
           <SiteLogo />

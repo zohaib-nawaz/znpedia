@@ -38,7 +38,8 @@ export const footerGroups: FooterGroup[] = [
     links: [
       { label: "About", href: "/about" },
       { label: "All courses", href: "/courses" },
-      { label: "Sitemap", href: "/sitemap.xml" },
+      { label: "Privacy", href: "/privacy" },
+      { label: "Terms", href: "/terms" },
     ],
   },
 ];

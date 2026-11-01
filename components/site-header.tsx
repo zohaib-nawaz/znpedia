@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { ActiveLink } from "@/components/active-link";
+import { SearchDialog } from "@/components/search/search-dialog";
 import { SiteLogo } from "@/components/site-logo";
 import { SiteMobileNav } from "@/components/site-mobile-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -26,9 +27,10 @@ export function SiteHeader() {
           </nav>
         </div>
         <div className="flex items-center gap-2">
+          <SearchDialog />
           <Link
             href="/courses/javascript/introduction"
-            className="hidden rounded-md bg-accent px-3.5 py-2 text-sm font-semibold text-accent-foreground transition-opacity duration-200 hover:opacity-90 md:inline-flex"
+            className="hidden rounded-md bg-accent px-3.5 py-2 text-sm font-semibold text-accent-foreground transition-opacity duration-200 hover:opacity-90 xl:inline-flex"
           >
             Start learning
           </Link>
