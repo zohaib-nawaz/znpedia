@@ -1,0 +1,195 @@
+---
+title: Generated Database Types
+description: Generated database types typescript mein, row types schema se banayein, haath se nahi, taake column rename par build fail ho aur production mein undefined na aaye.
+keywords:
+  - generated database types typescript
+  - supabase gen types
+  - drizzle infer select
+  - prisma generated types
+  - type safe database
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Database rows ki types schema se generate hoti hain, kabhi haath se nahi likhi jatin. Request, response aur domain types inhi generated `Row`, `Insert` aur `Update` types se derive hoti hain, aur har migration ke saath types usi pull request mein regenerate hoti hain.**
+
+</Callout>
+
+Database ka schema sach hai. TypeScript ki type us sach ki tasveer hai. Haath se banayi tasveer purani ho jati hai, generated tasveer har dafa schema se dobara banti hai.
+
+Har bara tool yeh deta hai: Supabase CLI `gen types`, Drizzle ka `$inferSelect`, Prisma ka generated client, Kysely ke codegen tools.
+
+## 2. Kyun zaroori hai?
+
+Migration ne `phone` ko `phone_number` kar diya. Haath se likhi `User` type mein abhi bhi `phone` hai. TypeScript khush, build green, deploy ho gaya. Production mein har user ka phone `undefined`, aur signup form ka insert fail kyunki `phone` column ab mojood hi nahi.
+
+Ulta bhi hota hai: ek column `nullable` tha, type mein `string` likha gaya. Code ne `.toLowerCase()` call kiya aur pehli null value par crash.
+
+<CompareTable leftTitle="Haath se likhi types" rightTitle="Generated types">
+
+Column rename par code compile hota rehta hai | Column rename par build fail hota hai
+Nullable column ko string likh diya | Generated type mein null saaf likha hota hai
+Har developer apni copy banata hai | Ek file, sab wahi import karte hain
+Schema aur type dheere dheere alag | CI check karta hai ke file schema se match kare
+Insert mein required column bhool jate hain | Insert type required columns maangti hai
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Achha, setup ek command ka hai | Shuru se type safety ka maza aata hai |
+| **Production code** | Lazmi | Schema drift ke bugs sirf runtime par dikhte hain |
+| **Senior level** | CI check aur derive karne ka andaz tay karna | Poori team ek hi source of truth par chale |
+
+Kab seekhein: jab aap pehli dafa TypeScript project ko database se jodein. [Strict Typing](/courses/best-practices/strict-typing) pehle samajh lein.
+
+## 4. Bura vs acha code
+
+### Bura: haath se row type
+
+```ts
+export interface User {
+  id: string;
+  name: string;
+  phone: string;
+  createdAt: Date;
+}
+
+const { data } = await supabase.from("users").select("*");
+const users = data as User[];
+```
+
+Database mein `phone_number` hai aur `created_at` string aata hai, lekin type kuch aur kehti hai. `as` ne compiler ki aankhein band kar din.
+
+### Acha: Supabase generated types
+
+Command, har migration ke baad:
+
+```bash
+npx supabase gen types typescript --local > lib/supabase/database.types.ts
+```
+
+Derive karein, dobara likhein nahi:
+
+```ts
+import type { Database } from "@/lib/supabase/database.types";
+
+type UsersTable = Database["public"]["Tables"]["users"];
+
+export type UserRow = UsersTable["Row"];
+export type NewUser = UsersTable["Insert"];
+export type UserPatch = UsersTable["Update"];
+
+export type PublicProfile = Pick<UserRow, "id" | "name" | "avatar_url">;
+```
+
+Client ko generated `Database` dein, taake har query typed ho:
+
+```ts
+const supabase = createServerClient<Database>(url, anonKey, { cookies: cookieAdapter });
+
+const { data } = await supabase.from("users").select("id, name, phone_number");
+```
+
+Ab agar migration `phone_number` ka naam badle aur types regenerate hon, to yeh line compile error degi.
+
+### Acha: Drizzle mein schema hi source hai
+
+```ts
+import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+
+export const users = pgTable("users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  phoneNumber: text("phone_number"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type UserRow = typeof users.$inferSelect;
+export type NewUser = typeof users.$inferInsert;
+```
+
+### Farq kya hai?
+
+| Cheez | Bura | Acha |
+| --- | --- | --- |
+| Source | Developer ki yaad | Database schema |
+| Rename | Runtime par `undefined` | Compile error |
+| Null | Chhup jata hai | `string \| null` saaf |
+| Insert | Koi check nahi | `Insert` type required fields maangti hai |
+| Cast | `as User[]` | Typed client, cast ki zaroorat nahi |
+
+## 5. Kaise apply karein?
+
+<Flow title="Types ka safar">
+
+Migration likho
+↓
+Local database par apply karo
+↓
+Types regenerate karo, usi PR mein commit
+↓
+Code compile errors theek karo
+↓
+CI dobara generate kar ke diff check kare
+
+</Flow>
+
+CI mein ek chhota step jo yaad dilaye:
+
+```bash
+npx supabase gen types typescript --local > lib/supabase/database.types.ts
+git diff --exit-code lib/supabase/database.types.ts
+```
+
+Agar file badli to matlab kisi ne migration ke baad types regenerate nahi kin, aur build fail ho jata hai.
+
+## 6. Exceptions aur common mistakes
+
+Har type generate nahi hoti. Jo shape kai tables se mil kar bane (jaise dashboard ka summary), ya jo kabhi database tak pohanchti hi nahi (jaise form ka draft), us ke liye apni type banana theek hai. Lekin us mein bhi fields generated types se `Pick` karein jahan mumkin ho. API contract bhi apni alag shape rakh sakta hai, mapper ke zariye, taake snake_case naam client tak na jayein.
+
+<Mistake
+  title="Generated file ko haath se edit karna"
+  why="Agli dafa regenerate hote hi aap ki tabdeeli ghayab ho jati hai aur bug wapas aa jata hai."
+  better="Generated file ko kabhi na chhoo, zaroorat ho to alag file mein us se derive karo."
+/>
+
+<Mistake
+  title="Migration aur types alag PRs mein"
+  why="Beech ke waqt mein main branch par code aur schema match nahi karte aur doosron ka build tootta hai."
+  better="Migration aur regenerated types hamesha ek hi pull request mein."
+/>
+
+<Mistake
+  title="Query result ko as se cast karna"
+  why="Typed client hote hue bhi cast compiler ko chup kara deta hai aur generated types ka faida khatam."
+  better="Client ko Database generic do aur select se khud sahi type aane do."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Strict Typing](/courses/best-practices/strict-typing), [Database Naming & Design](/courses/best-practices/database-design) |
+| **Saath mein** | [Safe Migrations](/courses/best-practices/migrations), [Types Beside Logic](/courses/best-practices/types-beside-logic) |
+| **Baad mein** | [Shared API Contracts](/courses/best-practices/shared-api-contracts), [Query Patterns & Transactions](/courses/best-practices/query-patterns) |
+
+## Final quick revision
+
+| Check | Sawal |
+| --- | --- |
+| Source | Kya koi row type haath se likhi hui hai? |
+| Derive | Kya domain types `Row`, `Insert`, `Update` se bani hain? |
+| Regenerate | Kya har migration ke saath types usi PR mein? |
+| CI | Kya CI generated file ka diff check karta hai? |
+| Cast | Kya query results par `as` lagaya gaya? |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Schema ek hi sach hai. Types us se generate karo, aur baqi har type usi se nikalo, taake database badle to compiler sab se pehle aap ko bataye.
+
+</Callout>

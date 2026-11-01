@@ -1,0 +1,299 @@
+---
+title: Forms & Funnels
+description: Form UX best practices, kam fields, ek column, blur par validation, error copy jo batati hai kya karna hai aur verb plus object button labels.
+keywords:
+  - form ux best practices
+  - inline form validation
+  - error message ux
+  - button label best practices
+  - checkout form fields
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Sirf woh poocho jis ka jawab kisi kaam aata hai, ek waqt mein kam poocho, aur har error user ko bataye ke ab kya karna hai.**
+
+</Callout>
+
+Form aur funnel (sign-up, setup, checkout, koi bhi multi-step flow) woh jagah hai jahan user aap ki app ko kuch deta hai. Har field, har error aur har button yahan ya to user ko aage le jata hai ya page chhorne par majboor karta hai.
+
+Rules chaar groups mein hain:
+
+| Group | Rules |
+| --- | --- |
+| **Kya poochna hai** | Har field ka naamzad use, checkout mein max 8 fields, jo pata hai woh prefill, account wall value ke baad |
+| **Layout** | Naye aur kabhi kabhi wale flow mein ek sawal per page, ek column, 3 ya zyada steps par "Step x of n" |
+| **Validation aur errors** | Field chhorne (blur) aur submit par validate, error copy jo kaam bataye, summary + field ke paas message |
+| **Buttons aur payment** | Verb plus object label, submit kabhi chupke se disabled nahi, loading button size na badle, card fields alag box mein |
+
+## 2. Kyun zaroori hai?
+
+Checkout research (jaise Baymard Institute ki large-scale studies) ke mutabiq average checkout mein 11 se zyada fields hote hain jabke zyada tar sites ka kaam taqreeban 8 mein ho jata hai. Cart chhorne ki wajah poochi gayi to taqreeban 17 percent ne kaha checkout bohat lamba tha, 18 percent ne kaha zabardasti account banwaya, 19 percent ne card details par bharosa nahi kiya, aur 12 percent ko total pehle nazar nahi aaya.
+
+Ek bari travel website ne sirf ek optional "Company" field hataya jise log galat samajh kar galat data daal rahe thay, aur saal ka taqreeban 12 million dollar ka farq para. Ek field bhi muft nahi.
+
+Validation timing par bhi research wazeh hai. Ek mashhoor usability study mein inline validation se success rate taqreeban 22 percent barha aur completion time taqreeban 42 percent kam hua, aur sab se acha timing "field chhorne ke baad" tha, "type karte hue" nahi. Typing ke dauran error dikhana aisa hai jaise koi aap ka jumla khatam hone se pehle tok de. Multi-column forms par studies dikhati hain ke users doosra column skip kar dete hain.
+
+<CompareTable leftTitle="Bina rules ke form" rightTitle="Rules ke saath form">
+
+14 fields, fax aur "how did you hear about us" samet | 6 fields, har ek ka use maloom
+"Invalid input. Please try again." aur field khali | "Enter a project name" aur input wahin
+Red toast "Form has errors" 5 second mein gayab | Upar summary jo har field tak link kare, focus wahan
+Product dekhne se pehle 6 field ki registration | Pehle try karo, phir "Save your project" par account
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Visible labels, ek column, blur par validation, verb plus object buttons | Yeh sab code mein utna hi kaam hai jitna galat tareeqa, bas aadat chahiye |
+| **Production code** | Saare rules, khaas taur par sign-up aur checkout | Har extra field aur har confusing error ka asar seedha sign-ups aur revenue par hota hai |
+| **Senior level** | Har naye field par "kaun use karega aur kis liye" PR mein poochna, funnel drop-off measure karna | Fields aksar "shayad kaam aaye" kar ke barhte hain, senior ka kaam unhein rokna hai |
+
+Kab seekhein: jab pehli dafa React mein controlled form ya Server Action wala form banayein. Pehle form se hi sahi pattern lagana asaan hai, baad mein 20 forms theek karna mushkil.
+
+## 4. Bura vs acha code
+
+### Bura form
+
+```tsx
+"use client";
+
+import { useState } from "react";
+
+export function NewProjectForm() {
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const emailValid = /^[^\s@]+@[^\s@]+$/.test(email);
+
+  return (
+    <form className="grid grid-cols-2 gap-4">
+      <input placeholder="Project name" value={name} onChange={(e) => setName(e.target.value)} />
+      <input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+      {!emailValid && <p className="text-red-500">Invalid email!</p>}
+      <input placeholder="Company (optional)" />
+      <button disabled={!name || !emailValid}>Submit</button>
+    </form>
+  );
+}
+```
+
+### Acha form
+
+```tsx
+"use client";
+
+import { useState } from "react";
+
+import { SubmitButton } from "./submit-button";
+import { createProject } from "./actions";
+import { validateProject, type ProjectErrors, type ProjectField } from "./validate-project";
+
+export function NewProjectForm() {
+  const [errors, setErrors] = useState<ProjectErrors>({});
+
+  function handleBlur(field: ProjectField, value: string) {
+    setErrors((current) => ({ ...current, [field]: validateProject({ [field]: value })[field] }));
+  }
+
+  return (
+    <form action={createProject} className="flex max-w-md flex-col gap-6">
+      <div className="flex flex-col gap-2">
+        <label htmlFor="name">Project name</label>
+        <input
+          id="name"
+          name="name"
+          aria-invalid={Boolean(errors.name)}
+          aria-describedby="name-error"
+          onBlur={(e) => handleBlur("name", e.target.value)}
+          className="rounded-md border px-3 py-2"
+        />
+        <p id="name-error" className="text-sm text-destructive">{errors.name}</p>
+      </div>
+      <div className="flex flex-col gap-2">
+        <label htmlFor="email">Work email</label>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          aria-invalid={Boolean(errors.email)}
+          aria-describedby="email-error"
+          onBlur={(e) => handleBlur("email", e.target.value)}
+          className="rounded-md border px-3 py-2"
+        />
+        <p id="email-error" className="text-sm text-destructive">{errors.email}</p>
+      </div>
+      <SubmitButton label="Create project" />
+    </form>
+  );
+}
+```
+
+Error messages ek jagah, field ke lafzon mein. Client par yeh check sirf UX ke liye hai, server par validation phir bhi zaroori hai:
+
+```ts
+export type ProjectField = "name" | "email";
+export type ProjectErrors = Partial<Record<ProjectField, string>>;
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function validateProject(values: Partial<Record<ProjectField, string>>): ProjectErrors {
+  const errors: ProjectErrors = {};
+  if (values.name !== undefined && !values.name.trim()) {
+    errors.name = "Enter a project name";
+  }
+  if (values.email !== undefined && !EMAIL_PATTERN.test(values.email)) {
+    errors.email = "Enter an email address like name@example.com";
+  }
+  return errors;
+}
+```
+
+Submit button jo sirf request ke dauran disabled ho aur apna size na badle:
+
+```tsx
+"use client";
+
+import { useFormStatus } from "react-dom";
+
+export function SubmitButton({ label }: { label: string }) {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      aria-busy={pending}
+      data-pending={pending}
+      className="group relative inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-primary-foreground"
+    >
+      <span className="group-data-[pending=true]:invisible">{label}</span>
+      <span
+        aria-hidden="true"
+        className="absolute hidden size-4 animate-spin rounded-full border-2 border-current border-t-transparent group-data-[pending=true]:block"
+      />
+    </button>
+  );
+}
+```
+
+Server Action submit par dobara validate karta hai aur fail hone par ek error summary wapas bhejta hai. Summary form ke upar aati hai ("There is a problem" aur har error ka link field tak), focus us par move hota hai, aur wahi message field ke neeche bhi dikhta hai. Toast jo 5 second mein gayab ho jaye, error ke liye kabhi nahi.
+
+### Farq kya hai?
+
+| Bura | Acha | Rule |
+| --- | --- | --- |
+| Placeholder hi label | Har field ka visible `label` | Placeholder type karte hi gayab ho jata hai |
+| `grid-cols-2` | `flex-col`, ek column | Doosra column skip hota hai |
+| Har keystroke par check | `onBlur` aur submit par | Validate after the field |
+| "Invalid email!" | "Enter an email address like name@example.com" | Error batata hai kya karna hai |
+| `disabled` jab tak form adhoora | `disabled` sirf `pending` ke dauran | Submit kabhi chupke se disabled nahi |
+| "Submit" | "Create project" | Verb plus object |
+| "Company (optional)" | Field hi nahi | Har field ka naamzad use |
+| Error sirf color se | `aria-invalid` + `aria-describedby` + text | Screen reader bhi samjhe |
+
+## 5. Kaise apply karein?
+
+<Flow title="Naya form banane ka tareeqa">
+
+Har field ke saamne likho kaun use karega aur kis liye
+↓
+Jis ka use nahi, woh field hatao
+↓
+Jo system ko pata hai prefill karo, jo laagu nahi woh skip
+↓
+Ek column, visible labels, ek sawal per page agar flow naya ya kabhi kabhi ka ho
+↓
+Blur aur submit par validate, error copy action wali
+↓
+Button verb plus object, sirf request ke dauran disabled
+
+</Flow>
+
+Baqi rules ki detail:
+
+| Rule | Detail |
+| --- | --- |
+| **Question protocol** | PR mein har field ke saath likho kaun answer use karta hai, jaise "Phone: installer visit confirm karne ke liye". Optional field ko bhi yahi justification chahiye |
+| **Field count** | Checkout ya paid sign-up max 8 fields. Baqi forms PR mein count likhein, 8 se upar har field justify |
+| **Ek sawal per page vs ek form** | Sign-up, setup, eligibility jaise naye ya branching flow: ek cheez per page. Record edit jaise baar baar wala kaam: ek page par max 5 related fields |
+| **Ek column** | Do fields ek row mein sirf tab jab woh ek hi concept hon, jaise expiry aur CVC, ya city aur postcode |
+| **Prefill aur skip** | Account wala email billing mein pehle se bhara aur editable. Jo sawal user ko eligible hi na rakhe, woh sab se pehle |
+| **Progress** | 3 ya zyada pages ho to "Step 2 of 3: Billing" aur step names. Har step save ho, reload par wahin se resume |
+| **Error copy** | Ek sentence, field ke lafz, kya karna hai. "Invalid", "please", "sorry", "oops" aur error codes nahi. Input kabhi clear nahi |
+| **Summary + inline** | Fail submit par upar summary jo har field tak link kare, focus summary par, aur same text field ke paas |
+| **Payment trust** | Card fields ek alag box mein (border ya tint jo page par aur kahin na ho), andar max 2 trust icons, aur tax aur fees samet total card fields se pehle |
+| **Account wall** | Pehle user dekhe use kya milega, account baad mein, jab tak product account ke bina chal hi na sake. Email ke saath social ya passkey sign-in bhi |
+| **Loading button** | Width aur height same, label chhup jaye, beech mein ek spinner. Label "Saving..." mein na badle. Har action ka apna pending flag |
+| **Destructive action** | Delete jaisi cheez se pehle confirm, aur confirm button bhi verb plus object: "Delete 3 files" |
+
+Error copy aur button labels ke examples. Labels sentence case mein hon ("Save and continue", "Save And Continue" nahi), kyunki achi label woh "information scent" hai jo pehle hi bata deti hai ke click ke baad kya hoga:
+
+| Bura | Acha |
+| --- | --- |
+| Invalid input. Please try again. | Enter a project name |
+| Email is invalid | Enter an email address like name@example.com |
+| Oops! Error 1023 | Enter a date in the past |
+| Password must have an entry | Enter a password with at least 8 characters |
+| Submit | Create project |
+| OK | Save changes |
+| Go | Search orders |
+| Yes | Delete 3 files |
+
+## 6. Exceptions aur common mistakes
+
+| Situation | Kya karein |
+| --- | --- |
+| **Password aur username** | Type karte hue live feedback allowed hai, lekin guidance ki tarah ("8 characters, 2 more"), error ki tarah nahi |
+| **Expert user ka roz wala form** | Ek page wala form theek hai, wizard yahan tang karta hai, bas 5 related fields tak |
+| **Product account ke bina chal hi nahi sakta** | Account pehle chalega, lekin social ya passkey option saath do |
+
+<Mistake
+  title="Submit button tab tak disabled jab tak form poora na ho"
+  why="Disabled button ka contrast kam hota hai aur user ko pata nahi chalta ke kya missing hai, woh bas phans jata hai."
+  better="Button enabled rakho, dabane par summary aur field errors dikhao. Disable sirf request ke dauran."
+/>
+
+<Mistake
+  title="Error par poora field ya form khali kar dena"
+  why="User ko sab dobara type karna parta hai aur bohat log yahin chhor dete hain."
+  better="Input wahin rakho, field ke paas ek sentence ka action wala message do."
+/>
+
+<Mistake
+  title="Error sirf ek toast mein dikhana"
+  why="Toast fade ho jata hai, user ko yaad rakhna parta hai ke kaun sa field galat tha."
+  better="Upar summary jo har field tak link kare, focus wahan move karo, aur same message field ke neeche."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Forms & Controlled Inputs](/courses/react/forms), [Visual Hierarchy & Spacing](/courses/best-practices/visual-hierarchy-and-spacing) |
+| **Saath mein** | [Forms & Validation](/courses/nextjs/forms-and-validation), [Actions, useActionState & useOptimistic](/courses/react/actions-and-form-hooks), [Input Validation at the Boundary](/courses/best-practices/input-validation) |
+| **Baad mein** | [Onboarding & Empty States](/courses/best-practices/onboarding-and-empty-states), [Error Handling & Error Envelope](/courses/best-practices/error-handling-and-envelope) |
+
+## Final quick revision
+
+| Check | Yaad rakhne wali baat |
+| --- | --- |
+| Har field | Kaun use karega aur kis liye, warna hatao. Checkout max 8 |
+| Layout | Ek column, visible labels, naye flow mein ek sawal per page, 3+ steps par "Step x of n" aur resume |
+| Validation | Blur aur submit par, typing ke dauran nahi |
+| Error copy | Ek sentence, kya karna hai, input wahin |
+| Fail submit | Summary + focus + field ke paas message |
+| Button | Verb plus object, sentence case |
+| Disabled | Sirf request ke dauran, spinner ke saath, size same |
+| Payment | Card fields alag box, max 2 trust icons, total pehle |
+| Account | Value pehle, account baad mein |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Har field user se waqt maangta hai aur har error us ka sabr. Kam poocho, sahi waqt par check karo, aur har message mein batao ke ab kya karna hai.
+
+</Callout>

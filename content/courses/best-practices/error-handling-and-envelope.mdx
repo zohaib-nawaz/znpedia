@@ -1,0 +1,227 @@
+---
+title: Error Handling & Error Envelope
+description: API error response format ek jaisa rakhein, sahi status code dein, 500 mein andar ki details leak na karein aur asal cause server log mein likhein.
+keywords:
+  - api error response format
+  - http status codes api
+  - error envelope json
+  - nextjs route handler errors
+  - error handling best practices
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Har API error ek hi JSON shape (envelope) mein aur sahi status code ke saath jata hai. Unexpected error ka asal cause sirf server log mein jata hai, client ko ek generic message milta hai.**
+
+</Callout>
+
+Envelope matlab ek fixed lifafa. Is course mein Next.js ke liye shape yeh hai:
+
+```json
+{ "error": "Human readable message", "code": "OPTIONAL_MACHINE_CODE" }
+```
+
+Shape kuch bhi ho sakta hai, jaise `{ message, errors, success }`. Asal baat yeh hai ke poori app mein **ek** ho, aur message strings constants hon taake tests wahi constant assert karein jo route return karta hai.
+
+## 2. Kyun zaroori hai?
+
+Ek endpoint `{ message }` deta hai, doosra `{ err }`, teesra status 200 ke saath `{ success: false }`. Frontend developer har call ke liye alag `if` likhta hai, aur ek jagah bhool jata hai. User ko "Something went wrong" ki jagah blank screen milti hai.
+
+Security wala bug zyada khatarnak hai. Catch block mein `error.message` client ko bhej diya gaya. Ab response mein likha aata hai `duplicate key value violates unique constraint "users_email_key"`. Attacker ko table ka naam, column aur yeh bhi pata chal gaya ke yeh email registered hai.
+
+<CompareTable leftTitle="Bina rule ke" rightTitle="Rule ke saath">
+
+Har endpoint ka apna error shape | Ek envelope, client ek jagah handle karta hai
+Error par bhi status 200 | Status code khud batata hai kya hua
+500 mein SQL error ya stack trace leak | Generic message, details log mein
+Login error batata hai ke account mojood hai | Auth errors account ka hona ya na hona chhupate hain
+Empty catch error ko nigal jata hai | Error ya to handle hota hai ya log ho kar upar jata hai
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Status codes sahi rakhna seekhein | 401, 403, 404, 422 ka farq yahin samajh aata hai |
+| **Production code** | Lazmi | Client, tests aur monitoring sab is shape par chalte hain |
+| **Senior level** | Envelope aur error classes design karna | Naya endpoint khud ba khud sahi errors deta hai |
+
+Kab seekhein: jab aap ka frontend pehli dafa kisi API ka error dikhana chahe.
+
+## 4. Bura vs acha code
+
+### Bura: har jagah apna tareeqa
+
+```ts
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const invite = await acceptInvite(body.token);
+    return Response.json({ success: true, invite });
+  } catch (e) {
+    const error = e as Error;
+    return Response.json({ success: false, message: error.message, stack: error.stack });
+  }
+}
+```
+
+Status hamesha 200 hai. Expired invite aur database crash dono ek jaise lagte hain. Stack trace aur internal message seedha browser mein.
+
+### Acha: error classes aur ek mapper
+
+File `lib/errors/errors.ts`:
+
+```ts
+import { NextResponse } from "next/server";
+
+import { GENERIC_ERROR } from "./errors.types";
+
+export class AppError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code: string,
+  ) {
+    super(message);
+  }
+}
+
+export function toErrorResponse(error: unknown, scope: string) {
+  if (error instanceof AppError) {
+    return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });
+  }
+
+  console.error(`[${scope}]`, error);
+
+  return NextResponse.json({ error: GENERIC_ERROR }, { status: 500 });
+}
+```
+
+Service expected halat mein `AppError` throw karti hai:
+
+```ts
+export async function acceptInvite(token: string) {
+  const invite = await findInviteByTokenHash(hashToken(token));
+  if (!invite) {
+    throw new AppError(INVITE_MESSAGES.notFound, 404, "INVITE_NOT_FOUND");
+  }
+  if (invite.expiresAt < new Date()) {
+    throw new AppError(INVITE_MESSAGES.expired, 410, "INVITE_EXPIRED");
+  }
+
+  return markInviteAccepted(invite.id);
+}
+```
+
+Handler sirf map karta hai:
+
+```ts
+export async function POST(request: Request) {
+  const parsed = acceptInviteSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: INVITE_MESSAGES.invalidInput }, { status: 422 });
+  }
+
+  try {
+    const invite = await acceptInvite(parsed.data.token);
+    return NextResponse.json({ invite });
+  } catch (error) {
+    return toErrorResponse(error, "invites:accept");
+  }
+}
+```
+
+### Farq kya hai?
+
+| Cheez | Bura code | Acha code |
+| --- | --- | --- |
+| Status | Hamesha 200 | 404, 410, 422, 500 jo sach hai |
+| Shape | `success`, `message`, `stack` | `error` aur `code` |
+| Unexpected error | Message aur stack client ko | Generic message, cause log mein `[scope]` ke saath |
+| Messages | Inline strings | Constants, tests bhi wahi use karte hain |
+
+### Status codes ka chhota naqsha
+
+| Status | Kab |
+| --- | --- |
+| 400 | Request hi kharab hai, jaise invalid JSON |
+| 401 | Caller authenticated nahi |
+| 403 | Authenticated hai lekin ijazat nahi |
+| 404 | Resource nahi mila |
+| 409 | Conflict, jaise duplicate ya out of stock |
+| 422 | Shape theek, values validation fail |
+| 429 | Rate limited, `Retry-After` header ke saath |
+| 500 | Sach mein unexpected failure |
+| 502 / 503 | Upstream service ya configuration ka masla |
+
+## 5. Kaise apply karein?
+
+<Flow title="Error ka safar">
+
+Service expected halat mein typed error throw kare
+↓
+Unexpected error ko na pakro, upar jane do
+↓
+Handler ek mapper se envelope banaye
+↓
+Known error apne status ke saath
+↓
+Baqi sab 500, cause log mein, client ko generic message
+
+</Flow>
+
+## 6. Exceptions aur common mistakes
+
+Kabhi kabhi 404 jaan boojh kar 403 ki jagah diya jata hai taake attacker ko pata na chale ke resource mojood hai. Yeh theek hai agar soch samajh kar kiya gaya ho aur team ko pata ho. Login aur "forgot password" mein bhi jawab ek jaisa rakhein, chahe account ho ya na ho.
+
+<Mistake
+  title="Catch block khaali chhor dena"
+  why="Error ghayab ho jata hai, user ko galat success dikhta hai aur log mein koi nishaan nahi hota."
+  better="Ya to error ko handle karo aur sahi response do, ya log kar ke upar throw karo."
+/>
+
+<Mistake
+  title="500 response mein error.message bhejna"
+  why="Database, file path aur library ki andar ki details attacker tak pohanchti hain."
+  better="Client ko generic constant do aur asal error scope prefix ke saath server par log karo."
+/>
+
+<Mistake
+  title="Signed in user ko permission na hone par 401 dena"
+  why="Client samajhta hai session khatam ho gaya aur user ko baar baar login page par bhejta hai."
+  better="401 sirf missing ya invalid credentials ke liye, ijazat na ho to 403."
+/>
+
+<Mistake
+  title="Har layer par log kar ke rethrow karna"
+  why="Ek hi error log mein teen chaar dafa aata hai aur asal jagah dhoondhna mushkil ho jata hai."
+  better="Error ko ek jagah log karo, aam taur par wahan jahan woh response mein badalta hai."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Error Handling](/courses/javascript/error-handling), [Route Handlers (API)](/courses/nextjs/route-handlers), [API Handler Shape](/courses/best-practices/api-handler-shape) |
+| **Saath mein** | [Input Validation at the Boundary](/courses/best-practices/input-validation), [Logging](/courses/best-practices/logging) |
+| **Baad mein** | [One Fetch Client](/courses/best-practices/single-fetch-client), [Shared API Contracts](/courses/best-practices/shared-api-contracts) |
+
+## Final quick revision
+
+| Check | Sawal |
+| --- | --- |
+| Envelope | Kya har error ek hi shape mein hai? |
+| Status | Kya status code sach batata hai? |
+| Leak | Kya 500 kabhi `error.message` ya stack bhejta hai? |
+| Log | Kya unexpected error `[scope]` ke saath log hota hai? |
+| Constants | Kya messages constants hain jo tests bhi use karte hain? |
+| Auth | Kya auth errors account ka hona chhupate hain? |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Client ko utna batao jitna use agla qadam uthane ke liye chahiye. Baqi saari kahani log mein likho, jahan sirf aap ki team use parh sake.
+
+</Callout>

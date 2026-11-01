@@ -1,0 +1,204 @@
+---
+title: Refactoring Safely
+description: Safe refactoring small steps mein kaise karein. Behaviour badle bina code behtar karna, tests ka safety net, chhote commits aur scope mein rehna.
+keywords:
+  - safe refactoring small steps
+  - refactoring best practices
+  - refactor without breaking
+  - characterization tests
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Refactoring ka matlab hai behaviour badle bina code ki shakal behtar karna. Ek waqt mein ek chhota qadam lo, har qadam ke baad tests chalao, aur code ko kabhi toota hua mat chhoro.**
+
+</Callout>
+
+Refactoring aur naya feature do alag kaam hain. Refactor mein app bahar se bilkul waisi hi rehti hai: same input, same output. Sirf andar ki tarteeb badalti hai.
+
+| Hissa | Matlab |
+| --- | --- |
+| **Chhote qadam** | Ek rename, ek extract, ek move, phir check |
+| **Hamesha chalta hua** | Har qadam ke baad tests green |
+| **Behaviour alag commit** | Refactor ka commit aur feature ka commit alag |
+| **Scope mein raho** | Sirf woh saaf karo jo aapke kaam se juda hai, baaqi note karo |
+| **Callers check** | Purana code delete karne se pehle dekho kaun use karta hai |
+
+## 2. Kyun zaroori hai?
+
+Bara "sab kuch theek kar deta hoon" refactor sab se khatarnak kaam hai. 40 files badli, kuch toota, aur ab pata nahi kaunsi badli ne toda.
+
+<CompareTable leftTitle="Big bang refactor" rightTitle="Chhote safe qadam">
+
+3 din ka kaam, beech mein kuch nahi chalta | Har ghante code chalta hua
+Toota to 40 files mein dhoondo | Toota to sirf aakhri qadam check karo
+Refactor aur nayi feature ek PR mein, review namumkin | Refactor PR mein sirf shakal badli, review aasaan
+Main branch aage nikal gayi, bara merge conflict | Chhote PR jaldi merge
+Revert karo to sab kuch jata hai | Sirf ek chhota commit revert
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Git commit har chhote qadam par | Toot jaye to wapas jana aasaan, yeh aadat jaldi daalo |
+| **Production code** | Tests aur chhote PR lazmi | Users par asar wala bug refactor se nahi aana chahiye |
+| **Senior level** | Bare refactors ka plan aur tukre | Senior bari tabdeeli ko safe chhote hisson mein baanta hai |
+
+## 4. Bura vs acha code
+
+Kaam: `discount` function saaf karna hai.
+
+```ts
+export function discount(c: any, t: number) {
+  if (c.vip) { if (t > 1000) return t * 0.8; else return t * 0.9; }
+  if (c.orders > 10) return t * 0.95;
+  return t;
+}
+```
+
+**Bura tareeqa:** ek hi baar mein naam, signature, logic aur types sab badal diye, aur saath mein "chhoti" behaviour change bhi daal di.
+
+```ts
+export function price(customer: Customer, total: number) {
+  if (customer.tier === "vip") {
+    return total * VIP_RATE;
+  }
+
+  return total;
+}
+```
+
+Loyal customers (10 se zyada orders) ka 5 percent discount chupke se gayab ho gaya. Koi test nahi tha, koi nahi jaanta.
+
+**Acha tareeqa:** pehle safety net, phir chhote qadam.
+
+Qadam 1: maujooda behaviour ko test mein pakar lo.
+
+```ts
+test.each([
+  [{ vip: true, orders: 0 }, 2000, 1600],
+  [{ vip: true, orders: 0 }, 500, 450],
+  [{ vip: false, orders: 11 }, 100, 95],
+  [{ vip: false, orders: 2 }, 100, 100],
+])("discount(%o, %i) is %i", (customer, total, expected) => {
+  expect(discount(customer, total)).toBe(expected);
+});
+```
+
+Qadam 2, 3, 4: ek ek kar ke badlo, har dafa tests chalao.
+
+```ts
+const VIP_BIG_ORDER_THRESHOLD = 1000;
+const VIP_BIG_ORDER_RATE = 0.8;
+const VIP_RATE = 0.9;
+const LOYAL_MIN_ORDERS = 10;
+const LOYAL_RATE = 0.95;
+
+export function discount(customer: Customer, total: number) {
+  if (customer.vip) {
+    return total * vipRate(total);
+  }
+
+  if (customer.orders > LOYAL_MIN_ORDERS) {
+    return total * LOYAL_RATE;
+  }
+
+  return total;
+}
+
+function vipRate(total: number) {
+  if (total > VIP_BIG_ORDER_THRESHOLD) {
+    return VIP_BIG_ORDER_RATE;
+  }
+
+  return VIP_RATE;
+}
+```
+
+| Farq kya hai? | Bura | Acha |
+| --- | --- | --- |
+| Safety net | Koi test nahi | Pehle maujooda behaviour ka test |
+| Qadam | Sab ek saath | Types, phir constants, phir braces, phir extract |
+| Behaviour | Loyal discount gayab | Bilkul same, tests saboot hain |
+| Naam ka badlav | Function ka naam bhi badla, saare callers toote | Public naam wahi, alag PR mein agar zaroori |
+
+## 5. Kaise apply karein?
+
+<Flow title="Safe refactor ka loop">
+
+Tests hain? Nahi to pehle maujooda behaviour ka test likho
+↓
+Ek chhota badlav: rename, extract ya move
+↓
+Tests aur typecheck chalao
+↓
+Green? Commit karo
+↓
+Red? Sirf aakhri qadam wapas lo
+↓
+Agla chhota badlav
+
+</Flow>
+
+Refactor kab karein? Jab code mein yeh nishaan hon: duplication, lamba function jo kai kaam kare, uljhi hui conditions, ya naam jo kuch nahi batate. Sab se achha waqt: **jab aap usi code mein feature add karne wale hon.** Pehle refactor karo taake feature aasaan ho, phir feature alag commit mein.
+
+Editor ke built-in refactor tools (Rename Symbol, Extract Function, Move to File) haath se karne se zyada safe hain, kyunki woh har reference update karte hain.
+
+## 6. Exceptions aur common mistakes
+
+Kabhi poora rewrite waqai sasta hota hai, jaise chhoti file jis ka koi caller nahi ya prototype code. Lekin production mein "rewrite from scratch" aksar purane chhupe hue rules kho deta hai jo koi document nahi kar paya. Pehle tests se un rules ko pakro.
+
+Public API ya doosri team ke istemal wale function ka signature tabhi badlo jab us ki migration aapke kaam ka hissa ho.
+
+<Mistake
+  title="Refactor aur behaviour change ek hi commit mein"
+  why="Bug aaye to pata nahi chalta shakal badalne se aaya ya naye logic se, aur reviewer dono ek saath nahi jaanch sakta."
+  better="Pehle refactor commit jis mein behaviour same, phir alag commit mein nayi feature."
+/>
+
+<Mistake
+  title="Bina tests ke bara refactor"
+  why="Koi saboot nahi ke behaviour same raha, chhupe hue edge cases chupke se toot jate hain."
+  better="Pehle maujooda behaviour ke tests likho, chahe woh behaviour ajeeb lage."
+/>
+
+<Mistake
+  title="Kaam ke beech poori codebase saaf karne lag jana"
+  why="PR bohat bara ho jata hai, scope bhatak jata hai aur asli kaam der se pohanchta hai."
+  better="Jo aapke kaam se juda hai woh saaf karo, baaqi ek alag task ke taur par note karo."
+/>
+
+<Mistake
+  title="Purana function bina callers dekhe delete"
+  why="Kisi aur module ya script mein use ho raha tha, build ya production toot gaya."
+  better="Pehle saare references search karo, phir delete karo."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Small Functions](/courses/best-practices/small-functions), [DRY Without Tight Coupling](/courses/best-practices/dry-without-coupling) |
+| **Saath mein** | [Testing Pyramid](/courses/best-practices/testing-pyramid), [Git Branches & Commits](/courses/best-practices/git-branches-and-commits) |
+| **Baad mein** | [Following Existing Patterns](/courses/best-practices/following-existing-patterns), [Fix Root Causes](/courses/best-practices/fix-root-causes), [Pull Requests & Code Review](/courses/best-practices/pull-requests-and-code-review) |
+
+## Final quick revision
+
+| Check | Sawal |
+| --- | --- |
+| Safety net | Kya badalne se pehle tests hain? |
+| Qadam | Kya har badlav itna chhota hai ke toote to foran pata chale? |
+| Green | Kya har qadam ke baad tests aur typecheck chale? |
+| Alag commit | Kya refactor aur feature alag commits mein hain? |
+| Scope | Kya sirf kaam se juda code chheda? |
+| Callers | Kya delete se pehle references check kiye? |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Refactor ka wada hai "bahar se kuch nahi badla". Is wade ka saboot tests hain, aur chhote qadam is wade ko nibhana aasaan banate hain.
+
+</Callout>

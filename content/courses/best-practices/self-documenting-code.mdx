@@ -1,0 +1,185 @@
+---
+title: Self-Documenting Code (No Comments)
+description: Self documenting code comments ke bina kaise likhein. Comment ki jagah naam, named function aur constant, aur kab comment waqai zaroori hai.
+keywords:
+  - self documenting code comments
+  - code without comments
+  - when to write comments
+  - clean code comments
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Code apna matlab khud bataye. Samjhane wala comment likhne ki bajaye naam badlo, function nikalo ya constant banao.**
+
+</Callout>
+
+Is course ka strict version yeh hai: code mein **koi explanatory comment nahi**. Na section banners, na docblocks, na "yeh line kyun hai" wale comments. Agar kisi line ko samjhane ki zaroorat hai, to code abhi itna saaf nahi hua.
+
+Sirf chand comments allowed hain jo machine ke liye hain ya kisi aur jagah reh nahi sakte:
+
+| Allowed | Misaal |
+| --- | --- |
+| Linter ya type-checker directive | `// eslint-disable-next-line` |
+| Code generator marker | Generated file ka header |
+| API docs generate karne wale blocks | OpenAPI ke liye doc comments, agar tool unhi se docs banata hai |
+| SQL migration ka header | Yeh migration kyun hai |
+| `.env.example` mein har key ki wazahat | Yeh variable na ho to kya toot jata hai |
+
+Jo "kyun" lamba arsa yaad rehna chahiye (kisi vendor ki ajeeb limit, koi soocha samjha faisla), woh project ke decisions document mein jata hai, code mein nahi.
+
+## 2. Kyun zaroori hai?
+
+Comment ka sab se bara masla: **compiler use check nahi karta**. Code badal jata hai, comment wahi rehta hai, aur ab woh jhoot bol raha hai.
+
+<CompareTable leftTitle="Comments se samjhana" rightTitle="Code se samjhana">
+
+Code badla, comment purana reh gaya aur galat raah dikhata hai | Naam badla to har jagah badla, compiler check karta hai
+Ganda naam aur upar comment, dono parhne parte hain | Achha naam, ek hi cheez parhni hai
+Comment ki wajah se bura code chhupa rehta hai | Saaf karne ka pressure, code behtar hota hai
+Commented-out code ka dher | Mara hua code delete, Git mein history
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Notes ke liye comments theek hain, lekin aadat daalo ke pehle naam behtar karo | Seekhte waqt comments yaaddasht hain, lekin naming ki practice abhi shuru karo |
+| **Production code** | Team ka rule follow karo | Purane comments production mein confusion aur bugs paida karte hain |
+| **Senior level** | Faisla karo kaunse comments allowed hain | Senior team ke liye clear list banata hai |
+
+## 4. Bura vs acha code
+
+```ts
+function check(u: User) {
+  // check if trial is expired (14 days)
+  if (Date.now() - u.createdAt.getTime() > 14 * 24 * 60 * 60 * 1000) {
+    // user is not on a paid plan
+    if (u.plan === "free") {
+      return false;
+    }
+  }
+
+  return true;
+}
+```
+
+```ts
+const TRIAL_LENGTH_MS = 14 * 24 * 60 * 60 * 1000;
+
+function isTrialExpired(user: User) {
+  return Date.now() - user.createdAt.getTime() > TRIAL_LENGTH_MS;
+}
+
+function canAccess(user: User) {
+  if (!isTrialExpired(user)) {
+    return true;
+  }
+
+  return user.plan !== "free";
+}
+```
+
+| Farq kya hai? | Bura | Acha |
+| --- | --- | --- |
+| Function naam | `check` kuch nahi batata | `canAccess` jawab batata hai |
+| Condition | Comment parh kar samajh aati hai | `isTrialExpired` khud bolta hai |
+| Number | `14` comment mein, code mein lamba hisaab | `TRIAL_LENGTH_MS` ek jagah |
+| Risk | Trial 30 din ho jaye to comment galat reh jayega | Constant badlo, sab theek |
+
+Har comment ek ishara tha ke kya extract karna hai. Pehla comment ek **predicate** bana, number ek **constant** bana.
+
+## 5. Kaise apply karein?
+
+<Flow title="Comment likhne ka dil kare to">
+
+Poocho: comment kya samjha raha hai?
+↓
+Ek value ka matlab? Named constant banao
+↓
+Ek condition ka matlab? isX ya hasX predicate banao
+↓
+Ek block kya karta hai? Us block ka named function banao
+↓
+Lamba faisla ya kyun? Decisions doc ya PR description mein likho
+↓
+Comment delete karo
+
+</Flow>
+
+| Comment ki qisam | Behtar jagah |
+| --- | --- |
+| "yeh kya karta hai" | Function ya variable ka naam |
+| "is number ka matlab" | Named constant |
+| "yeh condition kyun" | Named predicate |
+| "humne yeh faisla kyun kiya" | Decisions document |
+| "yeh change kyun" | Commit message ya PR description |
+| Purana code | Delete, Git history |
+
+## 6. Exceptions aur common mistakes
+
+**Honest baat:** "comments bilkul nahi" ek sakht house rule hai. Bohat si achi teams "kyun" wale comments allow karti hain, jaise kisi browser bug ka workaround ya kisi algorithm ka source. Public libraries mein JSDoc bhi aam hai kyunki editor use dikhata hai. Trade-off yeh hai: sakht rule code ko saaf rakhne par majboor karta hai, lekin kabhi kabhi ek line ka "kyun" kisi aur jagah dhoondna parta hai. Jo bhi team ka rule ho, "kya" wale comments har jagah bekaar hain.
+
+<Mistake
+  title="Code ko dohrane wala comment"
+  why="i ko 1 se barhao jaisa comment sirf shor hai aur code badalne par galat ho jata hai."
+  better="Comment delete karo. Agar code khud saaf nahi to naam behtar karo."
+/>
+
+<Mistake
+  title="Commented-out code chhor dena"
+  why="Koi nahi jaanta yeh wapas aayega ya nahi, aur yeh dheere dheere aaspaas ke code se mismatch ho jata hai."
+  better="Delete karo. Zaroorat ho to Git history se wapas le aao."
+/>
+
+<Mistake
+  title="Section banners se lambi file ko organize karna"
+  why="Banner batata hai ke file mein kai alag kaam hain, yani file bohat bari hai."
+  better="Har section ko apni file ya function mein nikalo."
+/>
+
+<Mistake
+  title="Linter directive ko bina wajah lagana"
+  why="eslint-disable allowed comment hai lekin asal masla chhupa deta hai."
+  better="Pehle rule ki shikayat theek karo, directive sirf tab jab koi aur rasta na ho."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Core Philosophy](/courses/best-practices/core-philosophy) |
+| **Saath mein** | [Naming Things](/courses/best-practices/naming), [Constants & Magic Values](/courses/best-practices/constants-and-magic-values) |
+| **Baad mein** | [Small Functions](/courses/best-practices/small-functions), [Documentation & Decision Records](/courses/best-practices/documentation-and-decisions) |
+
+<Flow title="Suggested order">
+
+Self-Documenting Code
+↓
+Naming Things
+↓
+Early Returns & Braces
+↓
+Small Functions
+
+</Flow>
+
+## Final quick revision
+
+| Check | Sawal |
+| --- | --- |
+| Naam | Kya function ka naam batata hai ke yeh kya deta hai? |
+| Predicate | Kya har mushkil condition ka naam hai? |
+| Constant | Kya koi bina naam ka number ya string bacha hai? |
+| Mara hua code | Kya koi commented-out code hai? Delete karo |
+| Kyun | Kya lamba faisla decisions doc mein hai? |
+| Allowed list | Sirf directives, generator markers, migration header, env example |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Har comment ek sawal hai: "kya main yeh naam, function ya constant se keh sakta hoon?" Aksar jawab haan hota hai.
+
+</Callout>

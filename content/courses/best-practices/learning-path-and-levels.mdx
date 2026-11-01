@@ -1,0 +1,188 @@
+---
+title: When to Learn What
+description: Junior vs senior developer practices ka roadmap. Beginner, production developer aur senior kis practice par focus karein, aur kis order mein seekhein.
+keywords:
+  - junior vs senior developer practices
+  - developer learning roadmap
+  - beginner coding best practices
+  - senior developer roadmap
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Saari best practices ek saath mat seekho. Apne level ki practices pehle pakki karo, phir agle level par jao.**
+
+</Callout>
+
+Is course mein 57 chapters hain. Beginner agar pehle hafte mein migrations, multi-tenancy aur supply chain security parhe to kuch bhi yaad nahi rahega. Yeh chapter ek roadmap hai: kaunsi practice kab.
+
+Teen levels hain:
+
+| Level | Kaun | Main sawal |
+| --- | --- | --- |
+| **Beginner** | Pehla saal, learning projects | "Kya mera code parhne layak hai?" |
+| **Production developer** | Team mein real users ke liye code | "Kya mera code safe, testable aur maintainable hai?" |
+| **Senior** | Design aur review ka zimmedar | "Kya system aur team sahi direction mein hain?" |
+
+## 2. Kyun zaroori hai?
+
+Har practice ek problem solve karti hai. Jab tak woh problem aap ne dekhi nahi, practice bekaar ka bojh lagti hai. Isi liye order ahem hai.
+
+<CompareTable leftTitle="Sab kuch ek saath" rightTitle="Level ke hisaab se">
+
+Rules yaad, lekin wajah samajh nahi aayi | Har rule us waqt aaya jab problem saamne thi
+Chhote project par heavy architecture | Project ke size ke mutabiq practices
+Overwhelm ho kar seekhna chhor diya | Har stage par chhoti jeet, confidence barhta hai
+Interview mein buzzwords, kaam mein kuch nahi | Har practice ka asli tajurba
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Clean Code section ki aadat | Naming, chhote functions aur early returns har code mein kaam aate hain |
+| **Production code** | Types, API, database, security aur testing bhi | Ab galti ka asar users aur data par hai |
+| **Senior level** | Architecture, trade-offs aur team workflow | Senior doosron ke liye raasta banata hai |
+
+## 4. Bura vs acha code
+
+Ek hi chhota kaam teen levels par kaisa dikhta hai. Task: user ko id se load karna.
+
+**Beginner level par focus:** naam, braces, early return.
+
+```ts
+async function load(id: string) {
+  const user = await db.user.findUnique({ where: { id } });
+
+  if (!user) {
+    throw new Error(`User ${id} not found`);
+  }
+
+  return user;
+}
+```
+
+**Production level par focus:** input validation, typed result, logic service mein.
+
+```ts
+export async function GET(request: Request, ctx: RouteContext<"/api/users/[id]">) {
+  const { id } = userParamsSchema.parse(await ctx.params);
+
+  return Response.json(await users.find(id));
+}
+```
+
+**Senior level par focus:** authorization, tenant scoping, aur yeh ke team ka har handler isi shape mein ho.
+
+```ts
+export async function find(caller: Caller, id: string) {
+  const user = await db.user.findFirst({ where: { id, orgId: caller.orgId } });
+
+  if (!user) {
+    throw new NotFoundError("user");
+  }
+
+  return user;
+}
+```
+
+| Farq kya hai? | Beginner | Production | Senior |
+| --- | --- | --- | --- |
+| Focus | Code saaf ho | Code safe aur layered ho | Poora system consistent aur secure ho |
+| Sawal | Naam sahi hai? | Input check hua? | Kya doosre org ka user leak ho sakta hai? |
+
+## 5. Kaise apply karein?
+
+**Stage 1: Beginner (pehle 3 se 6 mahine)**
+
+| Practice | Chapter |
+| --- | --- |
+| Soch | [Core Philosophy](/courses/best-practices/core-philosophy) |
+| Naam | [Naming Things](/courses/best-practices/naming) |
+| Flow | [Early Returns & Braces](/courses/best-practices/early-returns-and-braces) |
+| Functions | [Small Functions](/courses/best-practices/small-functions) |
+| Formatting | [Breathing Room & Transient Locals](/courses/best-practices/readable-formatting) |
+| Constants | [Constants & Magic Values](/courses/best-practices/constants-and-magic-values) |
+| Comments | [Self-Documenting Code](/courses/best-practices/self-documenting-code) |
+| Secrets | [Secrets Management](/courses/best-practices/secrets-management) |
+| Git | [Git Branches & Commits](/courses/best-practices/git-branches-and-commits) |
+
+**Stage 2: Production developer**
+
+| Practice | Chapter |
+| --- | --- |
+| Clean code advanced | [Conditionals Without Ternaries](/courses/best-practices/conditionals-without-ternaries), [DRY Without Tight Coupling](/courses/best-practices/dry-without-coupling), [Fail Fast](/courses/best-practices/fail-fast-and-no-fallbacks) |
+| Types aur layers | [Strict Typing](/courses/best-practices/strict-typing), [Service Layer](/courses/best-practices/service-layer) |
+| API | [Input Validation](/courses/best-practices/input-validation), [Error Handling](/courses/best-practices/error-handling-and-envelope) |
+| Data | [Database Design](/courses/best-practices/database-design) |
+| Quality | [Definition of Done](/courses/best-practices/definition-of-done), [Testing Pyramid](/courses/best-practices/testing-pyramid), [Code Review](/courses/best-practices/pull-requests-and-code-review) |
+
+**Stage 3: Senior**
+
+| Practice | Chapter |
+| --- | --- |
+| Design | [Dependency Injection](/courses/best-practices/dependency-injection), [Following Existing Patterns](/courses/best-practices/following-existing-patterns), [Fix Root Causes](/courses/best-practices/fix-root-causes) |
+| Security | [Authorization & Multi-Tenancy](/courses/best-practices/authorization-and-tenancy), [OWASP](/courses/best-practices/common-vulnerabilities) |
+| Data | [Safe Migrations](/courses/best-practices/migrations), [Query Patterns](/courses/best-practices/query-patterns) |
+| Shipping | [Production Readiness](/courses/best-practices/production-readiness-checklist), [Performance: Measure First](/courses/best-practices/performance-measure-first) |
+
+<Flow title="Roadmap">
+
+Clean Code ki aadat
+↓
+Types aur service layer
+↓
+API, database aur security basics
+↓
+Testing aur code review
+↓
+Architecture, tenancy aur production readiness
+
+</Flow>
+
+## 6. Exceptions aur common mistakes
+
+Yeh roadmap guide hai, jail nahi. Agar aapki pehli job mein hi migrations likhni hain to wahi chapter pehle parhein. Kaam ki zaroorat order ko badal sakti hai.
+
+<Mistake
+  title="Senior topics pehle parhna kyunki woh impressive lagte hain"
+  why="Bunyad ke bina architecture patterns sirf naam reh jate hain aur chhote project ko bhaari bana dete hain."
+  better="Pehle naming, functions aur flow pakka karein. Architecture tab samajh aata hai jab ganda code khud dekh liya ho."
+/>
+
+<Mistake
+  title="Beginner level ko kabhi chhorna hi nahi"
+  why="Sirf saaf code kaafi nahi, production mein security, validation aur tests ke bina code khatarnak hai."
+  better="Pehli team join karte hi Stage 2 shuru karein."
+/>
+
+<Mistake
+  title="Senior hone ka matlab har rule sakhti se lagana samajhna"
+  why="Senior ka asli kaam trade-off samajhna hai, andhi sakhti team ko slow kar deti hai."
+  better="Har rule ki wajah batayein aur jahan wajah lagu na ho wahan exception allow karein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Introduction](/courses/best-practices/introduction), [Core Philosophy](/courses/best-practices/core-philosophy) |
+| **Baad mein** | [Self-Documenting Code](/courses/best-practices/self-documenting-code), phir Clean Code section order mein |
+
+## Final quick revision
+
+| Level | Focus |
+| --- | --- |
+| Beginner | Naam, flow, chhote functions, constants, secrets, Git |
+| Production | Types, service layer, validation, errors, tests, review |
+| Senior | Architecture, authorization, migrations, performance, readiness |
+| Order | Problem pehle dekho, practice phir samajh aati hai |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Har level ka sawal alag hai. Beginner poochta hai "kya yeh saaf hai?", production developer "kya yeh safe hai?", aur senior "kya poora system sahi hai?".
+
+</Callout>

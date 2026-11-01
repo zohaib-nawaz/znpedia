@@ -1,0 +1,179 @@
+---
+title: Database Naming & Design
+description: Database naming conventions aur design, snake_case plural tables, timestamps, foreign keys, enums aur indexes taake data saaf aur queries tez rahein.
+keywords:
+  - database naming conventions
+  - postgres table design
+  - foreign key on delete
+  - database indexes naming
+  - timestamptz vs timestamp
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Tables aur columns `snake_case` mein, tables plural. Har table mein primary key, `created_at` aur `updated_at`. Har foreign key declared aur soch samajh kar `on delete` ke saath. Status jaise closed sets enum ya CHECK mein, aur jis column par filter hota hai us par index.**
+
+</Callout>
+
+Database code se zyada der zinda rehta hai. Code har hafte badalta hai, lekin table ka naam aur column ki type saalon chalti hai. Is liye shuru mein liye gaye chhote faisle baad mein bari keemat rakhte hain.
+
+## 2. Kyun zaroori hai?
+
+Kuch asli masle jo design ki kami se aate hain:
+
+- `status` free text tha. Ab table mein `Active`, `active`, `actv` aur `ACTIVE ` sab hain, aur report ke numbers kabhi match nahi karte.
+- Foreign key declare nahi ki. User delete hua, us ke orders "orphan" reh gaye aur dashboard crash karta hai.
+- `on delete cascade` bina soche lagaya. Ek customer delete hua aur us ki saari invoices bhi gayab, jo accounting ke liye qanoonan rakhni thin.
+- `timestamp` bina timezone ke. Server UTC mein, user Pakistan mein, aur har report 5 ghante aage peeche.
+- Foreign key par index nahi tha. 1,000 rows par sab theek, 10 lakh rows par list page 8 second leta hai.
+
+<CompareTable leftTitle="Bina conventions" rightTitle="Conventions ke saath">
+
+UserOrders, order_item, tblProduct sab mix | orders, order_items, products, ek hi andaz
+Status free text, spelling ki ghaltiyan | Enum ya CHECK, sirf allowed values
+Orphan rows jin ka parent nahi | Foreign key aur chuna hua on delete
+Timestamp bina timezone, ghante ka farq | timestamptz, hamesha sahi waqt
+Bara table, slow list query | Har foreign key aur filter column par index
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Naming aur timestamps zaroor | Shuru se sahi aadat, baad mein rename mehnga hai |
+| **Production code** | Lazmi | Production data ko theek karna migration aur risk dono maangta hai |
+| **Senior level** | Keys, delete policy aur indexes ka review | Scale aur data integrity yahin tay hoti hai |
+
+Kab seekhein: pehli table banane se pehle. SQL ki buniyad [Database Integration](/courses/nextjs/database-integration) mein dekh lein.
+
+## 4. Bura vs acha code
+
+### Bura
+
+```sql
+create table "UserOrder" (
+  "orderId" serial primary key,
+  "userId" int,
+  "Status" varchar(50),
+  "total" float,
+  "createdOn" timestamp
+);
+```
+
+Mixed case naam har query mein quotes maangte hain. `userId` foreign key nahi. `Status` mein kuch bhi likha ja sakta hai. Paise `float` mein, jis mein `0.1 + 0.2` theek nahi aata. Timestamp bina timezone, aur `updated_at` hai hi nahi.
+
+### Acha
+
+```sql
+create type order_status as enum ('pending', 'paid', 'shipped', 'cancelled');
+
+create table orders (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users (id) on delete restrict,
+  status order_status not null default 'pending',
+  total_cents integer not null check (total_cents >= 0),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index orders_user_id_idx on orders (user_id);
+create index orders_status_created_at_idx on orders (status, created_at);
+```
+
+### Farq kya hai?
+
+| Cheez | Bura | Acha |
+| --- | --- | --- |
+| Naam | `"UserOrder"`, `"orderId"` | `orders`, `user_id` |
+| Primary key | Serial, URL mein guess ho sakta hai | `uuid`, kyunki id URL mein jati hai |
+| Foreign key | Nahi | `references users` aur `on delete restrict` |
+| Status | Free text | `order_status` enum |
+| Paise | `float` | `integer` cents, CHECK ke saath |
+| Waqt | `timestamp`, sirf created | `timestamptz`, created aur updated |
+| Index | Koi nahi | Foreign key aur list query wale columns |
+
+## 5. Kaise apply karein?
+
+<Flow title="Nayi table ka checklist">
+
+Plural snake_case naam
+↓
+Primary key chuno: andar ke liye identity, URL ke liye uuid
+↓
+created_at aur updated_at timestamptz
+↓
+Har foreign key declare, on delete soch kar
+↓
+Closed sets enum ya CHECK mein
+↓
+Foreign keys aur filter columns par named index
+
+</Flow>
+
+Kuch aur conventions:
+
+| Cheez | Convention |
+| --- | --- |
+| Primary key | `bigint generated always as identity` andar ke liye, `uuid` jab id URL mein ho |
+| Index naam | `<table>_<columns>_idx`, unique ke liye `<table>_<columns>_key` |
+| Soft delete | `deleted_at` sirf jab restore ya audit chahiye, aur phir har query is ko respect kare |
+| Secrets | Tokens aur codes ka hash store karein, plain kabhi nahi |
+| Status jo aksar badle | `CHECK (status in (...))`, enum badalna mushkil hota hai |
+
+`on delete` ke options samajh kar chunein: `restrict` (parent delete na ho jab tak children hain), `cascade` (children bhi delete), `set null` (link toot jaye, row rahe).
+
+## 6. Exceptions aur common mistakes
+
+Agar aap kisi purane database ke saath kaam kar rahe hain jis ka apna andaz hai, to nayi tables bhi usi andaz mein banayein. Aadha camelCase aur aadha snake_case sab se bura hai. Join tables (jaise `project_members`) ko alag `id` ki zaroorat nahi agar composite primary key kaafi ho, bas dono na rakhein.
+
+<Mistake
+  title="Har jagah on delete cascade laga dena"
+  why="Ek parent delete karte hi zaroori history, jaise invoices ya audit rows, chupke se mit jati hai."
+  better="Har foreign key par socho: restrict, cascade ya set null, aur financial data par aksar restrict."
+/>
+
+<Mistake
+  title="Paise float ya double mein rakhna"
+  why="Floating point rounding se totals mein paise ka farq aata hai jo hisaab mein pakra jata hai."
+  better="Cents ya paisa integer mein rakho, ya numeric type fixed scale ke saath."
+/>
+
+<Mistake
+  title="Index sirf tab lagana jab site slow ho jaye"
+  why="Tab tak table bari ho chuki hoti hai aur index banana khud lock aur downtime ka sabab ban sakta hai."
+  better="Table banate waqt hi foreign keys aur list query ke filter columns par index lagao."
+/>
+
+<Mistake
+  title="Soft delete column jo kuch queries bhool jati hain"
+  why="Delete kiya hua data search, reports ya API mein wapas nazar aane lagta hai."
+  better="Soft delete sirf zaroorat par, aur ek data layer jo har query mein deleted_at is null lagaye."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Database Integration](/courses/nextjs/database-integration), [Naming Things](/courses/best-practices/naming) |
+| **Saath mein** | [Safe Migrations](/courses/best-practices/migrations), [Generated Database Types](/courses/best-practices/generated-types) |
+| **Baad mein** | [Query Patterns & Transactions](/courses/best-practices/query-patterns), [Authorization & Multi-Tenancy](/courses/best-practices/authorization-and-tenancy) |
+
+## Final quick revision
+
+| Check | Sawal |
+| --- | --- |
+| Naam | Plural, `snake_case`, poore database mein ek jaisa? |
+| Keys | Primary key sahi type, har foreign key declared? |
+| On delete | Har foreign key par soch kar chuna gaya? |
+| Waqt | `created_at`, `updated_at`, `timestamptz`? |
+| Closed sets | Status enum ya CHECK mein? |
+| Indexes | Foreign keys aur filter columns par, sahi naam ke saath? |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Table ek baar banti hai aur saalon chalti hai. Naam, keys aur types par aaj paanch minute lagana kal ki lambi migration se sasta hai.
+
+</Callout>

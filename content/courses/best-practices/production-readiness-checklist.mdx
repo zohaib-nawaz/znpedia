@@ -1,0 +1,198 @@
+---
+title: Production Readiness Checklist
+description: Production readiness checklist launch se pehle, code, security, data, testing, CI/CD, monitoring aur docs ki ek jagah list, har item ke chapter link ke saath.
+keywords:
+  - production readiness checklist
+  - launch checklist web app
+  - go live checklist
+  - pre deployment checklist
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Koi app real users ke liye tab live hoti hai jab is checklist ka har item ya to sach ho ya likh kar skip kiya gaya ho, wajah ke saath.**
+
+</Callout>
+
+Yeh is course ka aakhri chapter hai. Naya concept nahi, balkay pichle chapters ki baaton ko ek list mein jorta hai. Har item ke saath us chapter ka link hai jahan "kyun" aur "kaise" samjhaya gaya hai.
+
+## 2. Kyun zaroori hai?
+
+Launch ke din dimagh feature par hota hai, health check aur backups par nahi. Isi liye pilots aur surgeons bhi checklist use karte hain: tajurba yaaddasht ki jagah nahi leta.
+
+<Callout variant="note" title="Real pattern">
+
+Ek app launch hui. Pehli raat payment provider ka webhook fail hua, lekin logs mein kuch nahi tha kyunki errors catch ho kar chup ho rahe the. Subah pata chala ke 200 orders "pending" mein phanse hain. Health check, error alerting aur "error par deny aur log" teeno is checklist mein the, launch se pehle kisi ne dekhi nahi thi.
+
+</Callout>
+
+<CompareTable leftTitle="Bina checklist launch" rightTitle="Checklist ke saath launch">
+
+Jo yaad aaya woh check hua | Har area systematically check
+Pehla incident users batate hain | Health check aur alerts pehle batate hain
+Backup hai, shayad | Backup restore karke test hua
+Secrets kahin code mein | Scanner clean, sab env mein
+Rollback ka plan nahi | Pichli release par wapas jana tested
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Security aur secrets wala hissa | Portfolio project bhi public internet par hai |
+| **Production code** | Poori list, har launch aur bare release se pehle | Real users, real data, real paisa |
+| **Senior level** | List ko project ke hisaab se barhana aur automate karna | Har release ka risk kam aur predictable |
+
+## 4. Bura vs acha code
+
+### Bura: launch plan
+
+```bash
+build passes on my machine, deploying friday evening
+```
+
+### Acha: launch plan
+
+```bash
+launch: orders v1, tuesday 11:00
+ci: green on main, all stages
+security: secret scan clean, headers set, cors allow-list, auth tests pass
+data: migration dry run ok, backup taken and restore tested on staging
+ops: /api/health returns 200, error alerts go to the on-call channel
+rollback: previous release kept, switch back tested on staging
+owner during launch: one named person on call for two hours
+```
+
+### Farq kya hai?
+
+| Cheez | Bura | Acha |
+| --- | --- | --- |
+| Waqt | Jumma shaam, koi nahi hoga | Kaam ka din, team maujood |
+| Verification | Mere machine par | CI aur staging par |
+| Backup | Zikr nahi | Restore tak test |
+| Rollback | Nahi | Tested |
+
+## 5. Kaise apply karein?
+
+### Code aur architecture
+
+| Item | Chapter |
+| --- | --- |
+| Strict types, koi `any` nahi | [Strict Typing](/courses/best-practices/strict-typing) |
+| Controllers patle, logic service mein | [Service Layer & Thin Controllers](/courses/best-practices/service-layer) |
+| Errors ek consistent envelope mein | [Error Handling & Error Envelope](/courses/best-practices/error-handling-and-envelope) |
+| Ghalat data par fail fast, chup chaap fallback nahi | [Fail Fast, No Defensive Fallbacks](/courses/best-practices/fail-fast-and-no-fallbacks) |
+
+### Security
+
+| Item | Chapter |
+| --- | --- |
+| Koi secret commit nahi, scanner clean, `.env.example` complete | [Secrets Management](/courses/best-practices/secrets-management) |
+| Headers, CORS, hashed tokens, fail closed | [Security Baseline](/courses/best-practices/security-baseline) |
+| Har input boundary par validate | [Input Validation at the Boundary](/courses/best-practices/input-validation) |
+| Har mutation par authorization aur tenant scoping | [Authorization & Multi-Tenancy](/courses/best-practices/authorization-and-tenancy) |
+| Injection, IDOR, XSS check | [Common Vulnerabilities (OWASP)](/courses/best-practices/common-vulnerabilities) |
+| Lockfile, audit clean, updates on | [Dependencies & Supply Chain](/courses/best-practices/dependency-security) |
+| Login aur public endpoints par rate limit | [Rate Limiting & Background Jobs](/courses/best-practices/rate-limiting-and-background-jobs) |
+
+### Data
+
+| Item | Chapter |
+| --- | --- |
+| Migrations idempotent, down path, dry run | [Safe Migrations](/courses/best-practices/migrations) |
+| Generated types schema se match | [Generated Database Types](/courses/best-practices/generated-types) |
+| Parameterized queries, N+1 nahi | [Query Patterns & Transactions](/courses/best-practices/query-patterns) |
+| Backup liya aur restore test hua | [CI/CD & Environments](/courses/best-practices/ci-cd-and-environments) |
+
+### Testing aur quality
+
+| Item | Chapter |
+| --- | --- |
+| Har endpoint: success, validation, auth tests | [Endpoint Tests First](/courses/best-practices/endpoint-tests-first) |
+| Unit tests aur critical flow ka browser test | [Testing Pyramid](/courses/best-practices/testing-pyramid) |
+| Har PR definition of done poori karta hai | [Definition of Done](/courses/best-practices/definition-of-done) |
+| Slow pages measure aur fix | [Performance: Measure First](/courses/best-practices/performance-measure-first) |
+
+### Delivery aur operations
+
+| Item | Chapter |
+| --- | --- |
+| Pipeline green: typecheck, lint, build, tests, secret scan | [CI/CD & Environments](/courses/best-practices/ci-cd-and-environments) |
+| Staging alag database ke saath | [CI/CD & Environments](/courses/best-practices/ci-cd-and-environments) |
+| `/api/health` env aur database check kare | [CI/CD & Environments](/courses/best-practices/ci-cd-and-environments) |
+| Logs mein secrets aur personal data scrub, errors alert hon | [Logging](/courses/best-practices/logging) |
+| Reviewed PRs, protected main | [Pull Requests & Code Review](/courses/best-practices/pull-requests-and-code-review) |
+
+### Docs aur team
+
+| Item | Chapter |
+| --- | --- |
+| README, decisions aur gotchas up to date | [Documentation & Decision Records](/courses/best-practices/documentation-and-decisions) |
+| Agents ke rules aur instructions file | [Working with AI Coding Agents](/courses/best-practices/working-with-ai-agents) |
+
+<Flow title="Launch ka din">
+
+Checklist bharein, skip ki wajah likhein
+↓
+Staging par poora flow
+↓
+Backup aur rollback tayyar
+↓
+Kaam ke din, team maujood
+↓
+Deploy aur health check
+↓
+Pehle do ghante alerts aur logs par nazar
+
+</Flow>
+
+## 6. Exceptions aur common mistakes
+
+**Kab rule nahi lagta:** internal tool jis ke paanch users hain aur koi sensitive data nahi, us par poori list ki zaroorat nahi. Phir bhi security aur backups wala hissa skip na karein. Jo item skip karein, woh likh kar aur wajah ke saath.
+
+<Mistake
+  title="Jumma shaam deploy"
+  why="Masla hua to weekend par koi maujood nahi, aur users do din pareshan."
+  better="Kaam ke din, subah ya dopehar, jab team aglay kuch ghante maujood ho."
+/>
+
+<Mistake
+  title="Backup hai, lekin kabhi restore nahi kiya"
+  why="Bohat se backups restore ke waqt corrupt ya adhoore niklte hain."
+  better="Staging par restore karke dekhein ke data wapas aata hai."
+/>
+
+<Mistake
+  title="Checklist ko sirf ek dafa ka kaam samajhna"
+  why="Har bara release naye risks lata hai, pehli launch wali list purani ho jati hai."
+  better="Har bare release se pehle list dobara chalayein aur naye incidents se seekh kar barhayein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Introduction](/courses/best-practices/introduction), [Core Philosophy](/courses/best-practices/core-philosophy) |
+| **Saath mein** | [CI/CD & Environments](/courses/best-practices/ci-cd-and-environments), [Security Baseline](/courses/best-practices/security-baseline) |
+| **Baad mein** | [Deployment](/courses/nextjs/deployment), [When to Learn What](/courses/best-practices/learning-path-and-levels) |
+
+## Final quick revision
+
+| Area | Ek line check |
+| --- | --- |
+| Code | Strict types, fail fast, consistent errors |
+| Security | Secrets bahar, auth har mutation par, headers, dependencies |
+| Data | Safe migrations, backup restore tested |
+| Testing | Endpoint tests, definition of done |
+| Delivery | Green pipeline, staging, health check, rollback |
+| Ops | Logs scrubbed, alerts on, launch par koi on call |
+| Docs | Decisions aur gotchas likhe hue |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Checklist aap ki yaaddasht ka backup hai. Launch se pehle har item ya sach ho, ya likh kar skip ho, beech ka koi rasta nahi.
+
+</Callout>

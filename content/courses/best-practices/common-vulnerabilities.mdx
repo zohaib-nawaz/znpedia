@@ -1,0 +1,210 @@
+---
+title: Common Vulnerabilities (OWASP)
+description: OWASP top 10 vulnerabilities web developers ke liye, broken access control, SQL injection, XSS, path traversal aur fail open errors ke bad vs good examples.
+keywords:
+  - owasp top 10 vulnerabilities
+  - broken access control idor
+  - sql injection prevention
+  - xss react dangerouslysetinnerhtml
+  - path traversal
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Har endpoint ko yeh maan kar likhein ke input dushman ka hai: har resource par authorization check, har query parameterized, har output apne context ke hisaab se encoded, aur error par kabhi access na milay.**
+
+</Callout>
+
+OWASP (Open Worldwide Application Security Project) ek community hai jo real breaches ka data dekh kar sab se common web risks ki list banati hai. 2025 wali list ka upar wala hissa yeh hai:
+
+| # | Risk | Ek line mein |
+| --- | --- | --- |
+| A01 | Broken Access Control | User woh data dekh ya badal leta hai jo us ka nahi |
+| A02 | Security Misconfiguration | Galat headers, CORS, default settings |
+| A03 | Software Supply Chain Failures | Dependency ya build pipeline compromised |
+| A04 | Cryptographic Failures | Kamzor hashing, plain text secrets |
+| A05 | Injection | SQL, shell ya HTML mein user input |
+| A10 | Mishandling of Exceptional Conditions | Error par system khul jata hai ya detail leak karta hai |
+
+## 2. Kyun zaroori hai?
+
+Yeh theoretical nahi. List number 1 par Broken Access Control is liye hai ke sab se zyada breaches isi se hote hain, aur yeh aksar ek bhooli hui line hoti hai.
+
+<Callout variant="note" title="Real pattern">
+
+AI se generate hua code aksar route bana deta hai lekin authentication middleware ya ownership check bhool jata hai. Code chalta hai, tests (agar sirf success path ke hain) pass hote hain, aur `/api/invoices/124` badal kar kisi aur ki invoice khul jati hai. Har generated route handler ko alag se check karein.
+
+</Callout>
+
+<CompareTable leftTitle="Kamzor code" rightTitle="Mehfooz code">
+
+Login check kiya, ownership nahi | Har resource par owner ya tenant check
+SQL string mein variable jod diya | Parameterized query
+User ka HTML seedha render | React escaping, ya sanitize kar ke
+File path mein user ka input | Allow-list ya random ID se mapping
+catch mein next() ya success | catch mein deny aur log
+Error mein stack trace | Generic message, detail logs mein
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Injection aur access control samajh lein | Interview aur pehli job dono mein pucha jata hai |
+| **Production code** | Har PR mein | Ek missing check poora data leak bana deta hai |
+| **Senior level** | Review checklist aur automated scanning | Team ke har PR mein yeh nazar pakarna |
+
+## 4. Bura vs acha code
+
+### Broken access control (IDOR)
+
+```ts
+export async function GET(request: Request, ctx: { params: Promise<{ id: string }> }) {
+  const user = await requireUser(request);
+  const { id } = await ctx.params;
+  const invoice = await db.invoice.findUnique({ where: { id } });
+  return Response.json(invoice);
+}
+```
+
+User logged in hai, lekin invoice kis ki hai yeh check hi nahi hua.
+
+```ts
+export async function GET(request: Request, ctx: { params: Promise<{ id: string }> }) {
+  const user = await requireUser(request);
+  const { id } = await ctx.params;
+  const invoice = await db.invoice.findFirst({ where: { id, ownerId: user.id } });
+
+  if (!invoice) {
+    return Response.json({ error: "not found" }, { status: 404 });
+  }
+
+  return Response.json(invoice);
+}
+```
+
+Doosre ki invoice par bhi `404` milta hai, taake yeh bhi leak na ho ke woh ID maujood hai.
+
+### SQL injection
+
+```ts
+const rows = await sql.unsafe(`SELECT * FROM users WHERE email = '${email}'`);
+```
+
+```ts
+const rows = await sql`SELECT * FROM users WHERE email = ${email}`;
+```
+
+Tagged template driver ko value alag bhejta hai, is liye `' OR 1=1 --` sirf ek ajeeb email ban jata hai, query ka hissa nahi.
+
+### XSS
+
+```tsx
+<div dangerouslySetInnerHTML={{ __html: comment.body }} />
+```
+
+```tsx
+<p>{comment.body}</p>
+```
+
+React text ko khud escape karta hai. HTML render karna zaroori ho to pehle trusted sanitizer (jaise DOMPurify) se guzarein.
+
+### Fail open error
+
+```ts
+try {
+  await verifySubscription(user);
+} catch {
+  return next();
+}
+```
+
+Payment provider down hua aur sab ko premium mil gaya. Error par **deny** karein aur log karein.
+
+### Farq kya hai?
+
+| Vulnerability | Bura | Acha |
+| --- | --- | --- |
+| IDOR | Sirf `id` se fetch | `id` + `ownerId` se fetch |
+| SQL injection | String interpolation | Parameterized query |
+| XSS | Raw HTML render | Escaped text ya sanitized HTML |
+| Path traversal | `readFile(req.query.name)` | Allow-list ya ID se lookup |
+| Exceptional conditions | Error par allow | Error par deny |
+
+## 5. Kaise apply karein?
+
+Har naye endpoint ya PR par yeh sawal:
+
+<Flow title="Endpoint security review">
+
+Kya yeh route authentication ke peeche hai?
+↓
+Kya har resource ka owner ya tenant check hua?
+↓
+Kya input schema se validate hua?
+↓
+Kya har query parameterized hai?
+↓
+Kya output apne context mein encoded hai (HTML, URL, shell)?
+↓
+Error par kya hota hai: deny ya allow?
+
+</Flow>
+
+Grep se pakre jane wale patterns bhi yaad rakhein: `eval` ya dynamic `import()` jis mein user input ho, string concatenation wale SQL, `http://` wale production URLs, aur CORS mein `*`.
+
+## 6. Exceptions aur common mistakes
+
+**Kab rule nahi lagta:** public content (jaise published blog posts) par ownership check nahi chahiye. Lekin likhne, badalne aur delete karne wale har route par chahiye, chahe woh admin ka hi kyun na ho.
+
+<Mistake
+  title="Authorization sirf UI mein"
+  why="Button chhupane se API band nahi hoti, koi bhi curl se call kar sakta hai."
+  better="Har check server par karein, UI sirf convenience hai."
+/>
+
+<Mistake
+  title="Forbidden resource par 403 dena"
+  why="403 bata deta hai ke resource maujood hai, jo enumeration ka rasta kholta hai."
+  better="Doosre user ke resource par wohi 404 dein jo na hone par milta hai."
+/>
+
+<Mistake
+  title="Dynamic column naam user se lena"
+  why="Column naam parameterize nahi ho sakte, is liye injection wapas aa jata hai."
+  better="Sort ya filter columns ki allow-list rakhein aur sirf usi se choose karein."
+/>
+
+<Mistake
+  title="Generated code ko success path chala kar approve karna"
+  why="Missing auth check success path mein nazar nahi aata."
+  better="Doosre user ke token se bhi request chala kar dekhein, aur yeh test mein likhein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Security Baseline](/courses/best-practices/security-baseline), [Authorization & Multi-Tenancy](/courses/best-practices/authorization-and-tenancy) |
+| **Saath mein** | [Query Patterns & Transactions](/courses/best-practices/query-patterns), [Input Validation at the Boundary](/courses/best-practices/input-validation) |
+| **Baad mein** | [Dependencies & Supply Chain](/courses/best-practices/dependency-security), [Endpoint Tests First](/courses/best-practices/endpoint-tests-first) |
+
+## Final quick revision
+
+| Check | Haan? |
+| --- | --- |
+| Har resource par ownership ya tenant check | |
+| Doosre ka resource 404 deta hai | |
+| Har query parameterized | |
+| User HTML sanitize ya escape | |
+| File paths user input se nahi | |
+| Error par deny, detail sirf logs mein | |
+
+<Callout variant="important" title="Yaad rakhein">
+
+"Logged in hai" aur "is ka haq hai" do alag sawal hain. Har request par dono poochein.
+
+</Callout>

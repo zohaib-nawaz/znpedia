@@ -1,0 +1,289 @@
+---
+title: Onboarding & Empty States
+description: Onboarding UX aur empty states ke rules, value moment, 3 se 5 step checklist, state ke hisaab se space budget aur ek action wala empty state, Roman Urdu mein.
+keywords:
+  - onboarding ux empty states
+  - onboarding checklist best practices
+  - empty state design
+  - first run experience
+  - time to value
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Onboarding ka sirf ek kaam hai: naye user ko jaldi se pehli asli value tak pohanchana, phir raaste se hat jana.**
+
+</Callout>
+
+Onboarding se murad hai first-run screen, setup checklist, product tour aur woh empty screens jo naya account dekhta hai. Yeh sab "transient" hain, yani kuch din ke mehman. Is liye in ka space aur attention mehdood hona chahiye.
+
+Rules paanch groups mein:
+
+| Group | Rules |
+| --- | --- |
+| **Goal** | Ek value moment naam se, us tak max 10 interactions aur 5 minute |
+| **Checklist ki shakal** | 3 se 5 steps, data khud steps tick kare, "x of n done", steps kisi bhi order mein, sirf agla step khula, har step ek title + ek line + ek action |
+| **Space** | Account ki state ke hisaab se space budget, bara setup alag route par, core kaam kabhi block nahi |
+| **Lifecycle** | Hide karna har session aur device par yaad rahe, completion ek dafa celebrate, phir hamesha ke liye gayab |
+| **Empty states** | Widget ka final frame, ek line ke kya aayega, max ek action |
+
+**Value moment** data ka ek event hai jis par user ko pehli dafa asli faida milta hai, jaise "pehla invoice bheja gaya" ya "pehla deploy live hua". "Settings page dekha" value moment nahi.
+
+## 2. Kyun zaroori hai?
+
+Onboarding research ke numbers kaafi sakht hain. Saikron companies ke data mein setup checklists ka average completion taqreeban 19 percent aur median taqreeban 10 percent tha. Product tours mein 3 step wale taqreeban do tihai log khatam karte hain, aur 5 steps ke baad completion aadhe se neeche gir jata hai. Har extra step ki qeemat hai.
+
+Nielsen Norman Group ki research kehti hai ke log tutorials skip karte hain, aur jo tutorial user aur us ke kaam ke beech khara ho, woh kaam slow karta hai bina performance behtar kiye. Users "active" hote hain: woh kaam karna chahte hain, parhna nahi.
+
+Psychology bhi madad karti hai. **Endowed progress effect**: ek study mein loyalty card par 10 mein se 2 stamps pehle se lage thay to 34 percent ne card poora kiya, khali 8 stamp wale card par sirf 19 percent ne. **Goal gradient**: manzil qareeb dikhe to log tez chalte hain. **Zeigarnik effect**: adhoora kaam dimagh mein atka rehta hai. Is liye "1 of 3 done" khud motivation hai.
+
+Aur jo guidance user khud kholta hai, woh zabardasti dikhayi gayi guidance se 2 se 3 guna zyada use hoti hai.
+
+<CompareTable leftTitle="Aam onboarding" rightTitle="Rule ke saath onboarding">
+
+9 items, "choose a theme" aur "read the docs" samet | 3 items jo value moment ki taraf jate hain
+"I've done this" button jab server khud dekh sakta hai | Data aate hi step khud tick
+Saare steps khule, code snippets aur forms inline | Sirf agla step khula, detail drawer mein
+2 of 3 ke baad bhi 400 px ka card upar | 64 px ki ek bar: "2 of 3 done. Next: ..."
+Hide kiya, agle login par wapas | Hide har session aur device par yaad
+Full-screen welcome tour pehle click karo | Dashboard chalta rahe, checklist saath mein
+"All set" panel jo hamesha upar rahe | Ek dafa toast, phir checklist gayab
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Har empty list par ek line aur ek action. Onboarding flow abhi zaroori nahi | Empty state har app mein hota hai, aur khali screen sab se pehli cheez hai jo user dekhta hai |
+| **Production code** | Saare rules, aur value moment analytics mein track | Jo user pehle session mein value tak nahi pohanchta, woh aksar wapas nahi aata |
+| **Senior level** | Value moment define karna, interactions count karna, checklist completion measure karna | 30 percent se kam completion friction ka signal hai, aur yeh decision product level ka hai |
+
+Kab seekhein: jab aap koi app bana rahe hon jis mein user sign up kar ke apna data daalta hai. Pehle empty states, phir checklist.
+
+## 4. Bura vs acha code
+
+### Bura checklist
+
+```tsx
+"use client";
+
+import { useState } from "react";
+
+export function SetupChecklist({ steps }: { steps: Step[] }) {
+  const [hidden, setHidden] = useState(sessionStorage.getItem("hideSetup") === "1");
+  if (hidden) {
+    return <div className="h-32 rounded border p-4">Setup hidden for this session</div>;
+  }
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50">
+      {steps.map((step) => (
+        <div key={step.id} className="rounded-xl border p-6">
+          <h3 className="text-xl">{step.title}</h3>
+          <p>{step.longDescription}</p>
+          <pre>{step.codeSnippet}</pre>
+          <button className="bg-primary">I've done this</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+### Acha checklist
+
+Steps data se bante hain, user ke click se nahi:
+
+```ts
+export type SetupStep = { id: string; title: string; done: boolean; actionLabel: string; href: string };
+
+export function buildSetupSteps(account: AccountSummary): SetupStep[] {
+  return [
+    { id: "account", title: "Create your account", done: true, actionLabel: "", href: "" },
+    { id: "products", title: "Add your first product", done: account.productCount > 0, actionLabel: "Add products", href: "/products/new" },
+    { id: "share", title: "Share your store link", done: account.visitCount > 0, actionLabel: "Copy link", href: "/settings/share" },
+  ];
+}
+```
+
+Component state ke hisaab se apna size chunta hai:
+
+```tsx
+import Link from "next/link";
+
+import { hideSetup } from "./actions";
+import { buildSetupSteps } from "./setup-steps";
+
+export function SetupBar({ account }: { account: AccountSummary }) {
+  const steps = buildSetupSteps(account);
+  const next = steps.find((step) => !step.done);
+
+  if (account.setupHidden || !next) {
+    return null;
+  }
+
+  const doneCount = steps.filter((step) => step.done).length;
+
+  return (
+    <section className="flex h-16 items-center gap-4 rounded-lg border px-4">
+      <p className="text-sm font-medium">{doneCount} of {steps.length} done</p>
+      <p className="text-sm text-muted-foreground">Next: {next.title}</p>
+      <Link href={next.href} className="ml-auto rounded-md bg-primary px-4 py-2 text-primary-foreground">
+        {next.actionLabel}
+      </Link>
+      <form action={hideSetup}>
+        <button className="text-sm text-muted-foreground">Hide setup</button>
+      </form>
+    </section>
+  );
+}
+```
+
+`hideSetup` ek Server Action hai jo user ki preference database mein save karta hai, is liye hide har device aur session par yaad rehta hai. Wapas kholne ka raasta ek fixed jagah hai, jaise help menu mein "Setup checklist".
+
+### Empty state
+
+Bura: khali chart axis, ya ek khali card mein teen buttons.
+
+```tsx
+<div className="h-24 rounded-lg border p-4">
+  <p>No data</p>
+  <button>Import</button>
+  <button>Create</button>
+  <button>Learn more</button>
+</div>
+```
+
+Acha: loaded widget jitna hi size, ek line ke yahan kya aayega, ek action.
+
+```tsx
+export function OrdersEmpty() {
+  return (
+    <section className="flex h-80 flex-col items-center justify-center gap-4 rounded-lg border">
+      <p className="text-sm text-muted-foreground">Orders will appear here when customers check out.</p>
+      <a href="/settings/share" className="rounded-md border px-4 py-2">Share store link</a>
+    </section>
+  );
+}
+```
+
+Sample ya demo data bhi chal sakta hai, bas us par saaf "Sample data" label ho.
+
+### Farq kya hai?
+
+| Bura | Acha | Rule |
+| --- | --- | --- |
+| `fixed inset-0` overlay | Page ke andar ek bar | Core kaam block nahi |
+| Saare steps khule, snippet inline | Sirf agla step, detail us ke link ke peeche | Sirf agla step khula |
+| "I've done this" primary button | `done` data se aata hai | Data steps tick karta hai |
+| `sessionStorage` | Server par preference | Hide yaad rahe |
+| Hidden hone par placeholder box | `return null` | Hide par 0 px |
+| "Create your account" ka step bhi baqi | Pehle se tick | Head start completion barhata hai |
+| Empty card mein teen buttons | Ek line, ek action, same height | Empty state ek cheez sikhaye |
+
+## 5. Kaise apply karein?
+
+Onboarding ka space account ki state se tay hota hai. Heights first viewport mein hain:
+
+| State | Desktop 1440 by 900 | Phone 390 by 844 | Shakal |
+| --- | --- | --- | --- |
+| **0 of n, account mein koi data nahi** | Max 50 percent (450 px) | Max 60 percent (506 px) | Checklist khali widgets ki jagah le, un ke upar stack na ho |
+| **0 of n, data pehle se hai** | Max 25 percent (225 px) | Max 25 percent (211 px) | Compact card: progress, agla step, ek action |
+| **Kuch done** | Ek bar max 72 px, ya side rail max 320 px chauri | Ek bar max 72 px | "2 of 3 done", agle step ka naam, ek button |
+| **Sab done** | Ek completion message ek dafa, phir 0 px | Same | Hamesha ke liye gayab |
+| **Dismissed** | 0 px, menu mein reopen ki ek entry | Same | Sirf launcher |
+
+<Flow title="Onboarding design karne ka tareeqa">
+
+Value moment ko data event ke taur par naam do
+↓
+Sign-up se us tak interactions gino, max 10 aur 5 minute
+↓
+Sirf us raaste ke 3 se 5 steps rakho
+↓
+Har step ko data se complete karo
+↓
+State ke hisaab se space budget lagao
+↓
+Har empty widget ko final frame, ek line aur ek action do
+
+</Flow>
+
+Baqi rules ki detail:
+
+| Rule | Detail |
+| --- | --- |
+| **Primary action** | First-run screen ka ek primary button value moment ke raaste ka pehla qadam ho |
+| **Step ka budget** | Khula step: title max 6 words, description max ek line (90 characters), ek action, height max 120 px. Code snippet, form ya preview us action ke peeche drawer, dialog ya page mein |
+| **Ek step khula** | Sirf pehla adhoora step khula, baqi ek ek line (icon, title, status). Doosra kholo to pehla band |
+| **Progress** | "x of n done" text + bar ya segments. Auto-complete steps bhi count. 10 se kam items par percentage nahi |
+| **Order** | Steps kisi bhi order mein. Lock sirf asli dependency par, aur lock ek line mein wajah bataye |
+| **Self-report** | "I've done this" sirf tab jab result data mein nazar hi na aa sake, aur woh secondary button ho |
+| **Alag route** | 5 se zyada steps, kisi step mein 3 se zyada fields ka form, ya dashboard setup ke bina bekaar ho: setup apne route par (jaise `/setup/payments`), dashboard par sirf chhoti bar |
+| **Celebrate once** | Aakhri step par ek toast ya inline line, ek dafa. Har visit par confetti ya hamesha rehne wala "All done" card nahi |
+
+Completion ka message peak-end rule ki wajah se ahem hai: log experience ko us ke sab se ache lamhe aur us ke aakhir se yaad rakhte hain. Hamesha rehne wala done card aakhir ko clutter bana deta hai.
+
+## 6. Exceptions aur common mistakes
+
+| Situation | Kya karein |
+| --- | --- |
+| **Bilkul khali account** | Onboarding aadhi screen le sakti hai, kyunki dikhane ko aur kuch nahi |
+| **Product account ke bina chal hi nahi sakta** | Woh step pehle aayega, baqi phir bhi kisi order mein |
+| **UI khud clear ho sakta hai** | Onboarding banane se pehle UI clear karo. Achi UI ko tour ki zaroorat kam hoti hai |
+
+<Mistake
+  title="Welcome tour jo dashboard se pehle click karwana zaroori ho"
+  why="User kaam karne aaya hai, tour skip karta hai aur jo dikhaya woh yaad nahi rehta. Kaam bhi der se shuru hota hai."
+  better="Dashboard ke widgets checklist ke saath ya neeche render hon. Koi modal, overlay ya route guard core screens ko na roke."
+/>
+
+<Mistake
+  title="Checklist mein features ki sair"
+  why="Choose a theme ya read the docs jaise steps value tak nahi le jate, sirf list lambi karte hain aur completion girta hai."
+  better="Sirf value moment ke raaste ke 3 se 5 steps. Baqi help menu mein."
+/>
+
+<Mistake
+  title="Hide sirf is session ke liye"
+  why="Agle login par checklist poore size mein wapas, user ko lagta hai app us ki baat nahi sunti."
+  better="Hide server par ya kam az kam localStorage mein save karo, aur reopen ek fixed jagah se."
+/>
+
+<Mistake
+  title="Empty widget chhota, data aane par page kood jaye"
+  why="Layout shift hota hai aur user jis cheez par click karne wala tha woh khisak jati hai."
+  better="Empty state loaded widget jitni jagah le, ek line ke kya aayega aur max ek action."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Visual Hierarchy & Spacing](/courses/best-practices/visual-hierarchy-and-spacing), [Forms & Funnels](/courses/best-practices/forms-ux) |
+| **Saath mein** | [Server Actions](/courses/nextjs/server-actions), [Loading, Error & Not Found UI](/courses/nextjs/loading-and-error-ui) |
+| **Baad mein** | [Dashboards](/courses/best-practices/dashboards-ux), [Motion & Design Iteration](/courses/best-practices/motion-and-iteration) |
+
+## Final quick revision
+
+| Check | Yaad rakhne wali baat |
+| --- | --- |
+| Value moment | Data event, max 10 interactions aur 5 minute |
+| Steps | 3 se 5, sirf value ke raaste ke |
+| Completion | Data se tick, pehle se done steps tick dikhen |
+| Progress | "x of n done" |
+| Space | State ke hisaab se, kuch done par max 72 px bar |
+| Khula step | Sirf ek, max 120 px, ek action |
+| Hide | Har session yaad, ek jagah se reopen, placeholder nahi |
+| Bara setup | Apna route |
+| Core kaam | Kabhi block nahi |
+| Completion | Ek dafa message, phir gayab |
+| Empty state | Final size, ek line, max ek action |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Achi onboarding mehman ki tarah hai: kaam ki baat karti hai, kam jagah leti hai, aur waqt par chali jati hai. Empty state bhi ek chhoti onboarding hai, us mein ek line aur ek action kaafi hai.
+
+</Callout>

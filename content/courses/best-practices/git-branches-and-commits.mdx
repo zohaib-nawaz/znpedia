@@ -1,0 +1,197 @@
+---
+title: Git Branches & Commits
+description: Git commit message best practices aur branch naming, chhote checkpoint commits, pushed history na badalna aur shared tree par stash ke khatre.
+keywords:
+  - git commit message best practices
+  - git branch naming convention
+  - conventional commits vs plain commits
+  - git stash reset danger
+  - atomic commits
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**`main` hamesha deployable rehta hai. Kaam chhoti `type/kebab-summary` branch par hota hai, har meaningful checkpoint par ek chhota commit, aur jo history push ho chuki woh kabhi rewrite nahi hoti.**
+
+</Callout>
+
+Is chapter ke kuch hisse universal hain (main deployable, chhote commits, pushed history na badalna) aur kuch ek **house style** hain (lowercase ek line, koi body nahi). Dono ko alag alag samjhein.
+
+## 2. Kyun zaroori hai?
+
+Git aap ka undo button aur team ki yaaddasht dono hai. Bari commits undo nahi ho saktin, ghalat commands doosron ka kaam mita deti hain, aur rewrite ki hui history team ke clones tor deti hai.
+
+<Callout variant="note" title="Real incident">
+
+Ek hi working tree par do log (ek developer aur ek AI agent) kaam kar rahe the. Agent ne apna kaam saaf karne ke liye `git stash` chalaya. Stash ne doosre ka uncommitted kaam bhi utha liya. Phir `git checkout <path>` ne ek aur file ka change mita diya, jo sirf typecheck fail hone par pakra gaya.
+
+</Callout>
+
+<CompareTable leftTitle="Bina discipline" rightTitle="Discipline ke saath">
+
+Seedha main par commit | Short-lived branch, phir PR
+Ek din ka kaam ek commit mein | Har checkpoint par chhota commit
+fixes, wip, update | Kya badla aur kyun, saaf line
+Push ke baad amend aur force push | Pushed history kabhi rewrite nahi
+git add -A sab utha leta hai | Sirf apne paths stage
+Branch merge ke baad pari rehti hai | Merge par delete
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Branches aur saaf commit messages | Git ki aadat jitni jaldi utna acha |
+| **Production code** | Poora rule, protected main ke saath | Ghalat merge ya rewrite production torta hai |
+| **Senior level** | Branch protection, PR rules, history ki safai | Team ke liye guard rails |
+
+## 4. Bura vs acha code
+
+### Branch names
+
+```bash
+git switch -c mera-naam/fixes
+git switch -c ui
+git switch -c feature/Payroll_Export
+```
+
+```bash
+git switch -c feat/payroll-export
+git switch -c fix/csv-upload-encoding
+git switch -c db/add-invoice-status-index
+```
+
+| Type | Kab |
+| --- | --- |
+| `feat/` | Nayi capability |
+| `fix/` | Bug fix |
+| `chore/` | Tooling, dependencies, cleanup |
+| `refactor/` | Behaviour mein koi change nahi |
+| `docs/` | Sirf documentation |
+| `db/` | Sirf migration |
+
+### Commit messages
+
+```bash
+git commit -m "fixes"
+git commit -m "WIP"
+git commit -m "Updated stuff."
+```
+
+```bash
+git commit -m "reject uploads that are not really csvs"
+git commit -m "show invoice total in the export header"
+git commit -m "retry webhook delivery twice before failing"
+```
+
+### Staging
+
+```bash
+git add -A
+git stash
+```
+
+```bash
+git add src/invoices/export.ts src/invoices/export.test.ts
+git commit -m "add csv export for invoices"
+```
+
+### Farq kya hai?
+
+| Cheez | Bura | Acha |
+| --- | --- | --- |
+| Branch | Insaan ka naam ya bemaani | Type aur kaam |
+| Message | Kuch nahi batata | Kya badla, kyun |
+| Staging | Sab kuch | Sirf apni files |
+| Shared tree | `stash`, `reset`, `clean` | Sirf apne paths par kaam |
+
+## 5. Kaise apply karein?
+
+<Flow title="Ek task ka git flow">
+
+main se nayi branch: type/kebab-summary
+↓
+Kaam karein, tree chalta rahe
+↓
+Har checkpoint par apne paths stage aur commit
+↓
+Push se pehle sirf apni unpushed fixups squash
+↓
+PR kholein
+↓
+Merge ke baad branch delete
+
+</Flow>
+
+### House style: ek lowercase line
+
+Is style mein commit message ek hi lowercase line hai: kya badla aur kyun, 72 characters se kam, aakhir mein period nahi. Koi body nahi, koi trailer nahi, koi attribution line nahi (jaise "Generated with" ya `Co-Authored-By`).
+
+Dalil: branch type pehle se category batata hai, chhote commits ko lambi wazahat ki zaroorat nahi, aur jo reasoning lambe arse tak chahiye woh repo ke decisions log mein jati hai, jahan dhoondhna aasaan hai.
+
+**Doosri teams mukhtalif hain, aur woh bhi theek hain:**
+
+| Style | Misaal | Kahan aam |
+| --- | --- | --- |
+| Conventional Commits | `feat(api): add csv export` | Open source, auto changelog aur versioning |
+| Subject + body | Pehli line summary, khaali line, phir paragraph | Linux kernel, git khud |
+| Trailers | `Co-Authored-By`, `Signed-off-by` | Pair programming, DCO wale projects |
+
+Jis team mein hon, us ka style follow karein. Asal cheez consistency aur saaf "kya aur kyun" hai.
+
+### Universal rules
+
+- Push hui commit kabhi `--amend` ya force push se na badlein. Doosron ki history toot jati hai.
+- Fixups sirf apni unpushed branch par squash karein.
+- Poori repo history ko ek commit mein squash na karein, saari reasoning mit jati hai.
+- Shared tree par `git stash`, `git checkout <path>`, `git reset`, `git clean`, `git restore` doosre ka kaam le ya mita sakte hain. Inhein sirf tab chalayein jab yaqeen ho ke tree mein sirf aap ka kaam hai.
+
+## 6. Exceptions aur common mistakes
+
+**Kab rule nahi lagta:** akelay ke learning repo mein `main` par seedha commit chal jata hai. Release branches (`v1`) un products mein theek hain jahan staging lane ho aur README mein likha ho kaunsi branch kahan deploy hoti hai.
+
+<Mistake
+  title="Ek bara commit, din ke aakhir mein"
+  why="Bug aaye to aadha kaam undo nahi ho sakta, aur review mushkil ho jata hai."
+  better="Har chalte checkpoint par chhota commit karein."
+/>
+
+<Mistake
+  title="Push ke baad amend ya force push"
+  why="Teammates ki local history aap ki history se alag ho jati hai aur kaam kho sakta hai."
+  better="Nayi commit se ghalti theek karein."
+/>
+
+<Mistake
+  title="Shared tree par git stash"
+  why="Stash har uncommitted change utha leta hai, sirf aap ka nahi."
+  better="Apni files explicitly commit karein, ya alag worktree mein kaam karein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Introduction](/courses/best-practices/introduction), [Definition of Done](/courses/best-practices/definition-of-done) |
+| **Saath mein** | [Pull Requests & Code Review](/courses/best-practices/pull-requests-and-code-review), [Documentation & Decision Records](/courses/best-practices/documentation-and-decisions) |
+| **Baad mein** | [CI/CD & Environments](/courses/best-practices/ci-cd-and-environments), [Working with AI Coding Agents](/courses/best-practices/working-with-ai-agents) |
+
+## Final quick revision
+
+| Check | Haan? |
+| --- | --- |
+| Branch `type/kebab-summary` | |
+| Chhote checkpoint commits | |
+| Message: kya aur kyun | |
+| Sirf apne paths stage | |
+| Pushed history rewrite nahi | |
+| Merge ke baad branch delete | |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Commit aap ka save point hai aur pushed history team ki amanat. Chhote save points banayein, aur amanat mein khayanat na karein.
+
+</Callout>

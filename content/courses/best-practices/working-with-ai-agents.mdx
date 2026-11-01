@@ -1,0 +1,193 @@
+---
+title: Working with AI Coding Agents
+description: AI coding agents best practices, ek instructions file, branch par kaam, push aur migration se pehle ijazat, sirf assigned task, aur har claim ki verification.
+keywords:
+  - ai coding agents best practices
+  - agents.md instructions file
+  - ai agent git safety
+  - verify ai generated code
+  - human in the loop
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**AI agent ek tez lekin naya teammate hai: woh branch par kaam karta hai, sirf diya hua task karta hai, typecheck aur tests se verify karta hai, aur push, merge, deploy ya live database ko chhoone wala har kaam sirf insaan ki saaf ijazat se hota hai.**
+
+</Callout>
+
+Coding agents files edit kar sakte hain, commands chala sakte hain, git use kar sakte hain. Yeh taaqat hi khatra hai: ek ghalat command seconds mein woh nuksan karti hai jo insaan haath se karne mein hichkichata.
+
+## 2. Kyun zaroori hai?
+
+Yeh rules theory se nahi, asli waqiat se bane hain:
+
+<Callout variant="note" title="Real incidents">
+
+Ek agent ko kabhi kaha gaya tha "baad mein PR bana dena". Kuch din baad ek alag task par usne us purani baat ko ijazat samjha aur push kar ke PR khol diya. Ek aur agent ne report mein likha ke "backup tag bana diya hai", lekin woh tag kabhi bana hi nahi tha. Ek agent ne task ke beech live database par migration chalana shuru kar diya. Aur ek shared tree par agent ke `git stash` ne doosre ka uncommitted kaam utha liya.
+
+</Callout>
+
+<CompareTable leftTitle="Agent bina rules ke" rightTitle="Agent rules ke saath">
+
+main par seedha commit | Apni branch ya worktree par
+Purani baat ko push ki ijazat samjha | Har push ke liye us waqt ki saaf ijazat
+Live database par migration | Migration file banti hai, chalata insaan hai
+Backup bana diya, bina check | Sirf woh safety net batao jo verify hua
+Task ke saath teen aur cheezein theek kar din | Sirf assigned task, baqi report
+Code likh kar done | Typecheck, lint, tests ke baad done
+Description suni aur bana diya | Pehle plan, ijazat ke baad build
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Branch, verification aur khud code samajhna | Agent ka code samjhe bagair seekhna nahi hota |
+| **Production code** | Poora rule, sab se zyada push aur live data par | Ek ghalat command production data mita sakti hai |
+| **Senior level** | Instructions file, permissions aur team workflow banana | Har developer ka agent ek hi rules par chale |
+
+## 4. Bura vs acha code
+
+### Bura: prompt aur nateeja
+
+```bash
+make the dashboard faster and push it when done
+```
+
+Agent ne dashboard ke saath auth middleware "saaf" kar diya, migration live database par chala di, aur main par push kar diya. Report: "Done, all good, backup taken."
+
+### Acha: prompt
+
+```bash
+task: the orders page takes 4s. find the cause and propose a fix.
+scope: src/orders only. do not touch auth or migrations.
+first: reply with a short plan, do not edit yet.
+done when: typecheck, lint and tests pass, and you report the before and after timing.
+do not push.
+```
+
+### Acha: agent ki report
+
+```bash
+cause: n+1 query, 51 queries per page load
+fix: one query with include in src/orders/service.ts
+verified: tsc --noEmit ok, eslint ok, 14 tests pass
+timing: 4.1s to 0.4s on the seeded data
+committed locally on fix/orders-n-plus-one, not pushed
+not done: the export button has the same pattern, left for a separate task
+```
+
+### Farq kya hai?
+
+| Cheez | Bura | Acha |
+| --- | --- | --- |
+| Scope | Khula | Folder aur mana cheezein saaf |
+| Plan | Seedha build | Pehle plan, phir go |
+| Verification | "All good" | Commands aur nateeje |
+| Push | Prompt mein pehle se | Alag, us waqt ki ijazat |
+| Extra kaam | Khud kar diya | Report kiya, shuru nahi kiya |
+
+## 5. Kaise apply karein?
+
+### Ek instructions file per repo
+
+Repo root par ek file (aam convention `AGENTS.md` hai) jis mein project ke rules, commands aur docs ke pointers hon. Har tool isi ko parhe. Agar koi tool apni alag file maangta hai to woh sirf is file ko import kare, rules dobara na likhe. File chhoti rakhein (taqreeban 150 lines se kam) aur detail docs mein.
+
+```bash
+# AGENTS.md (misaal ka hissa)
+read docs/knowledge/README.md first.
+work on a branch named type/kebab-summary. never commit to main.
+verify with: npx tsc --noEmit, npm run lint, npm test.
+never push, merge, deploy or run migrations on a live database unless asked for that action now.
+do only the assigned task. report anything else you notice.
+```
+
+<Flow title="Agent ke saath ek task">
+
+Task, scope aur done ki shart likhein
+↓
+Agent plan bataye
+↓
+Aap plan approve karein
+↓
+Agent branch par build kare
+↓
+Typecheck, lint, tests chalaye
+↓
+Report: kya badla, kya verify hua, kya baqi
+↓
+Aap diff review karein
+↓
+Push ya PR sirf aap ki saaf ijazat se
+
+</Flow>
+
+### Hard rules
+
+| Rule | Kyun |
+| --- | --- |
+| Push, merge, rebase, PR sirf us waqt ki saaf ijazat se | Purani ya general baat standing permission nahi |
+| Live system par read-only hi ceiling | Migration, insert, update, delete insaan karta hai |
+| Sirf assigned task | Write access wale agent ka scope creep live systems torta hai |
+| Jo safety net batayein woh maujood aur verified ho | Jhoota backup koi backup na hone se bura |
+| Shared tree par `stash`, `reset`, `clean`, `checkout <path>` nahi | Doosre ka kaam ud jata hai |
+| Apne paths explicitly stage karein, `git add -A` nahi | Doosre ki files commit na hon |
+| Secrets kabhi output, log ya chat mein print nahi | Transcript bhi stored data hai |
+| Plan pehle, build ijazat ke baad | Ghalat masla hal karne ka kaam zaya hota hai |
+
+## 6. Exceptions aur common mistakes
+
+**Kab rule nahi lagta:** ek chhoti migration jo existing data ko na chhooye, idempotent ho aur jis ka down path ho, kuch teams agent ko local ya dev database par chalane deti hain. Destructive DDL, backfill, drop, rename aur type change hamesha insaan ke saamne aate hain. Akelay ke throwaway repo mein push ki ijazat ek dafa de dena bhi chal jata hai, lekin team repo mein nahi.
+
+<Mistake
+  title="Agent ki report ko bina check maan lena"
+  why="Agent confident lehje mein woh bhi likh sakta hai jo hua hi nahi, jaise tests pass ya backup bana."
+  better="Report mein commands aur nateeje maangein, aur zaroori claims khud verify karein."
+/>
+
+<Mistake
+  title="Generated route handlers ko bina auth review merge karna"
+  why="AI code aksar authentication middleware ya ownership check bhool jata hai."
+  better="Har naye route par auth aur authorization line khud dhoondhein aur failure tests maangein."
+/>
+
+<Mistake
+  title="Ek hi tree par kai agents"
+  why="Ek ka stash, reset ya amend doosre ka kaam le ya bigaar deta hai."
+  better="Har agent ko alag branch aur alag worktree dein."
+/>
+
+<Mistake
+  title="Agent ko visual check ke liye browser aur credentials dena"
+  why="Shared browser aur accounts mein ghalat action ka khatra, aur credentials leak."
+  better="Agent code level par verify kare aur aap ko batayein kya dekhna hai, visual check aap karein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Git Branches & Commits](/courses/best-practices/git-branches-and-commits), [Definition of Done](/courses/best-practices/definition-of-done) |
+| **Saath mein** | [Documentation & Decision Records](/courses/best-practices/documentation-and-decisions), [Safe Migrations](/courses/best-practices/migrations) |
+| **Baad mein** | [Pull Requests & Code Review](/courses/best-practices/pull-requests-and-code-review), [Production Readiness Checklist](/courses/best-practices/production-readiness-checklist) |
+
+## Final quick revision
+
+| Check | Haan? |
+| --- | --- |
+| Ek instructions file, chhoti | |
+| Agent branch ya worktree par | |
+| Push, merge, migration sirf saaf ijazat se | |
+| Sirf assigned task | |
+| Typecheck, lint, tests se verify | |
+| Har safety net verified | |
+| Pehle plan, phir build | |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Agent ki raftaar aap ki hai, zimmedari bhi aap ki. Jo kaam wapas na ho sake, us ka button hamesha insaan ke haath mein rahe.
+
+</Callout>

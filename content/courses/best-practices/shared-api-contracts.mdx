@@ -1,0 +1,217 @@
+---
+title: Shared API Contracts
+description: Typed api contract frontend backend dono share karein, request aur response ek module mein taake field rename par dono taraf build fail ho.
+keywords:
+  - typed api contract frontend backend
+  - shared types api
+  - zod api schema
+  - end to end type safety
+  - api versioning
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Har endpoint ka request aur response shape ek hi typed module mein rehta hai jise route aur frontend client dono import karte hain. Route koi aisa field return nahi karta jo contract mein likha na ho.**
+
+</Callout>
+
+Contract ek wada hai: "is endpoint ko yeh bhejo, yeh wapas milega". Jab yeh wada do jagah alag alag likha ho to dono kabhi na kabhi alag ho jate hain. Jab ek jagah likha ho to TypeScript dono ko saath rakhta hai.
+
+## 2. Kyun zaroori hai?
+
+Backend developer ne `fullName` ko `name` kar diya. Frontend ki apni type abhi bhi `fullName` kehti hai. Build green hai, deploy ho gaya, aur profile page par har user ka naam `undefined` dikhta hai. Kisi ne teen din baad notice kiya.
+
+Doosra bug ulta hai. Route ne poori database row return kar di. Row mein `password_hash` aur `reset_token` bhi the. Frontend unhein use nahi karta, lekin network tab mein har koi dekh sakta hai.
+
+<CompareTable leftTitle="Do alag type copies" rightTitle="Ek shared contract">
+
+Field rename runtime par tootta hai | Field rename par build fail hota hai
+Backend aur frontend apni apni type likhte hain | Dono ek module import karte hain
+Route poori row bhej deta hai | Route sirf contract wale fields banata hai
+Naya developer nahi jaanta endpoint kya leta hai | Contract file khud documentation hai
+Breaking change chupke se public API todti hai | Public API version prefix ke saath badalti hai
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Optional | Ek file mein frontend aur backend ho to faida kam dikhta hai |
+| **Production code** | Zaroori | Frontend aur backend alag log badalte hain, drift pakka hota hai |
+| **Senior level** | Contract ki jagah aur versioning tay karna | Public API, mobile app aur web sab ek wade par chalein |
+
+Kab seekhein: [Input Validation](/courses/best-practices/input-validation) aur [Types Beside Logic](/courses/best-practices/types-beside-logic) ke baad, jab aap ka frontend aur API dono ek repo mein barhne lagein.
+
+## 4. Bura vs acha code
+
+### Bura: har taraf apni type
+
+```ts
+type Project = {
+  id: string;
+  title: string;
+  ownerName: string;
+};
+
+export async function GET() {
+  const rows = await listProjectsWithOwners();
+  return Response.json(rows);
+}
+```
+
+```ts
+type Project = {
+  id: string;
+  name: string;
+  ownerName: string;
+};
+
+const projects: Project[] = await fetch("/api/projects").then((res) => res.json());
+```
+
+Route ki type kehti hai `title`, frontend kehta hai `name`, aur asal response mein jo bhi row mein tha woh sab. Compiler kuch nahi kehta.
+
+### Acha: ek contract module
+
+File `lib/api/contracts/projects.contract.ts`:
+
+```ts
+import { z } from "zod";
+
+export const projectSchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  ownerName: z.string(),
+  createdAt: z.iso.datetime(),
+});
+
+export const createProjectRequestSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+});
+
+export type Project = z.infer<typeof projectSchema>;
+export type CreateProjectRequest = z.infer<typeof createProjectRequestSchema>;
+export type ListProjectsResponse = { projects: Project[] };
+```
+
+Service row ko contract mein badalti hai, field by field:
+
+```ts
+export function toProject(row: ProjectWithOwnerRow): Project {
+  return {
+    id: row.id,
+    name: row.name,
+    ownerName: row.owner_name,
+    createdAt: row.created_at,
+  };
+}
+```
+
+Route wahi type return karta hai:
+
+```ts
+export async function GET() {
+  const user = await requireUser();
+  const rows = await listProjectsForUser(user.id);
+
+  return NextResponse.json<ListProjectsResponse>({ projects: rows.map(toProject) });
+}
+```
+
+Frontend client bhi wahi import karta hai:
+
+```ts
+import type { CreateProjectRequest, ListProjectsResponse, Project } from "@/lib/api/contracts/projects.contract";
+
+export function listProjects() {
+  return apiRequest<ListProjectsResponse>("/api/projects");
+}
+
+export function createProject(input: CreateProjectRequest) {
+  return apiRequest<{ project: Project }>("/api/projects", { method: "POST", body: input });
+}
+```
+
+Ab agar `name` ko `title` karein to `toProject`, route aur har component jo `project.name` parhta hai, sab ek saath compile error denge.
+
+### Farq kya hai?
+
+| Cheez | Bura code | Acha code |
+| --- | --- | --- |
+| Type copies | Do, alag alag | Ek contract module |
+| Response | Poori row, secrets samet | `toProject` sirf naam wale fields |
+| Rename | Runtime par `undefined` | Compile time par error |
+| Request shape | Kahin likha nahi | Zod schema, server bhi isi se validate karta hai |
+
+## 5. Kaise apply karein?
+
+<Flow title="Contract pehle">
+
+Endpoint ka request aur response schema likho
+↓
+Route isi schema se input validate kare
+↓
+Service row ko contract shape mein map kare
+↓
+Frontend client yahi types import kare
+↓
+Contract badle to dono taraf compile check
+
+</Flow>
+
+Public API ho, jaise partners ya mobile app use karte hain, to breaking change par naya version banayein (`/api/v2/...`) aur purane version ke band hone ki tareekh docs mein likhein. Mobile app purane versions mein mahinon tak chalti rehti hai.
+
+## 6. Exceptions aur common mistakes
+
+Agar frontend aur backend alag repos mein hain to contract ek chhote shared package mein publish karein, ya OpenAPI spec se types generate karein. Server actions aur tRPC jaise tools types khud share kar dete hain, wahan alag contract file ki zaroorat kam hoti hai, lekin "sirf naam wale fields wapas" wala rule phir bhi lagta hai.
+
+<Mistake
+  title="Database row ko seedha response bana dena"
+  why="Naya column add hote hi woh API mein leak ho jata hai, chahe woh password hash ho ya internal note."
+  better="Ek mapper function likho jo sirf contract ke fields uthaye."
+/>
+
+<Mistake
+  title="Frontend par response ki type khud likhna"
+  why="Woh type backend se kabhi sync nahi rehti aur jhoothi safety deti hai."
+  better="Contract module se type import karo, frontend par shape kabhi declare na karo."
+/>
+
+<Mistake
+  title="Contract mein database ki type use karna"
+  why="Column rename seedha public API tod deta hai aur snake_case naam client tak chale jate hain."
+  better="Contract apni alag shape rakhe aur mapper dono ke beech pul bane."
+/>
+
+<Mistake
+  title="Public API mein chupke se field hata dena"
+  why="Purane mobile apps aur partner integrations bina warning toot jate hain."
+  better="Breaking change naye version prefix mein karo aur deprecation note do."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Strict Typing](/courses/best-practices/strict-typing), [Types Beside Logic](/courses/best-practices/types-beside-logic), [Input Validation at the Boundary](/courses/best-practices/input-validation) |
+| **Saath mein** | [One Fetch Client](/courses/best-practices/single-fetch-client), [Generated Database Types](/courses/best-practices/generated-types) |
+| **Baad mein** | [Endpoint Tests First](/courses/best-practices/endpoint-tests-first), [Documentation & Decision Records](/courses/best-practices/documentation-and-decisions) |
+
+## Final quick revision
+
+| Check | Sawal |
+| --- | --- |
+| Ek jagah | Kya request aur response shape sirf contract module mein hai? |
+| Import | Kya route aur client dono wahi import karte hain? |
+| Mapper | Kya response field by field bana, row spread nahi? |
+| Validation | Kya request schema hi server validation bhi hai? |
+| Versioning | Kya public API ka breaking change naye version mein hai? |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Contract ek dafa likho, dono taraf import karo. Jab koi field badle to compiler aap ko production se pehle bata de, user ke screen par `undefined` dekhne se pehle.
+
+</Callout>

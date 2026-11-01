@@ -1,0 +1,242 @@
+---
+title: Authentication Patterns
+description: Authentication best practices sessions tokens ke saath, ek jagah user resolve karna, fail closed rehna, tokens hash kar ke store karna aur secure cookies.
+keywords:
+  - authentication best practices sessions tokens
+  - session cookie security
+  - fail closed authentication
+  - password hashing
+  - nextjs auth pattern
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Caller kaun hai, yeh sirf ek shared function ya middleware tay karta hai. Woh fail closed hota hai, tokens sirf hash ki shakal mein store hote hain, aur har page aur handler khud yeh function call karta hai.**
+
+</Callout>
+
+Authentication ka sawal hai "tum kaun ho?". Yeh authorization se alag hai jo poochta hai "tum kya kar sakte ho?".
+
+Teen aam aur sahi models hain. Ek waqt mein ek chunein, chautha khud na banayein:
+
+| Model | Kab |
+| --- | --- |
+| Managed auth provider (Supabase Auth, Auth.js wagera) | Web app jis mein users ke accounts hain |
+| Passwordless session (email par code ya link) | Visitors ya chhoti admin team jin ka classic account nahi |
+| Access tokens (expiry ke saath) | API jo mobile app ya doosre clients use karte hain |
+
+## 2. Kyun zaroori hai?
+
+Ek asli aur bohat aam bug: auth middleware ko `try/catch` mein lapeta gaya. Token verify karte waqt error aaya, catch ne log kiya aur `next()` call kar diya. Nateeja: database ke ek chhote masle par **har route public** ho gaya. Is ko fail open kehte hain.
+
+Doosra: Next.js mein sirf middleware par security rakhi gayi. 2025 mein ek vulnerability saamne aayi jis mein ek khaas header bhej kar middleware hi skip ho jata tha. Jin apps mein pages khud user check karte the woh bach gayin.
+
+Teesra: session tokens database mein plain text the. Ek backup leak hua aur har user ka session chura liya gaya.
+
+<CompareTable leftTitle="Bikhri hui auth" rightTitle="Ek jagah, fail closed">
+
+Har route khud cookie parhta hai | Ek getCurrentUser function, baqi koi cookie nahi chhoota
+Error par request aage chali jati hai | Error par 401, kabhi allow nahi
+Sirf middleware security boundary | Har page aur handler khud check karta hai
+Token database mein plain | Sirf SHA-256 hash store
+Math.random se token | crypto se 32 random bytes
+Login batata hai email registered hai | Jawab har haal mein ek jaisa
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Provider use karna seekhein | Khud auth likhna seekhne ke liye theek, lekin production mein nahi |
+| **Production code** | Lazmi, aur proven library ke saath | Yahan ki ghalti seedha account takeover hai |
+| **Senior level** | Model chunna, fail closed review | Outage, token rotation aur machine callers ka design |
+
+Kab seekhein: jab pehli dafa koi page sirf logged in users ke liye banana ho. Pehle [Cookies & Headers](/courses/nextjs/cookies-and-headers) aur [Authentication](/courses/nextjs/authentication) dekh lein.
+
+## 4. Bura vs acha code
+
+### Bura: fail open aur kamzor token
+
+```ts
+export async function authMiddleware(request: Request, next: () => Promise<Response>) {
+  try {
+    const token = request.headers.get("authorization");
+    request.user = await verifyToken(token);
+  } catch (error) {
+    console.log("auth failed", error);
+  }
+  return next();
+}
+
+export function createSessionToken() {
+  return Math.random().toString(36).slice(2);
+}
+```
+
+Error par bhi `next()` chalta hai. `Math.random` predictable hai aur token cryptographically secure nahi.
+
+### Acha: session ek module mein
+
+File `lib/auth/session.ts`:
+
+```ts
+import "server-only";
+
+import { createHash, randomBytes } from "node:crypto";
+import { cookies } from "next/headers";
+
+import { insertSession, findActiveSessionByHash } from "./session.queries";
+import { SESSION_COOKIE, SESSION_MAX_AGE_SECONDS } from "./session.types";
+
+function hashToken(token: string) {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+export async function startSession(userId: string) {
+  const token = randomBytes(32).toString("base64url");
+  const expiresAt = new Date(Date.now() + SESSION_MAX_AGE_SECONDS * 1000);
+
+  await insertSession({ userId, tokenHash: hashToken(token), expiresAt });
+
+  const cookieStore = await cookies();
+  cookieStore.set(SESSION_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: SESSION_MAX_AGE_SECONDS,
+  });
+}
+
+export async function getCurrentUser() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(SESSION_COOKIE)?.value;
+  if (!token) {
+    return null;
+  }
+
+  const session = await findActiveSessionByHash(hashToken(token));
+  if (!session) {
+    return null;
+  }
+
+  return session.user;
+}
+```
+
+`findActiveSessionByHash` sirf woh row lautata hai jis ka `expires_at` future mein ho aur `revoked_at` khaali ho. Logout row ko revoke karta hai, is liye chura hua token bhi band ho jata hai.
+
+Machine callers, jaise cron, ke liye shared secret ka check:
+
+```ts
+import { timingSafeEqual } from "node:crypto";
+
+export function isCronRequest(request: Request) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) {
+    throw new MissingConfigError("CRON_SECRET");
+  }
+
+  const expected = Buffer.from(`Bearer ${secret}`);
+  const received = Buffer.from(request.headers.get("authorization") ?? "");
+  if (expected.length !== received.length) {
+    return false;
+  }
+
+  return timingSafeEqual(expected, received);
+}
+```
+
+Secret set na ho to request allow nahi hoti, error 503 ban jata hai.
+
+### Farq kya hai?
+
+| Cheez | Bura code | Acha code |
+| --- | --- | --- |
+| Error par | `next()`, sab public | `null` ya 401, kuch allow nahi |
+| Token | `Math.random` | `randomBytes(32)` |
+| Storage | Plain token | SHA-256 hash |
+| Cookie | Default settings | `httpOnly`, `secure`, `sameSite`, `maxAge` |
+| Revoke | Mumkin nahi | `revoked_at` se |
+| Secret compare | `!==` | `timingSafeEqual` |
+
+## 5. Kaise apply karein?
+
+<Flow title="Auth ka seedha rasta">
+
+Ek model chuno aur proven library lo
+↓
+Ek function caller resolve kare, baqi koi cookie na parhe
+↓
+Error ya missing secret par fail closed
+↓
+Tokens random bytes se, store sirf hash
+↓
+Har page aur handler khud function call kare
+
+</Flow>
+
+Kuch aur zaroori baatein:
+
+- Passwords ke liye scrypt, argon2 ya bcrypt, library ke zariye. Kabhi plain ya md5 nahi.
+- Login aur "forgot password" ka jawab ek jaisa ho, chahe email registered ho ya na ho.
+- Login endpoint rate limited ho.
+- `proxy.ts` (pehle middleware) sirf session refresh kare. Woh suvidha hai, security boundary nahi.
+- Auth provider down ho to "signed out" aur "verify nahi ho saka" mein farq rakhein. Error ko chupke se anonymous user na maanein.
+- Mobile par token secure storage mein rakhein, aam storage mein nahi.
+
+## 6. Exceptions aur common mistakes
+
+Kuch cheezein authentication nahi hain lekin theek hain: ek lambi random link jo ek kaam ke liye ho, jaise booking confirm karna. Shart yeh hai ke woh expire ho, writes deti ho to hash ho kar store ho, aur search engines se `noindex` ho.
+
+<Mistake
+  title="Client side flag ko auth samajhna"
+  why="localStorage mein isAdmin true likhna ya page mein setIsAdmin karna koi bhi browser console se kar sakta hai."
+  better="Role aur verification har request par server se aaye, client flags sirf UI hint hon."
+/>
+
+<Mistake
+  title="Middleware ko akela darwaza banana"
+  why="Matcher ki ek ghalti ya framework bug se poora middleware skip ho sakta hai aur pages khule reh jate hain."
+  better="Har page, server action aur route handler apna getCurrentUser khud call kare."
+/>
+
+<Mistake
+  title="Test ke liye auth bypass jo production mein bhi chalta ho"
+  why="Ek env variable bhoolne se bypass production mein khul jata hai aur koi bhi kisi ka account use kar sakta hai."
+  better="Seeded test user se asal login karo, bypass ho to production mein middleware khud usay refuse kare."
+/>
+
+<Mistake
+  title="Apna crypto ya session system khud ijaad karna"
+  why="Timing attacks, token rotation aur expiry jaisi baarikiyan aksar reh jati hain."
+  better="Proven provider ya library use karo aur sirf us ki configuration samjho."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Cookies & Headers](/courses/nextjs/cookies-and-headers), [Authentication](/courses/nextjs/authentication), [Secrets Management](/courses/best-practices/secrets-management) |
+| **Saath mein** | [Proxy (formerly Middleware)](/courses/nextjs/proxy), [Rate Limiting & Background Jobs](/courses/best-practices/rate-limiting-and-background-jobs) |
+| **Baad mein** | [Authorization & Multi-Tenancy](/courses/best-practices/authorization-and-tenancy), [Security Baseline](/courses/best-practices/security-baseline) |
+
+## Final quick revision
+
+| Check | Sawal |
+| --- | --- |
+| Ek jagah | Kya sirf ek function caller resolve karta hai? |
+| Fail closed | Kya error ya missing secret par request rukti hai? |
+| Tokens | Kya random bytes se bante aur hash ho kar store hote hain? |
+| Cookie | `httpOnly`, `secure`, `sameSite`, `maxAge` set hain? |
+| Har jagah check | Kya pages aur handlers khud check karte hain, sirf proxy nahi? |
+| Enumeration | Kya login ka jawab account ka hona chhupata hai? |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Auth mein shak ho to darwaza band rakho. Ek user ka thori der ke liye login na ho paana masla hai, lekin har route ka public ho jana haadsa hai.
+
+</Callout>

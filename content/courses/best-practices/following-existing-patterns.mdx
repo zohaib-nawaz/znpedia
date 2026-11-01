@@ -1,0 +1,179 @@
+---
+title: Following Existing Patterns
+description: Codebase conventions aur consistency, naya code likhne se pehle maujooda pattern dhoondhna, majority pattern chunna aur duplicate function ya library se bachna.
+keywords:
+  - codebase conventions consistency
+  - follow existing code patterns
+  - reuse before you add
+  - consistent codebase
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Naya code likhne se pehle dekho codebase yeh kaam pehle kaise karta hai. Qareeb wali file sirf shuruaat hai, saboot nahi: majority pattern dhoondo, maujooda function reuse karo, aur jo chuna us ki wajah PR mein likho.**
+
+</Callout>
+
+Har codebase ki apni zabaan hoti hai: data kaise fetch hota hai, errors kaise lautte hain, dates kis library se format hoti hain. Is zabaan ko seekh kar usi mein likhna is practice ka asal hai.
+
+Iske do hisse hain. Pehla: **consistency**, jo pattern sab jagah hai wahi use karo. Doosra: **reuse before you add**, jo function pehle se maujood hai use extend karo, naya milta julta mat banao.
+
+## 2. Kyun zaroori hai?
+
+Asli kahani: codebase mein data fetch karne ke do tareeqe the. Naya typed client 40 files mein, purana raw `fetch` 3 purani files mein. Ek naye developer ne qareeb wali purani file copy ki. Ab auth header bhoolne wala bug ek aur jagah aa gaya.
+
+Doosri kahani: project mein `date-fns` pehle se tha. Kisi ne ek feature ke liye `moment` install kar li. Bundle bara hua aur do screens par dates alag format mein dikhne lagin.
+
+<CompareTable leftTitle="Jo qareeb mila wahi copy" rightTitle="Representative pattern follow">
+
+Purana ya deprecated pattern phailta hai | Majority aur current pattern barhta hai
+Ek kaam ke teen tareeqe, har bug teen dafa | Ek tareeqa, fix ek jagah
+Milta julta doosra function, dono alag drift | Ek function extend hua, ek behaviour
+Ek kaam ke liye do libraries | Maujooda library, chhota bundle
+Reviewer ko khud check karna parta hai | PR batata hai kya reuse hua aur kyun
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Apne hi code mein ek pattern rakhne ki aadat | Akele project mein bhi teen tareeqe confusion paida karte hain |
+| **Production code** | Lazmi. Search pehle, code baad mein | Team codebase mein har naya tareeqa sab ka bojh barhata hai |
+| **Senior level** | Pattern badalna ho to poori migration plan karo aur faisla record karo | Ek file mein "behtar" tareeqa sirf teesra pattern banata hai |
+
+## 4. Bura vs acha code
+
+### Bura: qareeb wali file copy, aur naya function
+
+```ts
+export async function loadInvoices() {
+  const response = await fetch("/api/invoices");
+
+  return response.json();
+}
+```
+
+```ts
+export async function activeUsersForTeam(teamId: string) {
+  return db.user.findMany({ where: { teamId, status: "active" } });
+}
+```
+
+Pehla raw `fetch` hai jab ke project mein typed client hai. Doosra naya function hai jab ke `list()` pehle se filters leta hai.
+
+### Acha: pehle search, phir majority
+
+```bash
+rg "apiClient\." src -l | wc -l
+rg "await fetch\(" src -l
+rg "export async function" src/lib/users
+```
+
+Pehli command 40 files dikhati hai, doosri 3 purani. Faisla saaf hai.
+
+```ts
+import { apiClient } from "@/lib/api/client/client";
+
+import type { Invoice } from "./invoices.types";
+
+export function loadInvoices() {
+  return apiClient.get<Invoice[]>("/api/invoices");
+}
+```
+
+```ts
+const members = await list({ teamId, status: USER_STATUS.active });
+```
+
+### Farq kya hai?
+
+| Cheez | Bura | Acha |
+| --- | --- | --- |
+| Fetch | Qareeb wali purani file ka raw `fetch` | Majority ka typed client |
+| Users query | Naya near duplicate function | Maujooda `list()` reuse |
+| Faisla | Andaza | Search ke numbers |
+| PR | Kuch nahi batata | Likha: `list()` reuse kiya, naya function nahi |
+
+## 5. Kaise apply karein?
+
+<Flow title="Code likhne se pehle">
+
+Same entity par same kaam ka function dhoondo
+↓
+Is kaam ke kitne tareeqe codebase mein hain, gino
+↓
+Majority ya documented faisla chuno
+↓
+Maujooda function extend karo ya call karo
+↓
+PR mein likho kya reuse hua ya kyun kuch fit nahi hua
+
+</Flow>
+
+Nayi dependency lane se pehle bhi yahi: kya `package.json` mein is kaam ki library pehle se hai? Kya woh hamari framework version ke saath chalti hai? Ek kaam ke liye ek library.
+
+Agar do tareeqe barabar hain, ya majority wala pattern purana aur kharab hai, to andaza mat lagao. Team se poocho ya decision record dekho. Jo bhi chuno, PR mein ek line likho ke kyun.
+
+## 6. Exceptions aur common mistakes
+
+Agar maujooda pattern waqai kharab hai (security masla, deprecated API), to us ko copy karna galat hai. Magar ek file mein chupke se naya tareeqa lana bhi galat hai. Sahi rasta: masla uthao, migration plan karo, aur poore codebase ko ek saath move karo.
+
+Kuch teams "boy scout rule" follow karti hain: jahan se guzro wahan thora behtar kar do. Yeh achha hai jab tak har chhota sudhaar codebase ko ek naye pattern mein na baant de. Trade-off: consistency kabhi kabhi purane pattern ke saath rehne ka matlab hai, jab tak poori migration ka waqt na aaye.
+
+<Mistake
+  title="Qareeb wali file ko standard samajh lena"
+  why="Woh file purani, deprecated ya akeli exception ho sakti hai. Copy karne se ghalti phailti hai."
+  better="Search karo ke yeh pattern kitni jagah hai. Majority aur current tareeqa follow karo."
+/>
+
+<Mistake
+  title="Function dhoondhne ke bajaye naya likh dena kyunki jaldi thi"
+  why="Do milte julte functions waqt ke saath alag ho jate hain aur ek rule do jagah ban jata hai."
+  better="Service mein same verb aur same entity search karo. Mile to extend karo, na mile to PR mein likho."
+/>
+
+<Mistake
+  title="Ek feature mein apni pasand ka naya tareeqa"
+  why="Codebase mein ek aur pattern aa jata hai aur agla developer nahi jaanta kaunsa follow kare."
+  better="Naya tareeqa chahiye to pehle team se faisla, phir poori migration, phir record."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Project Structure](/courses/best-practices/project-structure), [DRY Without Tight Coupling](/courses/best-practices/dry-without-coupling) |
+| **Saath mein** | [Refactoring Safely](/courses/best-practices/refactoring-safely), [Pull Requests & Code Review](/courses/best-practices/pull-requests-and-code-review) |
+| **Baad mein** | [Documentation & Decision Records](/courses/best-practices/documentation-and-decisions), [Working with AI Coding Agents](/courses/best-practices/working-with-ai-agents) |
+
+<Flow title="Suggested order">
+
+Project Structure
+↓
+Following Existing Patterns
+↓
+Refactoring Safely
+↓
+Documentation & Decision Records
+
+</Flow>
+
+## Final quick revision
+
+| Check | Haan / Nahi |
+| --- | --- |
+| Code se pehle search | Haan |
+| Qareeb wali file ko standard maan lena | Nahi |
+| Majority pattern chuna | Haan |
+| Near duplicate function | Nahi |
+| Ek kaam ke liye doosri library | Nahi |
+| PR mein reuse ya wajah likhi | Haan |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Codebase ki zabaan mein likho. Pehle dhoondo, phir gino, phir reuse karo. Pattern badalna ho to poore codebase ke saath badlo, ek file mein nahi.
+
+</Callout>

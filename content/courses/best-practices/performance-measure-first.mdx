@@ -1,0 +1,189 @@
+---
+title: "Performance: Measure First"
+description: Premature optimization se bachna aur profiling se asli bottleneck dhoondhna, algorithms, data structures aur N+1 queries par focus, Roman Urdu mein.
+keywords:
+  - premature optimization profiling
+  - measure before optimizing
+  - big o data structures
+  - react profiler devtools
+  - explain analyze slow query
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Optimize sirf tab karein jab ek measurable masla ho, aur pehle measure karein ke time asal mein kahan ja raha hai. Andaze se optimize na karein.**
+
+</Callout>
+
+Performance ka kaam teen qadam hai: **measure**, **fix the biggest thing**, **measure again**. Zyada tar faida algorithm, data structure ya database query badalne se aata hai, choti micro tricks se nahi.
+
+## 2. Kyun zaroori hai?
+
+Developers ka andaza ke "slow kahan hai" aksar ghalat hota hai. Andaze se kiya gaya optimization code ko mushkil bana deta hai aur asli masla wahin rehta hai.
+
+<Callout variant="note" title="Real pattern">
+
+Ek dashboard slow tha. Developer ne do din har component par `useMemo` aur `React.memo` lagaye. Page phir bhi 4 second leta tha. Network tab kholne par pata chala ke ek API 50 queries chala rahi thi (N+1). Ek join ne page 400ms par la diya, aur memo wala code bekaar complexity ban kar reh gaya.
+
+</Callout>
+
+<CompareTable leftTitle="Andaze se optimize" rightTitle="Measure first">
+
+Jahan shak ho wahan memo laga do | Profiler batata hai kahan time ja raha hai
+Code mushkil, faida pata nahi | Pehle aur baad ka number saamne
+Micro tricks, jaise loop style badalna | Algorithm ya query badalna
+Har jagah thora thora | Sab se bara bottleneck pehle
+Pehle din se complex design | Simple pehle, zaroorat par optimize
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Simple, readable code likhein, optimize na karein | Pehle sahi, phir tez |
+| **Production code** | Jab user ya metric slow dikhaye, tab measure karke | Waqt wahan lage jahan faida ho |
+| **Senior level** | Budgets aur monitoring set karna, jaise Core Web Vitals | Masla user se pehle team ko nazar aaye |
+
+Ek cheez har level par: obvious ghalat algorithm (jaise loop ke andar loop se lookup) shuru se na likhein. Measure first ka matlab laparwahi nahi.
+
+## 4. Bura vs acha code
+
+### Bura: lookup loop ke andar
+
+```ts
+function attachAuthors(posts: Post[], users: User[]) {
+  return posts.map((post) => ({
+    ...post,
+    author: users.find((user) => user.id === post.authorId),
+  }));
+}
+```
+
+5,000 posts aur 5,000 users par yeh 25 million comparisons hain: O(n x m).
+
+### Acha: sahi data structure
+
+```ts
+function attachAuthors(posts: Post[], users: User[]) {
+  const usersById = new Map(users.map((user) => [user.id, user]));
+
+  return posts.map((post) => ({
+    ...post,
+    author: usersById.get(post.authorId),
+  }));
+}
+```
+
+`Map` se har lookup O(1) hai, kul kaam O(n + m).
+
+### Bura: N+1 query
+
+```ts
+const posts = await db.post.findMany();
+for (const post of posts) {
+  post.author = await db.user.findUnique({ where: { id: post.authorId } });
+}
+```
+
+### Acha: ek query
+
+```ts
+const posts = await db.post.findMany({ include: { author: true } });
+```
+
+### Pehle measure kaise karein?
+
+```ts
+const start = performance.now();
+const result = attachAuthors(posts, users);
+console.log(`attachAuthors: ${(performance.now() - start).toFixed(1)}ms`);
+```
+
+```bash
+EXPLAIN ANALYZE SELECT * FROM posts WHERE author_id = 42;
+```
+
+### Farq kya hai?
+
+| Cheez | Bura | Acha |
+| --- | --- | --- |
+| Lookup | `Array.find` loop mein | `Map` ek dafa bana kar |
+| Database | Har row par alag query | Ek query join ke saath |
+| Faisla | Andaza | Number |
+
+## 5. Kaise apply karein?
+
+<Flow title="Performance fix ka tareeqa">
+
+Masla number mein likhein (page 4s, API 2s)
+↓
+Profile karein: browser, React Profiler, server timing, EXPLAIN
+↓
+Sab se bara bottleneck chunein
+↓
+Algorithm, query ya data structure badlein
+↓
+Dobara measure karein
+↓
+Faida nahi hua to change wapas lein
+
+</Flow>
+
+| Kahan slow | Tool |
+| --- | --- |
+| **Page load** | Lighthouse, Core Web Vitals, Network tab |
+| **React render** | React DevTools Profiler |
+| **JavaScript** | Browser Performance tab, `performance.now()` |
+| **Database** | `EXPLAIN ANALYZE`, slow query log |
+| **Server** | Request timing logs |
+
+Resources ka bhi khayal: database connections pool karein, files aur streams band karein, timers aur listeners kaam ke baad clear karein. Leak bhi performance bug hai.
+
+## 6. Exceptions aur common mistakes
+
+**Kab rule nahi lagta:** jab design hi scale par depend kare (jaise millions rows wali table ka index, ya hot path par known O(n x n) algorithm), to pehle se sahi choice karein. Yeh premature optimization nahi, basic engineering hai.
+
+<Mistake
+  title="Har component par useMemo aur React.memo"
+  why="Har memo ki apni cost hai aur code parhna mushkil hota hai, faida aksar zero."
+  better="Profiler se slow render pakrein aur sirf wahan memo lagayein, ya component structure theek karein."
+/>
+
+<Mistake
+  title="Micro optimization, jaise for loop vs map"
+  why="Asli time network aur database mein jata hai, loop style mein nahi."
+  better="Pehle network aur queries dekhein, phir algorithm."
+/>
+
+<Mistake
+  title="Optimize karke dobara measure na karna"
+  why="Pata hi nahi chalta change ne madad ki ya nuksan kiya."
+  better="Pehle aur baad ka number PR description mein likhein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Query Patterns & Transactions](/courses/best-practices/query-patterns), [Refactoring Safely](/courses/best-practices/refactoring-safely) |
+| **Saath mein** | [React.memo & Performance](/courses/react/memo-and-performance), [useMemo & useCallback](/courses/react/use-memo-and-use-callback) |
+| **Baad mein** | [Performance & Core Web Vitals](/courses/nextjs/performance), [Production Readiness Checklist](/courses/best-practices/production-readiness-checklist) |
+
+## Final quick revision
+
+| Check | Haan? |
+| --- | --- |
+| Masla number mein likha | |
+| Profiler se bottleneck mila | |
+| Algorithm ya query pehle, micro tricks baad mein | |
+| Change ke baad dobara measure | |
+| Faida na ho to change wapas | |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Pehle sahi, phir simple, phir tez, aur tez sirf wahan jahan number kahe.
+
+</Callout>

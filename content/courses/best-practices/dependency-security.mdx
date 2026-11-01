@@ -1,0 +1,203 @@
+---
+title: Dependencies & Supply Chain
+description: npm supply chain security ki basics, lockfile, npm ci, automated updates, naya package choose karna aur CI workflows ko mehfooz rakhna.
+keywords:
+  - npm supply chain security
+  - package-lock npm ci
+  - dependabot renovate
+  - npm audit
+  - github actions permissions
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Har dependency aap ka code hai jo aap ne nahi likha. Lockfile commit karein, CI mein `npm ci` chalayein, updates automated aur grouped rakhein, aur naya package soch samajh kar add karein.**
+
+</Callout>
+
+Supply chain se murad woh sab hai jo aap ke code tak bahar se aata hai: npm packages, un ki dependencies, CI mein download hone wale tools, aur GitHub Actions. Inmein se kisi ek mein malicious code aaye to woh aap ke server aur users tak pohanch jata hai.
+
+## 2. Kyun zaroori hai?
+
+Ek aam Next.js project mein seedhi dependencies 30 hon to bhi `node_modules` mein sainkron packages hote hain. Har ek ka maintainer aap ke production mein code chala sakta hai.
+
+<Callout variant="note" title="Real incidents">
+
+2018 mein `event-stream` naam ke mashhoor npm package ko naya maintainer mila jis ne ek dependency mein code chhupa diya jo ek khaas crypto wallet app ko target karta tha. September 2025 mein kuch bohat zyada download hone wale packages ke maintainer ka account phishing se hack hua aur naye versions browser mein crypto transactions badalne lage. Jin projects ne lockfile ke bina ya `latest` par install kiya, unhein woh versions foran mil gaye.
+
+</Callout>
+
+<CompareTable leftTitle="Bina discipline" rightTitle="Discipline ke saath">
+
+Har install par naya version aa sakta hai | Lockfile exact versions fix karta hai
+CI mein npm install lockfile badal deta hai | CI mein npm ci lockfile se hi install
+Updates saal mein ek dafa, sab toot jata hai | Har hafte chhote grouped updates
+Peer conflict ko legacy flag se daba diya | Conflict resolve kiya
+Workflow ko poori write permission | Minimum permissions
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Lockfile commit aur package choose karne ki aadat | Typosquatting wala package laptop par bhi nuksan karta hai |
+| **Production code** | Poora rule, automated updates ke saath | Compromised package users ke data tak jata hai |
+| **Senior level** | CI hardening, pinned tools, review process | Pipeline khud attack surface hai |
+
+## 4. Bura vs acha code
+
+### Bura
+
+```bash
+npm install some-pakage
+git add package.json
+git commit -m "add lib"
+```
+
+```json
+{
+  "dependencies": {
+    "date-lib": "*",
+    "ui-kit": "latest"
+  }
+}
+```
+
+CI mein:
+
+```bash
+npm install --legacy-peer-deps
+```
+
+Spelling ki ghalti (`some-pakage`) typosquatting ka darwaza hai, lockfile commit nahi hui, aur `*` ya `latest` ka matlab hai har build mein jo bhi naya aaye.
+
+### Acha
+
+```bash
+npm view some-package maintainers time.modified repository.url
+npm install some-package
+git add package.json package-lock.json
+git commit -m "add some-package for csv parsing"
+```
+
+CI mein:
+
+```bash
+npm ci
+npm audit --audit-level=high
+```
+
+GitHub Actions workflow mein minimum permissions:
+
+```yaml
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci
+      - run: npm test
+```
+
+### Farq kya hai?
+
+| Cheez | Bura | Acha |
+| --- | --- | --- |
+| Version | `*` ya `latest` | Lockfile mein exact |
+| CI install | `npm install` | `npm ci` |
+| Peer conflict | `--legacy-peer-deps` | Asal conflict resolve |
+| Naya package | Bina dekhe | Maintainers, activity, repo check |
+| Workflow | Default permissions | `contents: read` |
+
+## 5. Kaise apply karein?
+
+<Flow title="Naya package add karne se pehle">
+
+Kya yeh kaam platform ya mojooda package se ho sakta hai?
+↓
+Naam ki spelling aur official repo confirm karein
+↓
+Maintainers, last publish aur open issues dekhein
+↓
+Install scripts aur dependency count dekhein
+↓
+Install karein, lockfile ke saath commit
+
+</Flow>
+
+Repo level par:
+
+| Kaam | Kaise |
+| --- | --- |
+| **Automated updates** | Dependabot ya Renovate on, hafte mein ek grouped PR |
+| **Audit** | `npm audit` CI mein, high aur critical par fail |
+| **CI tools** | Download kiye gaye binaries ka version pin aur checksum verify |
+| **PR workflows** | `pull_request` use karein, `pull_request_target` nahi, jab PR ka code chalana ho |
+| **Third party scripts** | Repo mein vendor kiye scripts hash se pin karein aur code ki tarah review karein |
+
+`pull_request_target` base repo ke secrets ke saath chalta hai. Agar woh fork se aaye PR ka code chala de to attacker ko aap ke secrets mil jate hain.
+
+## 6. Exceptions aur common mistakes
+
+**Kab rule nahi lagta:** ek chhota throwaway script jo kabhi deploy nahi hota, us mein itna process zaroori nahi. Lekin `npx` se koi random package chalana bhi aap ki machine par code chalana hai, is liye naam wahan bhi check karein.
+
+<Mistake
+  title="Audit warning ko npm audit fix --force se khatam karna"
+  why="Force major versions badal deta hai aur app chup chaap toot sakti hai."
+  better="Report parhein, dekhein vulnerable code path aap use karte hain ya nahi, phir controlled upgrade karein."
+/>
+
+<Mistake
+  title="Updates mahinon tak merge na karna"
+  why="Phir ek din security fix ke liye das major versions ek saath upgrade karne parte hain."
+  better="Weekly grouped update PRs ko CI green hone par usi hafte merge karein."
+/>
+
+<Mistake
+  title="Chhote kaam ke liye bara package"
+  why="Har package apni dependencies aur maintainers saath lata hai."
+  better="Do teen line ka kaam khud likhein ya platform API use karein, jaise structuredClone ya Intl."
+/>
+
+<Mistake
+  title="Deprecated package security kaam ke liye"
+  why="Unmaintained crypto ya auth library ke bugs kabhi fix nahi honge."
+  better="Language ya framework ki built-in ya actively maintained library use karein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [npm & Packages](/courses/javascript/npm-and-packages), [Secrets Management](/courses/best-practices/secrets-management) |
+| **Saath mein** | [Common Vulnerabilities (OWASP)](/courses/best-practices/common-vulnerabilities), [Security Baseline](/courses/best-practices/security-baseline) |
+| **Baad mein** | [CI/CD & Environments](/courses/best-practices/ci-cd-and-environments), [Production Readiness Checklist](/courses/best-practices/production-readiness-checklist) |
+
+## Final quick revision
+
+| Check | Haan? |
+| --- | --- |
+| `package-lock.json` committed | |
+| CI mein `npm ci` | |
+| Dependabot ya Renovate weekly grouped | |
+| `--legacy-peer-deps` CI mein nahi | |
+| Workflows mein minimum `permissions` | |
+| Naya package add karne se pehle check | |
+
+<Callout variant="important" title="Yaad rakhein">
+
+`npm install` kisi ajnabi ko apne server ki chaabi dene jaisa hai. Kam packages, locked versions, aur har naye package par ek minute ki tehqeeq.
+
+</Callout>

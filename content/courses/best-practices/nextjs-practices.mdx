@@ -1,0 +1,230 @@
+---
+title: Next.js Practices
+description: Next.js best practices Next.js 16 ke liye, server-first rendering, thin route handlers aur server actions, src/lib service layer, proxy.ts, use cache, config aur testing.
+keywords:
+  - next.js best practices
+  - nextjs 16 best practices
+  - server first rendering
+  - thin route handlers server actions
+  - nextjs project config testing
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Default server component, `"use client"` sirf chhote leaf par. Route handler aur server action patle hon aur `src/lib` ki service call karein. Config, env aur tests pehle din se ek tay shakal mein.**
+
+</Callout>
+
+Yeh chapter Next.js ka framework layer hai. Component aur hook ke rules [React Component Practices](/courses/best-practices/react-component-practices) mein hain. Yahan sawal hai: code server par chale ya client par, data kahan se aaye, aur Next.js 16 ke naye tools (`proxy.ts`, async `params`, `"use cache"`) kaise sahi jagah lagein.
+
+## 2. Kyun zaroori hai?
+
+Asli masle jo Next.js projects mein baar baar aate hain:
+
+- Poora page `"use client"` bana diya gaya. Bundle bara hua, data `useEffect` se aaya, aur pehla paint khali skeleton.
+- Ek module jo secret key parhta tha, ghalti se client component ne import kiya. Agar `server-only` laga hota to build wahin fail hota.
+- `middleware.ts` (ab `proxy.ts`) ko auth ki akeli diwar samjha gaya. Matcher ki ek ghalti se ek API route bina auth ke khula reh gaya.
+
+<CompareTable leftTitle="Client-first aur fat routes" rightTitle="Server-first aur thin routes">
+
+Page client component, bara bundle | Page server component, sirf leaf client
+useEffect se fetch, loading flash | Server par data, HTML ke saath
+Secret wala module client mein import ho sakta | server-only import se build fail
+Proxy hi security, ek matcher ghalti se sab khula | Har page aur route khud caller check kare
+Route handler mein queries aur rules | Handler patla, logic src/lib mein
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Server aur client components ka farq samajhna, `params` await karna | Yeh Next.js ka bunyadi mental model hai |
+| **Production code** | Sab lazmi: thin handlers, `server-only`, env module, security headers, endpoint tests | Performance aur security dono yahin tay hote hain |
+| **Senior level** | Caching strategy aur boundaries design karna | `"use cache"` ghalat jagah lage to ek user ka data doosre ko dikh sakta hai |
+
+## 4. Bura vs acha code
+
+### Bura: client page, secret aur sync params
+
+```tsx
+"use client";
+
+import { useEffect, useState } from "react";
+
+export default function PostPage({ params }: { params: { slug: string } }) {
+  const [post, setPost] = useState<Post | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/posts/${params.slug}`).then((response) => response.json()).then(setPost);
+  }, [params.slug]);
+
+  return <article>{post?.body}</article>;
+}
+```
+
+Next.js 16 mein `params` ek Promise hai, sync access nahi chalta. Aur poora page client par hai bina kisi wajah ke.
+
+### Acha: server page, cached service, thin handler
+
+```tsx
+import { notFound } from "next/navigation";
+
+import { PostView } from "@/components/PostView/PostView";
+import { find } from "@/lib/posts/posts";
+
+export default async function PostPage({ params }: PageProps<"/blog/[slug]">) {
+  const { slug } = await params;
+  const post = await find(slug);
+
+  if (!post) {
+    notFound();
+  }
+
+  return <PostView post={post} />;
+}
+```
+
+```ts
+import "server-only";
+
+import { cacheLife, cacheTag } from "next/cache";
+
+import { db } from "@/lib/db";
+
+export async function find(slug: string) {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(`post-${slug}`);
+
+  return db.post.findUnique({ where: { slug } });
+}
+```
+
+Comment banane ka route handler bhi wahi chaar steps karta hai:
+
+```ts
+import { NextResponse } from "next/server";
+
+import { requireUser } from "@/lib/auth/auth";
+import { create } from "@/lib/comments/comments";
+import { INVALID_COMMENT, createCommentSchema } from "@/lib/comments/comments.types";
+import { limit } from "@/lib/rate-limit/rate-limit";
+
+export async function POST(request: Request, { params }: RouteContext<"/api/posts/[id]/comments">) {
+  const user = await requireUser();
+  await limit(user.id);
+  const { id } = await params;
+  const parsed = createCommentSchema.safeParse(await request.json());
+
+  if (!parsed.success) {
+    return NextResponse.json({ error: INVALID_COMMENT }, { status: 422 });
+  }
+
+  return NextResponse.json(await create(user.id, id, parsed.data), { status: 201 });
+}
+```
+
+### Farq kya hai?
+
+| Cheez | Bura | Acha |
+| --- | --- | --- |
+| Rendering | Poora page client | Server page, `PostView` agar zaroorat ho to client leaf |
+| `params` | Sync access | `await params` |
+| Data | `useEffect` se, flash | Service se, `"use cache"` ke saath |
+| Secret safety | Koi guard nahi | `server-only` import |
+| Handler ki shape | Koi tay shape nahi | Auth, rate limit, parse, ek call, respond |
+
+## 5. Kaise apply karein?
+
+<Flow title="Next.js feature ka flow">
+
+Page server component, await params
+↓
+Data src/lib service se, server-only ke saath
+↓
+Public aur shared data par use cache, cacheTag
+↓
+Mutation route handler ya server action se, dono patle
+↓
+Write ke baad updateTag ya refresh
+↓
+Endpoint test tests/api mein
+
+</Flow>
+
+| Area | Practice |
+| --- | --- |
+| `proxy.ts` | Sirf ek kaam: session refresh ya redirect. Security har page aur handler mein |
+| Route handler vs server action | Data APIs ke liye route handler, ek page ke form ke liye server action. Ek resource ke liye dono nahi |
+| Private pages | Metadata mein `robots: { index: false }` |
+| Finite slugs | `generateStaticParams` ke saath `dynamicParams = false`, anjaan slug 404 |
+| `next.config.ts` | Security headers (CSP, `nosniff`, HSTS), `images.remotePatterns` mein exact hosts, `cacheComponents: true` |
+| `tsconfig.json` | `strict: true`, `@/*` alias `src/*` par |
+| Env | `src/lib/env.ts` ka `requireEnv()`, kabhi `process.env.X!` nahi |
+| Node APIs | Handler par `export const runtime = "nodejs"`, lambe kaam par `maxDuration` |
+| Tests | Vitest. `tests/api` mein seeded user ke saath endpoint tests, `tests/lib` mein pure tests, `server-only` ko stub par alias |
+
+## 6. Exceptions aur common mistakes
+
+`"use cache"` sirf us data par jo sab users ke liye same ho. User-specific data ko shared cache mein dalna data leak hai.
+
+"Route handler ya server action" par teams kaafi mukhtalif hain. Bohat si teams saari mutations server actions se karti hain aur yeh Next.js ka promoted rasta bhi hai. Yahan ka sakht rule data APIs ko route handlers mein rakhta hai kyunki unhe mobile app, cron aur tests bhi seedha HTTP se call kar sakte hain. Trade-off: server actions kam boilerplate, route handlers zyada reusable. Jo bhi chuno, ek resource ke liye ek hi.
+
+<Mistake
+  title="Page ya layout par use client lagana"
+  why="Poora tree client bundle mein chala jata hai aur server par data lane ka faida khatam."
+  better="Sirf us chhote leaf par use client lagao jise state, effect ya browser API chahiye."
+/>
+
+<Mistake
+  title="proxy.ts ko akeli security diwar samajhna"
+  why="Matcher ki ek ghalti ya naya route jo matcher se bahar ho, bina auth ke khul jata hai."
+  better="Har page aur route handler khud caller resolve kare. Proxy sirf session refresh ya redirect."
+/>
+
+<Mistake
+  title="Server action ke andar query aur business rules"
+  why="Server action bhi ek controller hai. Rules wahan phans gaye to cron aur API unhe reuse nahi kar sakte."
+  better="Action bhi auth, parse, ek service call aur updateTag. Rule src/lib mein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Server & Client Components](/courses/nextjs/server-and-client-components), [Service Layer & Thin Controllers](/courses/best-practices/service-layer) |
+| **Saath mein** | [Cache Components & use cache](/courses/nextjs/cache-components), [Proxy (formerly Middleware)](/courses/nextjs/proxy) |
+| **Baad mein** | [Security Baseline](/courses/best-practices/security-baseline), [Endpoint Tests First](/courses/best-practices/endpoint-tests-first) |
+
+<Flow title="Suggested order">
+
+Server & Client Components
+↓
+Service Layer & Thin Controllers
+↓
+Next.js Practices
+↓
+Endpoint Tests First
+
+</Flow>
+
+## Final quick revision
+
+| Check | Haan / Nahi |
+| --- | --- |
+| Page aur layout server components | Haan |
+| `params` aur `searchParams` await | Haan |
+| Secret wale modules mein `server-only` | Haan |
+| Handler: auth, rate limit, parse, ek call, respond | Haan |
+| User-specific data par `"use cache"` | Nahi |
+| `proxy.ts` akeli security | Nahi |
+| `process.env.X!` | Nahi, `requireEnv()` |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Server par shuru karo, client sirf jahan zaroori. Har route patla, har rule `src/lib` mein, har secret `server-only` ke peeche, aur har page apna caller khud check kare.
+
+</Callout>

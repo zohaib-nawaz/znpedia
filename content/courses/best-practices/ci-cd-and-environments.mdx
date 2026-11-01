@@ -1,0 +1,209 @@
+---
+title: "CI/CD & Environments"
+description: CI CD pipeline aur environments ka setup, har PR par typecheck, lint, build aur tests, safe deploy, health check aur alag staging database.
+keywords:
+  - ci cd pipeline environments
+  - github actions ci pipeline
+  - staging vs production environment
+  - health check endpoint
+  - zero downtime deploy
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Har pull request par ek hi pipeline chalti hai: install, secret scan, typecheck, lint, build, migration dry run aur tests. Production aur staging alag hain, har ek ka apna database, aur deploy kabhi chalti hui release ko pehle delete nahi karta.**
+
+</Callout>
+
+**CI** (Continuous Integration) har change ko automatically check karta hai. **CD** (Continuous Delivery/Deployment) pass hone wale code ko automatically environment tak pohanchata hai. **Environments** woh alag jagahen hain jahan app chalti hai: local, preview ya staging, production.
+
+## 2. Kyun zaroori hai?
+
+Jo check insaan ko yaad rakhna pare, woh kisi din reh jata hai. Pipeline yaad nahi rakhti, har dafa chalti hai.
+
+<Callout variant="note" title="Real incidents">
+
+Ek repo ki test workflow `frontend/.github/workflows/` mein thi. GitHub sirf repo root ki `.github/workflows/` parhta hai, is liye woh workflow kabhi chali hi nahi, aur team mahinon samajhti rahi ke tests CI mein chal rahe hain. Ek aur project ka deploy script naye build se pehle server ka folder `rm -rf` karta tha. Build fail hua to site bilkul khaali reh gayi.
+
+</Callout>
+
+<CompareTable leftTitle="Bina pipeline" rightTitle="Pipeline ke saath">
+
+Mere laptop par build ho gayi | Har PR par saaf machine par build
+Tests chalana bhool gaye | Tests har PR par lazmi
+Staging aur production ek database | Har environment ka apna database
+Deploy pehle purana folder delete karta hai | Nayi release alag folder, phir switch
+Deploy hua ya nahi, pata nahi | Health check fail to deploy fail
+Secrets script mein | Secrets CI ke encrypted settings mein
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Ek simple workflow: install, lint, build | Pipeline ka concept pehle project mein samajh aata hai |
+| **Production code** | Poori pipeline, staging, health check | Har deploy ka risk kam |
+| **Senior level** | Deploy strategy, rollback, migration gates | Downtime aur data loss se bachana |
+
+## 4. Bura vs acha code
+
+### Bura: deploy script
+
+```bash
+ssh server "rm -rf /var/www/app"
+scp -r ./build server:/var/www/app
+ssh server "cd /var/www/app && npm run migrate && npm run seed"
+```
+
+Purana folder pehle delete, backup ke bagair migration, aur production par seed data.
+
+### Acha: CI workflow
+
+```yaml
+name: ci
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npx eslint . --max-warnings=0
+      - run: npx prettier --check .
+      - run: npm run build
+      - run: npm test
+```
+
+Secret scan aur migration dry run bhi isi file mein alag steps ban kar aate hain.
+
+### Acha: health endpoint
+
+```ts
+export async function GET() {
+  const missing = ["DATABASE_URL", "SESSION_SECRET"].filter((key) => !process.env[key]);
+  if (missing.length > 0) {
+    return Response.json({ ok: false, missing }, { status: 503 });
+  }
+
+  try {
+    await db.$queryRaw`SELECT 1`;
+  } catch {
+    return Response.json({ ok: false, database: "down" }, { status: 503 });
+  }
+
+  return Response.json({ ok: true });
+}
+```
+
+### Farq kya hai?
+
+| Cheez | Bura | Acha |
+| --- | --- | --- |
+| Deploy | Purana delete, phir naya | Naya alag folder, phir switch |
+| Migration | Bina backup | Backup, phir migration |
+| Seed | Production par | Sirf local aur test |
+| Verify | Umeed | `/api/health` poll, fail to job fail |
+
+## 5. Kaise apply karein?
+
+### Pipeline stages, isi order mein
+
+| Stage | Next.js misaal | Kyun |
+| --- | --- | --- |
+| Install | `npm ci` | Lockfile se exact versions |
+| Secret scan | gitleaks (version pinned) | Leak merge se pehle pakra jaye |
+| Typecheck | `npx tsc --noEmit` | Type errors |
+| Lint aur format | `eslint --max-warnings=0`, `prettier --check` | Warnings bhi fail |
+| Build | `npm run build` | Build sirf laptop par na chale |
+| Migrations | Dry run jab migrations badlein | Ghalat SQL production se pehle |
+| Tests | `npm test` | Contract aur logic |
+
+CI ka Node version `.nvmrc` se match kare. Secrets sirf CI ke secret settings se, job level env mein.
+
+<Flow title="Safe deploy">
+
+Tests pass
+↓
+Ek dafa build, artifact upload
+↓
+Nayi release alag folder mein
+↓
+Database backup
+↓
+Migrations
+↓
+Traffic nayi release par switch
+↓
+Health check poll, fail ho to job fail
+
+</Flow>
+
+### Environments
+
+- Kam az kam production aur ek preview ya staging, dono ka **alag database**.
+- `APP_ENV` (`local`, `staging`, `production`) ko `NODE_ENV` se alag rakhein. Staging bhi `NODE_ENV=production` mein chalta hai, is liye sirf `NODE_ENV` se environment pehchanna ghalat hai.
+- Har variable hosting par set ho aur `.env.example` mein naam se mirror ho.
+
+### Scheduled jobs
+
+Cron ek guarded endpoint ko call kare (secret ke saath). Overlapping runs rokne ka intezam ho. Jo cron paise kharch kare (AI calls, SMS), woh idempotent ho aur kaam se pehle ek kill switch env variable check kare.
+
+## 6. Exceptions aur common mistakes
+
+**Kab rule nahi lagta:** hosting platforms jo git se khud deploy karte hain (jaise Vercel) release folder aur switch khud sambhalte hain. Wahan aap ka kaam pipeline aur env variables theek rakhna hai. Mobile store builds commit se nahi, manual trigger se chalein.
+
+<Mistake
+  title="Lint aur tests ko optional stage banana"
+  why="Optional ka matlab hai woh pehle hafte ke baad kabhi nahi chalte."
+  better="Har PR par lazmi stages, red ho to merge band."
+/>
+
+<Mistake
+  title="Staging aur production ka ek database"
+  why="Staging par test kiya delete production data mita deta hai."
+  better="Har environment ka apna database aur apne secrets."
+/>
+
+<Mistake
+  title="Deploy ko bina health check ke success maanna"
+  why="Process start hua lekin database se connect nahi, users ko 500 mil rahe hain."
+  better="Deploy job health endpoint poll kare aur fail par fail ho."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Secrets Management](/courses/best-practices/secrets-management), [Pull Requests & Code Review](/courses/best-practices/pull-requests-and-code-review) |
+| **Saath mein** | [Safe Migrations](/courses/best-practices/migrations), [Deployment](/courses/nextjs/deployment) |
+| **Baad mein** | [Dependencies & Supply Chain](/courses/best-practices/dependency-security), [Production Readiness Checklist](/courses/best-practices/production-readiness-checklist) |
+
+## Final quick revision
+
+| Check | Haan? |
+| --- | --- |
+| Workflow repo root `.github/workflows/` mein | |
+| Har PR par typecheck, lint, build, tests | |
+| Secret scan aur migration dry run | |
+| Har environment ka alag database | |
+| Deploy purani release delete nahi karta | |
+| Backup ke baad migration | |
+| `/api/health` 503 deta hai jab kuch missing ho | |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Jo check machine kar sakti hai, woh insaan ki yaaddasht par na chhorein. Aur deploy ko tab tak kamyab na maanein jab tak health check na kahe.
+
+</Callout>

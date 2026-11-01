@@ -1,0 +1,190 @@
+---
+title: Pull Requests & Code Review
+description: Code review best practices aur achi pull request, chhota diff, template wali description, reviewer ki zimmedariyan aur review comments likhne ka tareeqa.
+keywords:
+  - code review best practices
+  - pull request description template
+  - small pull requests
+  - how to review code
+  - pr review checklist
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Har change ek chhote pull request se `main` mein jata hai: template se bhari description, green CI, aur author ke ilawa kam az kam ek insaan ka approval.**
+
+</Callout>
+
+Pull request (PR) do kaam karta hai: bug ko production se pehle pakarna, aur team ko pata hona ke code mein kya badla aur kyun. Review gatekeeping nahi, doosri nazar hai.
+
+## 2. Kyun zaroori hai?
+
+2,000 lines ke PR ko koi sach mein review nahi karta, sirf scroll karta hai. Bina description ke reviewer ko andaza lagana parta hai ke code kya karna chahta tha, is liye woh sirf style par comment karta hai aur asli masla (missing auth check) nikal jata hai.
+
+<Callout variant="note" title="Real pattern">
+
+Ek PR mein feature, refactor aur dependency upgrade teeno the, 1,800 lines. Approval "LGTM" ke saath mila. Deploy ke baad ek mutation bina authorization ke nikla. Baad mein sab ne maana ke kisi ne woh file khol kar parhi hi nahi thi.
+
+</Callout>
+
+<CompareTable leftTitle="Kamzor PR process" rightTitle="Mazboot PR process">
+
+1,500 lines, teen kaam ek saath | 400 lines se kam, ek kaam
+Description: fixed stuff | Kya, kyun, kaise test hua
+Author khud merge bina review | Doosre ka approval
+CI red lekin merge | CI green ke bagair merge nahi
+Comments ka jawab nahi | Har comment ka jawab, chahe sirf done
+Review hafton pending | Ek working day ke andar
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Apne liye PR kholna aur description likhna | Apna kaam explain karna seekhte hain |
+| **Production code** | Poora rule | Har merge production tak jata hai |
+| **Senior level** | Acha reviewer banna, sensitive areas ki ownership | Team ka quality bar aap se banta hai |
+
+## 4. Bura vs acha code
+
+### Bura PR description
+
+```bash
+title: Updates
+body: fixed some bugs and added the thing we discussed
+```
+
+### Acha PR description
+
+```bash
+title: block expired coupons at checkout
+
+why
+  expired coupons were still applied because the check used the server
+  timezone, so customers in later timezones got a free extra day
+
+what changed
+  coupon expiry compared in utc in the coupon service
+  checkout returns 422 with a clear message for expired coupons
+
+how tested
+  unit tests for the expiry helper around midnight utc
+  endpoint tests: valid coupon, expired coupon (422), other store coupon (404)
+
+task: link to the tracker ticket
+screenshots: error message on checkout attached
+```
+
+### Review comments: bura vs acha
+
+```bash
+hmm, not sure about this, maybe we could think about another approach?
+```
+
+```bash
+check the order belongs to the current store before updating
+
+  const order = await orders.findForStore(id, user.storeId)
+```
+
+Acha comment ek line mein batata hai kya karna hai, aur fix code ke saath deta hai.
+
+### Farq kya hai?
+
+| Cheez | Bura | Acha |
+| --- | --- | --- |
+| Title | `Updates` | Kya badla, ek line |
+| Why | Gayab | Bug ki wajah aur asar |
+| Testing | Gayab | Exact cases |
+| Comment | Mubham sawal | Wazeh hidayat aur code |
+
+## 5. Kaise apply karein?
+
+### Author ke liye
+
+<Flow title="PR kholne se merge tak">
+
+Kaam ek PR ke size ka rakhein (400 lines se kam)
+↓
+Template ka har section bharein, jo lagu nahi woh delete
+↓
+Task ya ticket link karein
+↓
+CI green: typecheck, lint, build, tests, secret scan
+↓
+Doosre ka approval
+↓
+Har comment ka jawab
+↓
+Author squash merge kare
+
+</Flow>
+
+Bara kaam ho to PRs ka stack banayein: pehle migration, phir service aur tests, phir UI.
+
+### Reviewer ke liye
+
+| Kaam | Kyun |
+| --- | --- |
+| Diff se pehle description parhein | Pata ho code kya karna chahta hai, "why" na ho to poochein |
+| Har mutation par authorization check dhoondhein | Sab se khatarnak bug yahi hai |
+| Har query par tenant scoping | Ek org ka data doosri ko na dikhe |
+| Naye env vars `.env.example` mein? | Agla deploy na toote |
+| Naye endpoints ke tests? | Definition of done |
+| Block sirf correctness, security ya standard ke liye | Pasand napasand par nahi |
+| Ek working day ke andar review, warna kisi aur ko dein | PR intezar mein na sare |
+
+Auth, billing, migrations aur deploy scripts ko chhoone wale PR par us area ke owner ka approval lena behtar hai.
+
+## 6. Exceptions aur common mistakes
+
+**Kab rule nahi lagta:** typo ya ek line docs fix ke liye poora template zaroori nahi, lekin PR aur green CI phir bhi. AI review tools madadgar hain, lekin woh insaan ke approval ki jagah nahi lete.
+
+Merge style par teams mukhtalif hain: kuch squash merge (ek PR ek commit) pasand karti hain, kuch merge commits ya rebase taake har chhota commit `main` par rahe. Squash ke saath PR ka title hi final commit message banta hai, is liye title saaf hona chahiye.
+
+<Mistake
+  title="LGTM bina parhe"
+  why="Approval ka matlab hai aap ne zimmedari li, aur missing auth check aap ke naam par bhi hai."
+  better="Kam az kam mutations, queries aur tests parhein, ya saaf kahein ke review nahi kar sakte."
+/>
+
+<Mistake
+  title="Ek PR mein feature, refactor aur upgrade"
+  why="Reviewer kisi ek par focus nahi kar pata aur bug chhup jata hai."
+  better="Har kaam ka alag PR, refactor pehle aur behaviour change baad mein."
+/>
+
+<Mistake
+  title="Comment ko ignore karke merge"
+  why="Reviewer ko nahi pata ke baat suni gayi ya nahi, aur trust kam hota hai."
+  better="Har comment ka jawab dein: fix kiya, ya kyun nahi kiya."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Git Branches & Commits](/courses/best-practices/git-branches-and-commits), [Definition of Done](/courses/best-practices/definition-of-done) |
+| **Saath mein** | [Authorization & Multi-Tenancy](/courses/best-practices/authorization-and-tenancy), [Following Existing Patterns](/courses/best-practices/following-existing-patterns) |
+| **Baad mein** | [CI/CD & Environments](/courses/best-practices/ci-cd-and-environments), [Documentation & Decision Records](/courses/best-practices/documentation-and-decisions) |
+
+## Final quick revision
+
+| Check | Haan? |
+| --- | --- |
+| PR 400 lines se kam, ek kaam | |
+| Template bhara: why, what, how tested | |
+| Task linked | |
+| CI green | |
+| Doosre ka approval | |
+| Har comment ka jawab | |
+| Reviewer ne auth aur tenant scoping dekhi | |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Chhota PR, saaf "kyun", aur aisa reviewer jo mutations parhe. Review ka maqsad code behtar karna hai, jeetna nahi.
+
+</Callout>

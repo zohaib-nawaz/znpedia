@@ -1,0 +1,200 @@
+---
+title: File Size & Organization
+description: File organization large components ke saath kaise karein. 400 line ki component limit, ek file ek zimmedari, aur bari React file ko child components mein todna.
+keywords:
+  - file organization large components
+  - split large react component
+  - component file size limit
+  - one responsibility per file
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Har file ki ek primary zimmedari ho. React component file 400 lines se chhoti rahe, us se barhe to child components apni files mein nikalo.**
+
+</Callout>
+
+Function ka size [Small Functions](/courses/best-practices/small-functions) mein dekha. File ek level upar hai: kai functions aur components ka ghar. Yahan sawal hai "kya yeh sab ek hi ghar mein rehna chahiye?"
+
+| Hissa | Matlab |
+| --- | --- |
+| **400 line limit** | `.tsx` component file ki upar ki hadd |
+| **Ek zimmedari** | File ka naam batata hai andar kya hai, aur sirf wahi hai |
+| **Ek unit, ek folder** | `components/LeadTable/LeadTable.tsx` aur us ke apne hisse saath |
+| **Ek naming style** | Ek folder mein PascalCase ya kebab-case, mix nahi |
+
+## 2. Kyun zaroori hai?
+
+1200 line ki file mein koi bhi badlav dar ke saath hota hai. Scroll karte karte context bhool jata hai, aur do developers ek hi file chhed kar merge conflict mein phans jate hain.
+
+<CompareTable leftTitle="Ek bari file" rightTitle="Chhoti focused files">
+
+Har change par merge conflict | Alag log alag files, conflict kam
+Ek state badli to poori file re-render | Child components apni state sambhalte hain
+Kuch dhoondna ho to Ctrl F aur scroll | File ka naam hi pata batata hai
+Review mein 600 line ka diff | Chhota diff, focused review
+Kuch reuse karna ho to poori file import | Sirf zaroori component import
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Jab file scroll karna takleef de, tab todo | Components todna React ki bunyadi mahaarat hai |
+| **Production code** | 400 line limit review mein | Bari files team ki speed ka sab se bara dushman hain |
+| **Senior level** | Folder structure aur boundaries decide karo | Kahan todna hai yeh design faisla hai |
+
+## 4. Bura vs acha code
+
+Bura: ek `Dashboard.tsx` jo 900 lines ka hai.
+
+```tsx
+export function Dashboard() {
+  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [selected, setSelected] = useState<string[]>([]);
+  const { leads, isLoading } = useLeads(filters);
+
+  return (
+    <main>
+      <header>
+        <h1>Leads</h1>
+        <input value={filters.query} onChange={(e) => setFilters({ ...filters, query: e.target.value })} />
+        <select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value as LeadStatus })}>
+          <option value="all">All</option>
+        </select>
+      </header>
+      <table>
+        <tbody>
+          {leads.map((lead) => (
+            <tr key={lead.id}>
+              <td>{lead.name}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <footer>{selected.length} selected</footer>
+    </main>
+  );
+}
+```
+
+Yahan sirf dhaancha dikhaya hai. Asli file mein har hissa 200 lines ka hai: filters ka logic, table ki sorting, bulk actions ka modal.
+
+Acha: har hissa apni file mein.
+
+```bash
+components/
+  Dashboard/
+    Dashboard.tsx
+    DashboardFilters/
+      DashboardFilters.tsx
+    LeadTable/
+      LeadTable.tsx
+      LeadRow.tsx
+    BulkActions/
+      BulkActions.tsx
+hooks/
+  use-leads/
+    use-leads.ts
+```
+
+```tsx
+export function Dashboard() {
+  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [selected, setSelected] = useState<string[]>([]);
+  const { leads, isLoading } = useLeads(filters);
+
+  return (
+    <main>
+      <DashboardFilters filters={filters} onChange={setFilters} />
+      <LeadTable leads={leads} isLoading={isLoading} onSelect={setSelected} />
+      <BulkActions selected={selected} />
+    </main>
+  );
+}
+```
+
+| Farq kya hai? | Bura | Acha |
+| --- | --- | --- |
+| Size | 900 lines | Har file 50 se 150 lines |
+| Zimmedari | Filters, table, actions sab | `Dashboard` sirf jor kar rakhta hai |
+| Dhoondna | Scroll | Folder ka naam |
+| Testing | Poora dashboard render | `LeadTable` akela test |
+| Teamwork | Ek file par sab | Har koi apni file |
+
+## 5. Kaise apply karein?
+
+<Flow title="Bari file todne ke steps">
+
+File ko scroll kar ke uske visual ya logical hisse pehchano
+↓
+Har hissa jo apni state ya apna data rakhta hai, ek candidate hai
+↓
+Hisse ko apni file aur folder mein nikalo
+↓
+Props sirf woh do jo us hisse ko chahiye
+↓
+Logic ko hook ya pure function mein nikalo
+↓
+Parent sirf children ko jore
+
+</Flow>
+
+Todne ke ache nishaan: alag state, alag data source, alag wajah se badalna, ya `.map` ke andar bara JSX (woh `Row` component hai).
+
+## 6. Exceptions aur common mistakes
+
+400 line ek upar ki hadd hai, target nahi. Aur kabhi file todna nuqsaan deta hai: agar do hisse hamesha saath badalte hain aur ek doosre ki andar ki details par chalte hain, to alag files mein bas navigation barhti hai. **Ek saath badalne wali cheezein saath rakho**, alag badalne wali alag.
+
+Config files, generated types ya lambi constant lists 400 se bari ho sakti hain, kyunki un mein logic nahi hota.
+
+<Mistake
+  title="Har cheez ke liye alag file chahe 5 lines ki ho"
+  why="20 tiny files jo sirf ek dusre ko import karti hain parhne ko aur mushkil bana deti hain."
+  better="Tab nikalo jab hissa apni zimmedari rakhta ho ya file waqai bari ho rahi ho."
+/>
+
+<Mistake
+  title="Ek folder mein naming style mix"
+  why="Kahin LeadTable.tsx kahin lead-row.tsx, har import ek andaaza ban jata hai."
+  better="Har folder ke liye ek convention chuno aur poore repo mein rakho."
+/>
+
+<Mistake
+  title="utils.ts mein sab kuch daal dena"
+  why="Utils file har kisi ka kachra daan ban jati hai aur 1000 lines tak pohanch jati hai."
+  better="Har helper ko us module ke paas rakho jo use karta hai, naam ke saath."
+/>
+
+<Mistake
+  title="Prop drilling se bachne ke liye sab ek file mein rakhna"
+  why="File chhoti rakhne ka faida khatam, aur problem wahi rehti hai."
+  better="Composition, children prop ya context use karo, file phir bhi todo."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Small Functions](/courses/best-practices/small-functions), [Components](/courses/react/components) |
+| **Saath mein** | [Children & Composition](/courses/react/children-and-composition), [Custom Hooks](/courses/react/custom-hooks) |
+| **Baad mein** | [Types Beside Logic](/courses/best-practices/types-beside-logic), [Project Structure](/courses/best-practices/project-structure), [React Component Practices](/courses/best-practices/react-component-practices) |
+
+## Final quick revision
+
+| Check | Sawal |
+| --- | --- |
+| Size | Kya component file 400 lines se kam hai? |
+| Zimmedari | Kya file ka naam poora andar ka kaam batata hai? |
+| Folder | Kya har component apne folder mein hai? |
+| Naming | Kya folder mein ek hi naming style hai? |
+| Cohesion | Kya saath badalne wali cheezein saath hain? |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Bari file khud ek warning hai. Jab scroll karte hue aap bhoolne lagein ke upar kya tha, to file tootne ka waqt aa gaya.
+
+</Callout>

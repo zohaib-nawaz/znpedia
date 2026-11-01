@@ -1,0 +1,189 @@
+---
+title: Endpoint Tests First
+description: API testing auth validation ke saath, har endpoint ka success, validation aur auth failure test frontend se pehle, aur test bypass token ke rules.
+keywords:
+  - api testing auth validation
+  - endpoint tests before frontend
+  - api contract testing
+  - seeded test user
+  - test bypass token security
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Har backend endpoint ke success path, har validation failure aur har auth failure ke tests hon, aur endpoint tested aur approved ho jaye us se pehle koi frontend usay call na kare.**
+
+</Callout>
+
+Endpoint ek contract hai: yeh input lo, yeh output do, yeh errors do. Frontend us contract par khara hota hai. Agar contract hi pakka na ho to frontend ret par ghar banata hai.
+
+## 2. Kyun zaroori hai?
+
+Jab UI pehle banti hai to endpoint ko browser se "test" kiya jata hai. Sirf woh path chalta hai jo form bhejta hai. Ghalat input, doosre user ka token, quota khatam: yeh sab kabhi chalte hi nahi, aur yahin security bugs chhupte hain.
+
+<Callout variant="note" title="Real pattern">
+
+Ek endpoint UI ke saath ek hi din bana aur "chal raha hai" dekh kar merge ho gaya. Do hafte baad pata chala ke kisi bhi logged in user ka token doosri organization ka data update kar sakta tha. Form hamesha sahi org ID bhejta tha, is liye kisi ne ghalat ID try hi nahi ki thi.
+
+</Callout>
+
+<CompareTable leftTitle="UI pehle" rightTitle="Endpoint tests pehle">
+
+Sirf form wala path chala | Har branch ka test
+Auth failure kabhi try nahi hua | 401, 403 ya 404 ke tests
+Contract UI ke saath badalta rehta hai | Contract pehle fix, UI baad mein
+Bug UI aur API dono mein dhoondhna | API alag se sabit, bug sirf UI mein
+Refactor se darr | Tests refactor ko safe banate hain
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Kam az kam success aur ek validation test | Contract sochne ki aadat |
+| **Production code** | Har endpoint, teeno paths | Auth bugs sirf failure tests pakarte hain |
+| **Senior level** | Test helpers, seed scripts, quota boundary tests | Team ke liye tests likhna aasaan banana |
+
+## 4. Bura vs acha code
+
+### Bura: sirf happy path
+
+```ts
+test("updates project", async () => {
+  const res = await api.patch("/api/projects/p1", { name: "New" });
+  expect(res.status).toBe(200);
+});
+```
+
+### Acha: success, validation, auth aur limit
+
+```ts
+import { describe, expect, test } from "vitest";
+import { api, signInAsSeededUser, signInAsOtherOrgUser } from "../helpers";
+
+describe("PATCH /api/projects/:id", () => {
+  test("updates name and returns contract shape", async () => {
+    const token = await signInAsSeededUser();
+    const res = await api.patch("/api/projects/seed-project", { name: "New" }, token);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ id: "seed-project", name: "New", updatedAt: expect.any(String) });
+  });
+
+  test("rejects empty name with 422", async () => {
+    const token = await signInAsSeededUser();
+    const res = await api.patch("/api/projects/seed-project", { name: "" }, token);
+
+    expect(res.status).toBe(422);
+    expect(res.body.error.field).toBe("name");
+  });
+
+  test("returns 401 without a token", async () => {
+    const res = await api.patch("/api/projects/seed-project", { name: "New" });
+    expect(res.status).toBe(401);
+  });
+
+  test("returns 404 for another org's project", async () => {
+    const token = await signInAsOtherOrgUser();
+    const res = await api.patch("/api/projects/seed-project", { name: "New" }, token);
+    expect(res.status).toBe(404);
+  });
+});
+```
+
+Doosri org ke project par `404` aata hai, `403` nahi, taake attacker ko yeh bhi pata na chale ke woh project maujood hai.
+
+### Farq kya hai?
+
+| Test | Kya sabit karta hai |
+| --- | --- |
+| Success | Response ka shape wohi hai jo contract kehta hai |
+| Validation | Har ghalat input ka documented status aur message |
+| 401 | Bina login ke kuch nahi milta |
+| 404 doosri org | Tenant scoping kaam kar rahi hai aur existence leak nahi hoti |
+| Limit (agar ho) | Quota theek boundary par trip hota hai, ek pehle ya ek baad nahi |
+
+## 5. Kaise apply karein?
+
+<Flow title="Endpoint ka order">
+
+Contract likhein: input, output, errors
+↓
+Endpoint aur us ke tests banayein
+↓
+Success, validation, auth, limit tests green
+↓
+Review aur approve
+↓
+Ab frontend usay call kare
+
+</Flow>
+
+Tests kaise authenticate karein:
+
+- Seed script ek test account banata hai jis ka email pehle se confirmed hai.
+- Test helper usi se sign in karta hai aur asli bearer token ya cookie bhejta hai.
+- Is liye authorization, tenant scoping, row level security aur quotas tests mein bhi production ki tarah lagti hain.
+
+### Test bypass token: sirf ek gate ke liye
+
+Kuch gates seeded user programmatically paar nahi kar sakta, jaise SMS one-time code. Sirf unke liye bypass token allowed hai, teen shartein ke saath:
+
+| Shart | Kyun |
+| --- | --- |
+| Secret se parha jaye, repo mein literal nahi | Warna har clone ke paas backdoor |
+| `NODE_ENV` production ho to bilkul refuse | Production mein yeh kabhi na chale |
+| Sirf wohi ek gate bypass ho | Auth, authorization, quota aur validation phir bhi chalein |
+
+Jo bypass authorization band kar de, woh friendly naam wala backdoor hai.
+
+## 6. Exceptions aur common mistakes
+
+**Kab rule nahi lagta:** chhota internal prototype jo kabhi production data nahi chhoota, us mein tests baad mein aa sakte hain. Lekin jaise hi woh real users ke saath chale, yeh rule lagta hai. Public read-only endpoint mein auth tests ki jagah validation aur rate limit tests zaroori hain.
+
+<Mistake
+  title="Test mein admin user se sab kuch chalana"
+  why="Admin ke paas har cheez ki ijazat hai, is liye authorization bugs kabhi nazar nahi aate."
+  better="Normal seeded user se test karein, aur doosri org ke user se forbidden cases."
+/>
+
+<Mistake
+  title="Sirf status code check karna"
+  why="200 aa gaya lekin body mein ghalat ya extra fields, jaise password hash, leak ho rahe hain."
+  better="Response body ko contract ke exact shape se compare karein."
+/>
+
+<Mistake
+  title="Quota test sirf andar ki value par"
+  why="Off by one bugs boundary par hote hain, jaise 100 ki limit par 101 wali request."
+  better="Limit se theek pehle, theek limit par aur us ke baad, teeno test karein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [API Handler Shape](/courses/best-practices/api-handler-shape), [Testing Pyramid](/courses/best-practices/testing-pyramid) |
+| **Saath mein** | [Input Validation at the Boundary](/courses/best-practices/input-validation), [Authorization & Multi-Tenancy](/courses/best-practices/authorization-and-tenancy) |
+| **Baad mein** | [Shared API Contracts](/courses/best-practices/shared-api-contracts), [Rate Limiting & Background Jobs](/courses/best-practices/rate-limiting-and-background-jobs) |
+
+## Final quick revision
+
+| Check | Haan? |
+| --- | --- |
+| Success path ka contract shape test | |
+| Har validation branch ka test | |
+| 401 aur doosri org ka 404 | |
+| Limit boundary test | |
+| Seeded real user se sign in | |
+| Bypass token production mein refuse | |
+| Frontend tests ke baad | |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Pehle contract sabit karein, phir us par UI banayein. Endpoint ka asli test woh hai jo ghalat user aur ghalat input bhejta hai.
+
+</Callout>

@@ -1,0 +1,281 @@
+---
+title: Motion & Design Iteration
+description: UI animation duration aur easing ke rules, ek duration scale, ek curve bina bounce, reduced motion, aur design alternatives compare karne ka tareeqa.
+keywords:
+  - ui animation duration easing
+  - css transition best practices
+  - prefers reduced motion
+  - design tokens motion
+  - design iteration process
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Motion ek system hai: ek duration scale, ek curve, koi bounce nahi. Aur design ke faisle andaze se nahi, measure kar ke aur real size par compare kar ke hote hain.**
+
+</Callout>
+
+Is chapter ke do hisse hain. Pehla **motion**: animations kitni der chalein, kaunsa curve, kya animate karna hai aur kya nahi. Doosra **design iteration**: ek screen ke kai design options kaise banayein, naam dein aur compare karein.
+
+| Group | Rules |
+| --- | --- |
+| **Duration** | Sirf ek scale: 115, 185, 300, 485, 785 ms. Exit entrance se chhota |
+| **Curve** | Har jagah ek hi curve, CSS aur JS dono mein. Overshoot aur bounce nahi |
+| **Kya animate karein** | Sirf `transform` aur `opacity`. Width, height, top, left nahi |
+| **Behavior** | Har animation cause aur effect dikhaye, beech mein rok sako, reduced motion respect ho |
+| **Lists** | Saaf clip, fade mask nahi |
+| **Debugging** | Andaza nahi, browser se size, computed style aur animations parho |
+| **Iteration** | Naye direction ko number, variation ko letter (2a, 2b), real size par same data ke saath compare, reference exact match, variation prop se, copy file se nahi |
+
+## 2. Kyun zaroori hai?
+
+Response time par Nielsen Norman Group ki purani aur ab tak sahi research kehti hai: taqreeban 0.1 second instant lagta hai aur 1 second tak user ka flow nahi tootta. Isi liye taqreeban 100 se 500 ms ki animations "responsive" lagti hain, is se lambi "sust".
+
+Scale 300 ms (taqreeban ek palak jhapakne jitna) par bana hai aur golden ratio (1.618) se upar neeche jata hai: 300 ko 1.618 se taqseem karo to 185, phir 115. Zarb do to 485, phir 785. Jab har duration ek hi scale se aaye to poori app ek hi "material" ki bani lagti hai. Har component ki apni timing aur apna curve ho to lagta hai ek screen par chaar alag products jor diye gaye.
+
+Bounce aur overshoot dhyan kheenchte hain, khilona jaisa feel dete hain aur kaam slow karte hain. Kuch users ko motion se chakkar ya matli hoti hai, is liye operating system ki "reduce motion" setting ko respect karna accessibility ka hissa hai.
+
+Performance ki wajah bhi hai: `width` ya `height` animate karne se browser har frame par layout dobara calculate karta hai aur animation atakti hai. `transform` aur `opacity` compositor par chalte hain aur smooth rehte hain.
+
+<CompareTable leftTitle="Bina system ke motion" rightTitle="Scale aur ek curve ke saath">
+
+transition: all 0.2s ek file mein, 250ms ease-in-out doosri mein | Har duration ek token se
+Card bounce karta hai, toast linear | Har jagah ek hi curve
+Drawer ki width animate, scroll atakta hai | Drawer ka transform animate, smooth
+Reduce motion on, phir bhi sab ghoomta hai | Reduce motion par movement band
+List ke aakhir mein gradient fade | Saaf clip, aakhri row poori nazar aaye
+dashboard-final-v3-new.html | 1, 2a, 2b, purane archive mein
+Teen chhote screenshots dekh kar faisla | Do options 1440 par, same data ke saath
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Sirf `transform` aur `opacity`, `prefers-reduced-motion`, aur `transition: all` se parhez | Yeh teen aadatein performance aur accessibility dono bachati hain |
+| **Production code** | Duration aur curve tokens, koi hardcoded ms nahi, exits chhote | Har developer apni timing daale to product bikhra hua lagta hai |
+| **Senior level** | Motion scale define karna, design options ka process chalana, review mein measured numbers maangna | Design system ka decay aksar chhoti "thori si" tabdeeliyon se hota hai |
+
+Kab seekhein: CSS transitions aur Tailwind seekhne ke baad, jab aap pehla drawer, dialog ya dropdown animate kar rahe hon. Iteration ka process tab jab aap ek screen ke do design options par kaam karein.
+
+## 4. Bura vs acha code
+
+### Bura motion
+
+```css
+.card {
+  transition: all 0.2s ease-in-out;
+}
+
+.drawer {
+  width: 0;
+  transition: width 250ms cubic-bezier(0.68, -0.55, 0.27, 1.55);
+}
+
+.drawer.open {
+  width: 400px;
+}
+
+.list {
+  mask-image: linear-gradient(to bottom, black 80%, transparent);
+}
+```
+
+### Acha motion
+
+Tokens ek jagah:
+
+```css
+:root {
+  --duration-press: 115ms;
+  --duration-quick: 185ms;
+  --duration-blink: 300ms;
+  --duration-glide: 485ms;
+  --duration-drift: 785ms;
+  --ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.drawer {
+  width: 400px;
+  transform: translateX(100%);
+  transition: transform var(--duration-quick) var(--ease-standard);
+}
+
+.drawer[data-state="open"] {
+  transform: translateX(0);
+  transition-duration: var(--duration-blink);
+}
+
+.list {
+  overflow: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer {
+    transition-property: opacity;
+  }
+}
+```
+
+`--ease-standard` ek critically damped spring jaisa curve hai: tez shuru, aahista ruke, target se aage nahi jata. Bezier ke y values 1 se upar nahi jate, is liye overshoot nahi.
+
+Drawer khulte waqt 300 ms leta hai aur band hote waqt 185 ms, kyunki transition hamesha nayi state ki duration use karti hai. Exit entrance se chhota hona chahiye: user ne band kar diya, ab intezar kyun karwayein. CSS transitions beech mein rok kar ulti chal sakti hain, is liye user aadhe raaste mein drawer band kar sake.
+
+JS animations bhi wahi tokens parhein, apni values nahi:
+
+```ts
+export function slideIn(element: HTMLElement) {
+  const styles = getComputedStyle(document.documentElement);
+  const duration = Number.parseFloat(styles.getPropertyValue("--duration-blink"));
+  const easing = styles.getPropertyValue("--ease-standard").trim();
+
+  return element.animate(
+    [{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }],
+    { duration, easing }
+  );
+}
+```
+
+Tailwind mein bhi sirf scale wali values: `duration-115`, `duration-185`, `duration-300`, `duration-485`, `duration-785`, aur curve ko theme mein `--ease-standard` bana kar `ease-standard` utility se use karein. `motion-reduce:` variant reduced motion ke liye hai.
+
+### Farq kya hai?
+
+| Bura | Acha | Rule |
+| --- | --- | --- |
+| `transition: all 0.2s` | `transition: transform` + token | Ek scale, sirf zaroori property |
+| `width` animate | `transform` animate | Layout har frame par nahi banta |
+| Bezier mein -0.55 aur 1.55 | y values 0 se 1 ke beech | No bounce |
+| Open aur close same speed | Open 300, close 185 | Exit chhota |
+| Reduced motion ka zikr nahi | Media query mein sirf opacity | Accessibility |
+| `mask-image` fade | `overflow: auto` | Saaf clip |
+
+## 5. Kaise apply karein?
+
+<Flow title="Animation add karne ka tareeqa">
+
+Poocho: yeh motion kis cause ka effect dikha rahi hai?
+↓
+Scale se duration chuno: chhota element, chhoti duration
+↓
+Sirf transform aur opacity animate karo
+↓
+Shared curve token lagao
+↓
+Exit ko ek step chhota rakho
+↓
+Reduce motion on kar ke check karo
+
+</Flow>
+
+| Token | Duration | Kahan |
+| --- | --- | --- |
+| **press** | 115 ms | Hover, button press feedback |
+| **quick** | 185 ms | Tooltip, chhoti state change, exits |
+| **blink** | 300 ms | Drawer, dialog, panel kholna |
+| **glide** | 485 ms | Page transition, bari surface |
+| **drift** | 785 ms | Kabhi kabhar, bari background movement ya spinner ka ek chakkar |
+
+Jab koi animation chal hi na rahi ho ya kuch "off" lage, pehle measure karein. DevTools console mein:
+
+```js
+const drawer = document.querySelector("[data-drawer]");
+const styles = getComputedStyle(drawer);
+
+console.log(drawer.getBoundingClientRect());
+console.log(styles.transitionDuration, styles.transitionTimingFunction);
+console.log(drawer.getAnimations().map((animation) => animation.transitionProperty ?? animation.animationName));
+```
+
+Aam wajah: custom property mein typo, jaise `var(--duration-blinkk)`. Browser koi error nahi deta, property apni initial value `0s` par chali jati hai aur animation chupke se gayab. Ek `getComputedStyle` call yeh foran dikha deta hai, screenshot ko ghoorna nahi.
+
+### Design iteration ke rules
+
+| Rule | Detail |
+| --- | --- |
+| **Number aur letter** | Naya direction agla number (1, 2, 3). Usi direction ki variation number + letter (2a, 2b). Number kabhi nahi badalte, archive wale bhi. Delete nahi, archive, jab tak owner na kahe |
+| **Real size par compare** | Options target viewport (1440 by 900 aur 390 by 844) par, side by side, same data ke saath. Thumbnails sirf navigation ke liye |
+| **Reference exact match** | Screenshot ya design se kaam ho to spacing, type, color, icons aur copy exact. Jo jaan boojh kar badla, woh PR mein list |
+| **Variation prop se** | Variation base component ka option (flag ya prop) ho, copy file nahi. Aakhri variation drop ho to option bhi hatao |
+
+Thumbnail mein jeetne wala layout real size par aksar first viewport budget tor deta hai. Is liye faisla hamesha asli size par.
+
+Variation ka acha tareeqa, ek component aur ek prop:
+
+```tsx
+export function Checklist({ steps, compact = false }: { steps: SetupStep[]; compact?: boolean }) {
+  return (
+    <ol data-compact={compact} className="group flex flex-col gap-3 data-[compact=true]:gap-2">
+      {steps.map((step) => (
+        <li key={step.id} className="text-sm group-data-[compact=true]:text-xs">{step.title}</li>
+      ))}
+    </ol>
+  );
+}
+```
+
+`Checklist.tsx` aur `ChecklistCompact.tsx` do files mein 80 lines copy hon to har bug fix do jagah karna parta hai, aur dono files dheere dheere alag ho jati hain. Ek prop wala component yeh masla khatam karta hai.
+
+## 6. Exceptions aur common mistakes
+
+| Situation | Kya karein |
+| --- | --- |
+| **Spinner ya continuous rotation** | Rotation linear rehti hai, lekin ek chakkar ki duration scale se |
+| **Header ya dock blur** | Sirf tab jab designer khud maange |
+| **Reduced motion** | Movement hata do, opacity ka halka fade ya seedha state change kaafi |
+
+<Mistake
+  title="transition: all lagana"
+  why="Har badalti property animate hoti hai, layout wali bhi, aur jo cheez animate nahi honi chahiye thi woh bhi hilti hai."
+  better="Sirf woh property likho jo animate karni hai, aam taur par transform aur opacity, duration token ke saath."
+/>
+
+<Mistake
+  title="Height animate kar ke accordion kholna"
+  why="Har frame par layout banta hai, neeche ka sara content dhakka khata hai aur animation atakti hai."
+  better="Transform ya opacity use karo, ya content ko bina animation ke kholo. Motion zaroori nahi, smoothness zaroori hai."
+/>
+
+<Mistake
+  title="Bounce ya overshoot wala curve"
+  why="Interface khilona lagta hai, har baar dhyan kheenchta hai aur ek screen par mixed curves alag products jaisa feel dete hain."
+  better="Ek shared curve token jo target par ruk jaye, poori app mein."
+/>
+
+<Mistake
+  title="Chhote screenshots dekh kar design chunna"
+  why="Chhoti image mein jo saaf lagta hai, real size par woh pehli screen ka budget tor sakta hai."
+  better="Options ko target size par, same data ke saath, side by side kholo, phir faisla karo."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Styling in React](/courses/react/styling), [Design Tokens & UI Consistency](/courses/best-practices/design-tokens-and-ui), [Visual Hierarchy & Spacing](/courses/best-practices/visual-hierarchy-and-spacing) |
+| **Saath mein** | [Dashboards](/courses/best-practices/dashboards-ux), [DRY Without Tight Coupling](/courses/best-practices/dry-without-coupling) |
+| **Baad mein** | [Performance & Core Web Vitals](/courses/nextjs/performance), [Pull Requests & Code Review](/courses/best-practices/pull-requests-and-code-review) |
+
+## Final quick revision
+
+| Check | Yaad rakhne wali baat |
+| --- | --- |
+| Duration | Sirf 115, 185, 300, 485, 785 ms, tokens se |
+| Curve | Ek shared curve, bounce aur overshoot nahi |
+| Property | Sirf transform aur opacity |
+| Exit | Entrance se chhota |
+| Accessibility | `prefers-reduced-motion` respect |
+| Lists | Saaf clip, fade mask nahi |
+| Debugging | `getBoundingClientRect`, `getComputedStyle`, `getAnimations` |
+| Naming | 1, 2, 2a, 2b, archive, delete nahi |
+| Compare | Real size, side by side, same data |
+| Reference | Exact match, ya changes PR mein list |
+| Variation | Prop ya flag, copy file nahi |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Achi motion nazar nahi aati, bas app "smooth" lagti hai. Ek scale, ek curve, sirf transform aur opacity. Aur design ka har faisla real size par, measured numbers ke saath.
+
+</Callout>

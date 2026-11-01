@@ -40,6 +40,21 @@ Body `#` (h1) se shuru na karein, page title khud render hota hai. Har chapter y
 
 Length: 120 se 260 lines. Interview angle wala ek `### Interview tip` jahan munasib ho.
 
+## Best Practices course structure
+
+`content/courses/best-practices/` ke chapters practice samjhate hain, language feature nahi. Inka structure:
+
+1. `## 1. Yeh practice kya hai?` rule ek line mein, `<Callout title="Rule">` mein.
+2. `## 2. Kyun zaroori hai?` kaunsa asli problem rokta hai, `<CompareTable>` bina rule vs rule ke saath.
+3. `## 3. Kab follow karein?` table: Learning project, Production code, Senior level. Har level par kitna zaroori aur kyun.
+4. `## 4. Bura vs acha code` pehle bad example, phir good example, phir "Farq kya hai?" table.
+5. `## 5. Kaise apply karein?` steps `<Flow>` ya checklist.
+6. `## 6. Exceptions aur common mistakes` kab rule nahi lagta, aur 2 se 4 `<Mistake />`.
+7. `## 7. Pehle aur baad mein kya seekhein?` related chapters ke links.
+8. `## Final quick revision` checklist table aur `<Callout title="Yaad rakhein">`.
+
+Jitna zaroori hai utna hi likhein. Example clarity ke liye ho, filler na ho. Kisi company, product, insaan, server ya internal tool ka naam na likhein.
+
 ## Components
 
 | Component | Usage |

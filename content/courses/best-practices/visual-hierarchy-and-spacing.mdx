@@ -1,0 +1,298 @@
+---
+title: Visual Hierarchy & Spacing
+description: Visual hierarchy aur whitespace UX ke rules, ek primary button, first viewport budget, spacing scale, type scale aur squint test, Roman Urdu mein.
+keywords:
+  - visual hierarchy whitespace ux
+  - spacing scale 4px 8px
+  - one primary button per page
+  - above the fold design
+  - squint test ui design
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Har screen ka ek kaam hota hai. Space, size aur emphasis pehle us kaam par kharch karo, baqi sab us ke neeche.**
+
+</Callout>
+
+Visual hierarchy ka matlab hai user ki aankh ko ek tay order mein chalana: pehle sab se ahem cheez, phir us se kam ahem. Is ke tools hain size, weight, color, position aur space.
+
+Shuru ek sentence se hota hai: "Yeh screen `<user>` ko `<ek kaam>` karne ya jaanne deti hai." Agar yeh sentence nahi ban raha to screen ke do kaam hain. Pehle woh masla hal karo, koi layout fix us ko theek nahi karega.
+
+Is chapter ke rules ek nazar mein:
+
+| Rule | Matlab | Number |
+| --- | --- | --- |
+| **Ek primary action** | Ek viewport mein sirf ek primary-styled button | Max 1, aur 0 bhi galat |
+| **First viewport budget** | Screen ka jawab bina scroll nazar aaye, banners aur onboarding kam jagah lein | Transient blocks max 25 percent |
+| **Whitespace groups banata hai** | Groups ke beech gap, group ke andar wale gap se kam az kam double | Ratio 2x ya zyada |
+| **Spacing scale** | Har margin, padding, gap ek fixed step se | 4, 8, 12, 16, 24, 32, 48, 64 |
+| **Density** | Tables aur stat cards ke fixed size | Rows 40, 48 ya 56 px |
+| **Pehle halka karo, phir hatao** | Hatane se pehle chhota, collapse ya move karo | 4 steps ka order |
+| **Disclosure depth** | Cheez visible, ek click ya do click door | Max 2 levels |
+| **Type scale** | Kam text sizes, kam bari cheezein | 3 sizes + title, max 2 large |
+| **Border kab** | Pehle space, phir tint, border aakhir mein | Surfaces max 2 deep |
+| **Squint test** | Blur screenshot mein primary cheez pehle dikhe | 5 se 20 px blur |
+| **Front-load** | Heading ka pehla lafz information wala | Heading max 6 words |
+
+Viewport ke liye do reference sizes use hote hain: desktop 1440 by 900 aur phone 390 by 844. "First viewport" woh hissa hai jo page load par bina scroll nazar aata hai.
+
+## 2. Kyun zaroori hai?
+
+UX research (khaas taur par Nielsen Norman Group ki eye-tracking studies) baar baar ek hi baat dikhati hai: users ka zyada tar waqt fold ke upar guzarta hai. Ek study mein taqreeban 57 percent viewing time pehli screen par aur taqreeban 74 percent pehli do screens par tha. Jo cheez neeche dhakel di, us ki attention ka bara hissa chala gaya.
+
+Doosri wajah decision time hai. Hick's law kehta hai ke barabar choices jitni zyada, faisla utna slow. Teen barabar primary buttons ka matlab hai user ko khud sochna pare ke agla qadam kya hai. Government design systems bhi isi wajah se ek page par ek main call to action rakhte hain.
+
+Proximity bhi research se aata hai: jo cheezein qareeb hon, dimagh unhein ek group samajhta hai. Is liye spacing sirf "khubsurti" nahi, yeh batati hai ke kaun si cheez kis ke saath hai.
+
+<CompareTable leftTitle="Bina rule ke" rightTitle="Rule ke saath">
+
+Teen primary buttons, user confuse | Ek primary, baqi secondary ya link
+Banners aur checklist ne pehli screen kha li | Stats aur main content pehli screen mein
+Label do inputs ke beech hawa mein | Label apne field ke saath chipka hua
+p-[18px], mt-5, mt-6 random values | 4, 8, 12, 16, 24, 32, 48, 64 scale
+Ek card mein 7 font sizes | 3 sizes aur ek page title
+Card ke andar card ke andar card | Page, phir card, bas
+Blur karo to ek grey slab pehle dikhta hai | Blur karo to main number aur button pehle dikhte hain
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Ek primary button, spacing scale aur 3 text sizes abhi se | Yeh teen aadat ban jayein to baqi design khud behtar lagta hai, cost zero hai |
+| **Production code** | Saare rules, har screen par, desktop aur phone dono size par | Asli users scroll nahi karte aur confuse ho kar chale jate hain, yeh seedha conversion par asar hai |
+| **Senior level** | Rules ko review mein measure karna, numbers ke saath feedback dena | "Thora off lag raha hai" feedback se kuch theek nahi hota, measured height aur rule ka naam theek karwata hai |
+
+Kab seekhein: jaise hi aap pehla real UI component Tailwind ke saath bana rahe hon. Design tokens aur spacing scale saath saath seekhna sab se asaan hai.
+
+## 4. Bura vs acha code
+
+### Ek primary action
+
+Bura: har button primary.
+
+```tsx
+export function ProjectsHeader() {
+  return (
+    <div className="flex gap-3">
+      <button className="bg-primary text-primary-foreground px-4 py-2">New project</button>
+      <button className="bg-primary text-primary-foreground px-4 py-2">Import</button>
+      <button className="bg-primary text-primary-foreground px-4 py-2">Export</button>
+    </div>
+  );
+}
+```
+
+Acha: ek primary, baqi secondary aur ghost.
+
+```tsx
+export function ProjectsHeader() {
+  return (
+    <div className="flex gap-2">
+      <button className="rounded-md bg-primary px-4 py-2 text-primary-foreground">Create project</button>
+      <button className="rounded-md border px-4 py-2">Import projects</button>
+      <button className="rounded-md px-4 py-2 text-muted-foreground">Export</button>
+    </div>
+  );
+}
+```
+
+Zero primary bhi galat hai. First-run screen par koi button primary na ho to user ko pata nahi chalta ke agla qadam kahan hai.
+
+### Spacing jo group banaye
+
+Bura: har jagah barabar gap, label upar wale aur neeche wale input ke beech latka hua.
+
+```tsx
+<form className="space-y-4">
+  <label htmlFor="name">Project name</label>
+  <input id="name" className="p-[18px]" />
+  <label htmlFor="slug">URL slug</label>
+  <input id="slug" className="mt-5" />
+</form>
+```
+
+Acha: label se field 8 px, ek field group se agla group 24 px.
+
+```tsx
+<form className="flex flex-col gap-6">
+  <div className="flex flex-col gap-2">
+    <label htmlFor="name">Project name</label>
+    <input id="name" className="rounded-md border px-3 py-2" />
+  </div>
+  <div className="flex flex-col gap-2">
+    <label htmlFor="slug">URL slug</label>
+    <input id="slug" className="rounded-md border px-3 py-2" />
+  </div>
+</form>
+```
+
+Spacing scale aur Tailwind classes ka rishta:
+
+| Step | Tailwind | Kahan use karein |
+| --- | --- | --- |
+| 4 px | `1` | Icon se us ka label, badge ke andar |
+| 8 px | `2` | Ek control group ke andar: label se field, button se button |
+| 12 px | `3` | Compact list ki rows, chips ke beech |
+| 16 px | `4` | Phone par card padding, card ke andar related blocks, phone page margin |
+| 24 px | `6` | Desktop card padding, card ke andar sections, desktop page margin |
+| 32 px | `8` | Phone par page sections ke beech |
+| 48 px | `12` | Desktop par page sections ke beech |
+| 64 px | `16` | Sirf hero ya marketing blocks, admin screen ke andar kabhi nahi |
+
+Scale ke steps ek doosre se kam az kam taqreeban 25 percent alag hain, is liye choice wazeh hoti hai. `mt-5` aur `mt-6` saath saath hon to aankh farq nahi pakar sakti, sirf code ganda hota hai.
+
+### Type scale aur borders
+
+Bura: bohat sizes, har cheez bold, card ke andar card.
+
+```tsx
+<div className="rounded-xl border p-6">
+  <div className="rounded-lg border p-4">
+    <h3 className="text-xl font-bold">Revenue</h3>
+    <p className="text-[13px] font-semibold">This month</p>
+    <div className="rounded border p-3 text-3xl font-bold text-primary">$4,200</div>
+    <p className="text-[11px]">Updated 5 min ago</p>
+  </div>
+</div>
+```
+
+Acha: 3 sizes, sirf ek cheez par size, weight aur color teeno, surface sirf ek level.
+
+```tsx
+<section className="flex flex-col gap-1 rounded-lg border p-6">
+  <h3 className="text-sm text-muted-foreground">Revenue this month</h3>
+  <p className="text-2xl font-semibold tabular-nums">$4,200</p>
+  <p className="text-xs text-muted-foreground">Updated 5 min ago</p>
+</section>
+```
+
+### Farq kya hai?
+
+| Bura | Acha | Rule |
+| --- | --- | --- |
+| Teen primary buttons | Ek primary, ek border wala, ek ghost | Ek primary action |
+| Barabar `space-y-4` | Andar `gap-2`, bahar `gap-6` | Groups ke beech double gap |
+| `p-[18px]`, `mt-5` | Sirf scale ke steps | Spacing scale |
+| 5 font sizes, 4 bold | 12, 14, 24 px aur ek bold value | Max 3 sizes, max 2 large |
+| Teen nested borders | Ek card | Surfaces max 2 deep |
+| "Revenue" + "This month" alag | "Revenue this month" | Front-load, kam lines |
+
+## 5. Kaise apply karein?
+
+<Flow title="Screen review ka tareeqa">
+
+Screen ka ek kaam ek sentence mein likho
+↓
+Screen 1440 by 900 aur 390 by 844 par kholo
+↓
+Primary buttons, text sizes aur block heights measure karo
+↓
+Squint test: screenshot 5 se 20 px blur karo
+↓
+Har galti par sab se chhota fix: halka karo, collapse, move, phir remove
+↓
+Dobara measure karo, pehle aur baad ke numbers PR mein likho
+
+</Flow>
+
+Andaze se nahi, browser se measure karein. DevTools console mein:
+
+```js
+const setup = document.querySelector("[data-block='setup']");
+const { top, height } = setup.getBoundingClientRect();
+const budget = window.innerHeight * 0.25;
+
+const textSizes = new Set(
+  [...document.querySelectorAll("main *")]
+    .filter((el) => el.childElementCount === 0 && el.textContent.trim())
+    .map((el) => getComputedStyle(el).fontSize)
+);
+
+console.log({ top, height, budget, textSizes: [...textSizes] });
+```
+
+Baqi rules ki checklist:
+
+| Check | Pass kab |
+| --- | --- |
+| **First viewport** | Screen ka jawab desktop aur phone dono par bina scroll shuru ho |
+| **Transient blocks** | Banners, promos, onboarding mila kar 900 par max 225 px, 844 par max 211 px |
+| **Pehle halka karo** | Order: size ya contrast kam, phir ek line mein collapse, phir drawer ya alag page, aakhir mein remove |
+| **Disclosure** | Har cheez visible, ya ek click, ya do click door, teen kabhi nahi |
+| **Border** | Pehle spacing, na chale to halka background tint, border tab jab block unrelated content ke saath ek unit dikhna chahiye |
+| **Headings** | Pehla lafz information wala, max 6 words, description max ek line (90 characters) |
+| **Basic UI** | Body text 16 px se kam nahi, line length 60 se 75 characters, text contrast 4.5:1 |
+
+Front-load ka example: "Products: 0 added" achi heading hai. "In order to get started you will first need to add some products" user scan karte hue miss kar dega, kyunki log F-shape mein parhte hain aur sirf shuru ke lafz dekhte hain.
+
+### Interview tip
+
+Agar poocha jaye "yeh screen cluttered kyun lagti hai?", to rule ke naam aur number ke saath jawab dein: "Is mein do primary buttons hain, text sizes 6 hain aur cards teen level nested hain." Yeh "mujhe acha nahi laga" se kahin mazboot jawab hai.
+
+## 6. Exceptions aur common mistakes
+
+| Situation | Kya karein |
+| --- | --- |
+| **Marketing ya hero page** | 64 px spacing aur bara type allowed hai, admin screens mein nahi |
+| **Bilkul naya account, koi data nahi** | Onboarding first viewport ka zyada hissa le sakti hai, kyunki dikhane ko kuch aur hai hi nahi |
+| **Pricing page ke teen plans** | Exception nahi. Recommended plan primary, baqi secondary |
+| **Destructive confirm dialog** | Dialog ka ek primary hota hai (jaise "Delete project"), "Cancel" secondary |
+
+<Mistake
+  title="Busy panel ko seedha delete kar dena"
+  why="Woh help link ya setting jis par users ya support depend karte thay, ghayab ho jati hai."
+  better="Pehle size ya contrast kam karo, phir collapse, phir drawer mein move. Remove sab se aakhri qadam hai."
+/>
+
+<Mistake
+  title="Arbitrary spacing values jaise p-[18px] ya mt-5 ke saath mt-6"
+  why="Aankh 20 aur 24 px ka farq nahi pakarti, sirf rhythm toot jati hai aur har developer apni value daalta hai."
+  better="Sirf scale ke steps use karo aur har step ko us ke tay kaam ke liye rakho."
+/>
+
+<Mistake
+  title="Har jagah barabar gap"
+  why="Label apne field ke utna hi qareeb hota hai jitna pichle field ke, to groups nazar nahi aate."
+  better="Group ke andar 8 px, groups ke beech 24 px. Bahar wala gap andar wale ka kam az kam double."
+/>
+
+<Mistake
+  title="Banner, announcement aur checklist ek ke upar ek"
+  why="Pehli screen messages mein chali jati hai aur asal kaam fold ke neeche chala jata hai."
+  better="Saare transient blocks ka ek hi budget hai, max 25 percent. Jo value ke qareeb hai woh dikhe, baqi intezar karein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Styling in React](/courses/react/styling), [Design Tokens & UI Consistency](/courses/best-practices/design-tokens-and-ui) |
+| **Saath mein** | [React Component Practices](/courses/best-practices/react-component-practices), [Styling: CSS Modules & Tailwind](/courses/nextjs/styling) |
+| **Baad mein** | [Forms & Funnels](/courses/best-practices/forms-ux), [Onboarding & Empty States](/courses/best-practices/onboarding-and-empty-states), [Dashboards](/courses/best-practices/dashboards-ux), [Motion & Design Iteration](/courses/best-practices/motion-and-iteration) |
+
+Yeh chapter UX section ki buniyad hai. Baqi chaar chapters inhi rules ko forms, onboarding, dashboards aur motion par lagate hain.
+
+## Final quick revision
+
+| Check | Yaad rakhne wali baat |
+| --- | --- |
+| Ek kaam | Screen ka kaam ek sentence mein |
+| Primary button | Har viewport mein exactly ek |
+| First viewport | Jawab bina scroll, transient blocks max 25 percent |
+| Spacing | 4, 8, 12, 16, 24, 32, 48, 64 aur groups ke beech double gap |
+| Type | Max 3 sizes + title, max 2 large cheezein |
+| Surfaces | Pehle space, phir tint, phir border, max 2 deep |
+| Disclosure | Max do click door |
+| Squint test | Blur mein primary cheez pehle |
+| Fix ka order | Halka karo, collapse, move, remove |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Design ka har pixel kisi kaam par kharch hota hai. Pehle screen ka ek kaam likho, phir measure karo ke space us kaam ko mil rahi hai ya messages aur sajawat ko.
+
+</Callout>

@@ -1,0 +1,188 @@
+---
+title: Documentation & Decision Records
+description: Architecture decision records aur repo ka knowledge base, decisions log, gotchas, glossary, aur docs ko code ke saath sach rakhne ka tareeqa.
+keywords:
+  - architecture decision records
+  - adr decision log
+  - project documentation best practices
+  - gotchas knowledge base
+  - docs as code
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Jo cheez code nahi dikha sakta (faisle aur un ki wajah, traps, domain ke alfaaz) woh repo ke andar `docs/` mein likhi jati hai, aur jo PR behaviour badle woh usi PR mein docs bhi update kare.**
+
+</Callout>
+
+Code batata hai **kya** ho raha hai. Docs batate hain **kyun**, aur kahan girne ka khatra hai. Yeh docs repo mein code ke saath rehte hain, kisi alag wiki mein nahi jo koi update nahi karta.
+
+## 2. Kyun zaroori hai?
+
+Har team mein kuch code "ajeeb" lagta hai: retry teen dafa kyun? Yeh field nullable kyun? Bina likhe faisle ke naya developer usay "theek" kar deta hai aur woh purana bug wapas aa jata hai jis ki wajah se yeh faisla hua tha.
+
+<Callout variant="note" title="Real incident">
+
+Kuch repos ki poori history ek hi commit mein squash kar di gayi thi. Har faisle ki wajah commits mein thi, aur woh sab mit gayi. Jab ek purana design sawal dobara utha to kisi ko yaad nahi tha ke pichli dafa kya try hua aur kyun fail hua. Team ne wohi behas aur wohi ghalti dobara ki.
+
+</Callout>
+
+<CompareTable leftTitle="Docs bina system ke" rightTitle="Docs code ke saath">
+
+Faisle chat mein dafan | Decisions log mein tareekh ke saath
+Har naye developer ka ek din ek trap par | Gotchas file pehle din parhi jati hai
+Wiki purani, koi nahi jaanta kitni | Har module par verified commit
+Pichle hafte faisla hua | 2026-03-14 ko faisla hua
+Docs aur code alag PRs mein | Behaviour aur docs ek PR mein
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Acha README: kya hai, kaise chalayein | Apne aap ko 3 mahine baad samjhana |
+| **Production code** | README, decisions, gotchas, zaroori modules | Team aur naye log tez chalein |
+| **Senior level** | Structure banana aur docs ko review ka hissa banana | Knowledge ek insaan ke dimagh mein na rahe |
+
+## 4. Bura vs acha code
+
+### Bura
+
+```bash
+docs/
+  notes.md
+  new-notes-final.md
+  old/
+```
+
+```bash
+we changed the retry logic last week because of the issue with the provider
+```
+
+Kaunsa hafta? Kaunsa issue? Kaunsi file sahi hai?
+
+### Acha: structure
+
+```bash
+README.md
+docs/knowledge/
+  README.md
+  architecture.md
+  decisions.md
+  gotchas.md
+  glossary.md
+  billing.md
+  auth-tenancy.md
+```
+
+`docs/knowledge/README.md` ek chhota index hai: product kya hai, pehle din kaun si 3 se 6 files parhein, aur har file kis sawal ka jawab deti hai.
+
+### Acha: decisions log
+
+```bash
+- 2026-03-14: webhook delivery retries three times with backoff. the provider drops about 1% of first attempts.
+- 2026-04-02: invoices store amounts in cents as integers. floats gave rounding errors in totals.
+- 2026-05-20: no soft delete on comments. legal asked for real deletion.
+```
+
+### Acha: gotcha
+
+```bash
+trap: exports time out above 50k rows
+
+symptom: csv export returns 504 for large stores
+cause: export runs inside the request, the host kills it at 60s
+fix: use the background export job for more than 10k rows
+seen: 2026-06-11
+```
+
+### Farq kya hai?
+
+| Cheez | Bura | Acha |
+| --- | --- | --- |
+| Tareekh | "Last week" | `2026-03-14` |
+| Wajah | Gayab | Ek jumla |
+| Dhoondhna | Teen files mein | Ek index, ek sawal ek file |
+| Freshness | Pata nahi | Verified commit ya last updated date |
+
+## 5. Kaise apply karein?
+
+| File | Kya rakhti hai |
+| --- | --- |
+| `README.md` (root) | Setup, commands, kaise chalayein |
+| `docs/knowledge/README.md` | Index aur reading order |
+| `architecture.md` | Pieces kaise jurte hain, kya jaan boojh kar nahi banaya |
+| `decisions.md` | Har faisla ek line: tareekh, faisla, ek jumle mein wajah |
+| `gotchas.md` | Har trap: symptom, wajah, kya karein |
+| `glossary.md` | Domain ke alfaaz, ek line har ek |
+| `<module>.md` | Ek bounded sawal, jaise billing ya auth |
+
+<Flow title="Docs ko sach kaise rakhein">
+
+PR behaviour badalta hai
+↓
+Usi PR mein related module update
+↓
+Bug fix mein naya trap mila to gotchas mein
+↓
+Review thread mein faisla hua to decisions mein
+↓
+Module ki last verified date ya commit update
+
+</Flow>
+
+Docs mein kabhi secret value, customer ki identity ya personal data nahi. Env variable ka **naam** theek hai, value nahi.
+
+### Doosre tareeqe
+
+Bohat teams **ADR** (Architecture Decision Record) format use karti hain: har bare faisle ki alag file jis mein Context, Decision, Consequences sections hon. Yeh bare, lambe faislon ke liye behtar hai. Ek line wala decisions log chhote aur zyada faislon ke liye tez hai. Kuch teams dono rakhti hain: log har faisle ke liye, ADR sirf architecture badalne wale faislon ke liye.
+
+## 6. Exceptions aur common mistakes
+
+**Kab rule nahi lagta:** jo code khud wazeh kare usay docs mein dohrana nahi. Function kya karta hai yeh naam aur types batayein. Docs sirf woh jo code nahi bata sakta.
+
+<Mistake
+  title="Docs ko baad ka kaam samajhna"
+  why="Baad kabhi nahi aata aur docs code se door hote jate hain."
+  better="Behaviour badalne wale PR mein hi docs, aur PR template mein iski line."
+/>
+
+<Mistake
+  title="Relative tareekhein likhna"
+  why="Pichle hafte ka matlab teen mahine baad kuch nahi."
+  better="Hamesha poori tareekh likhein, jaise 2026-03-14."
+/>
+
+<Mistake
+  title="Ghalat doc ko chhor dena"
+  why="Purana ghalat doc koi doc na hone se zyada nuksan karta hai, log us par bharosa karte hain."
+  better="Ghalat module ko foran theek ya delete karein, naya duplicate na banayein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Self-Documenting Code (No Comments)](/courses/best-practices/self-documenting-code), [Git Branches & Commits](/courses/best-practices/git-branches-and-commits) |
+| **Saath mein** | [Pull Requests & Code Review](/courses/best-practices/pull-requests-and-code-review), [Project Structure](/courses/best-practices/project-structure) |
+| **Baad mein** | [Working with AI Coding Agents](/courses/best-practices/working-with-ai-agents), [Production Readiness Checklist](/courses/best-practices/production-readiness-checklist) |
+
+## Final quick revision
+
+| Check | Haan? |
+| --- | --- |
+| README mein setup aur commands | |
+| Decisions log, tareekh aur wajah ke saath | |
+| Gotchas: symptom, cause, fix | |
+| Ek file ek sawal, ek index | |
+| Behaviour aur docs ek PR mein | |
+| Koi secret ya personal data nahi | |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Code "kya" batata hai, docs "kyun". Faisla likha nahi gaya to woh dobara liya jayega, aur aksar ghalat.
+
+</Callout>

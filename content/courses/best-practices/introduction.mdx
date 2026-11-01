@@ -1,0 +1,173 @@
+---
+title: Introduction
+description: Software development best practices kya hain, teams house rules kyun banati hain, aur yeh course kaise organized hai. Roman Urdu mein shuruaat.
+keywords:
+  - software development best practices
+  - clean code roman urdu
+  - coding standards for beginners
+  - house rules coding team
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Best practice woh tareeqa hai jo bohat se developers ne bar bar galtiyon ke baad seekha, aur jo code ko parhne, badalne aur chalane mein sasta banata hai.**
+
+</Callout>
+
+Best practices koi law nahi. Yeh experience ka nichor hain: "humne yeh kiya, is se bug aaya, ab hum aisa karte hain."
+
+Har team inhe apne hisaab se chun kar **house rules** bana leti hai. Kuch rules har jagah same hain (secrets code mein na rakhein), kuch sirf ek team ki pasand hain (ternary bilkul na likhein). Yeh course dono batata hai aur saaf bolta hai ke kaunsa rule universal hai aur kaunsa opinion.
+
+## 2. Kyun zaroori hai?
+
+Akela developer apna code yaad rakh leta hai. Team mein 5 log, 50 files aur 6 mahine baad koi kuch yaad nahi rakhta. Tab code ko khud samajh aana chahiye.
+
+<CompareTable leftTitle="Bina shared rules ke" rightTitle="Shared house rules ke saath">
+
+Har file alag style mein, parhne mein waqt lagta hai | Har file same shape, nazar daalte hi samajh aati hai
+Code review mein style par behas | Review asli logic aur bugs par focus karta hai
+Naya developer hafton tak confuse | Naya developer rules parh kar jaldi contribute karta hai
+Ek hi bug alag files mein alag tarah fix | Ek jagah fix, sab jagah asar
+Production mein chhupe hue errors | Errors jaldi aur saaf nazar aate hain
+
+</CompareTable>
+
+Asli faida speed nahi, **kam surprises** hai. Jo code predictable ho, us mein bug dhoondna aur feature add karna dono sasta hota hai.
+
+## 3. Kab follow karein?
+
+Har chapter mein yeh table milegi. Is ka matlab samajh lein, phir har chapter ka faisla aap khud kar sakte hain.
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Aadat banane ke liye, sakhti se nahi | Abhi focus concept samajhne par hai, lekin achi aadat abhi sasti hai |
+| **Production code** | Team ke rules poore follow karein | Code doosre log parhenge, users par asar hoga |
+| **Senior level** | Rule ki wajah samjhein aur trade-off decide karein | Senior rules banata, todta aur doosron ko sikhata hai |
+
+"Learning project" matlab tutorial, practice app ya portfolio. "Production code" matlab woh code jo real users tak jata hai aur team maintain karti hai. "Senior level" matlab aap sirf rule follow nahi karte, balki batate hain ke kab aur kyun.
+
+## 4. Bura vs acha code
+
+Course ke har chapter mein pehle bura code, phir acha code, phir farq ki table aati hai. Ek chhota sa preview:
+
+```ts
+function calc(u: any) {
+  if (u.p > 3) return u.t * 0.9;
+  return u.t;
+}
+```
+
+```ts
+const LOYAL_CUSTOMER_MIN_ORDERS = 3;
+const LOYALTY_DISCOUNT = 0.9;
+
+function price(order: Order) {
+  if (order.customer.pastOrders <= LOYAL_CUSTOMER_MIN_ORDERS) {
+    return order.total;
+  }
+
+  return order.total * LOYALTY_DISCOUNT;
+}
+```
+
+| Farq kya hai? | Bura | Acha |
+| --- | --- | --- |
+| Naam | `calc`, `u`, `p` kuch nahi batate | `price`, `order`, `pastOrders` khud bolte hain |
+| Numbers | `3` aur `0.9` ka matlab chhupa hai | Named constants matlab batate hain |
+| Type | `any`, koi safety nahi | `Order` type, galti compile par pakri jati hai |
+| Braces | Ek line wala `if` | Braces aur early return, saaf flow |
+
+Ek hi function mein chaar practices nazar aa rahi hain. Yahi course ka tareeqa hai: har chapter ek practice ko alag se samjhata hai.
+
+## 5. Kaise apply karein?
+
+Course sections mein bata hua hai. Har section ka pehla chapter yeh hai:
+
+| Section | Shuru yahan se | Kya seekhenge |
+| --- | --- | --- |
+| **Getting Started** | [Core Philosophy](/courses/best-practices/core-philosophy) | Saare rules ke peeche ki soch |
+| **Clean Code** | [Self-Documenting Code](/courses/best-practices/self-documenting-code) | Naming, functions, formatting, constants |
+| **Architecture & Types** | [Strict Typing](/courses/best-practices/strict-typing) | Types, service layer, project structure |
+| **Backend & API** | [API Handler Shape](/courses/best-practices/api-handler-shape) | Handlers, validation, errors, auth |
+| **Database** | [Database Naming & Design](/courses/best-practices/database-design) | Tables, migrations, queries |
+| **Security** | [Secrets Management](/courses/best-practices/secrets-management) | Secrets, headers, OWASP, dependencies |
+| **Frontend & UI** | [React Component Practices](/courses/best-practices/react-component-practices) | Components, Next.js, design tokens |
+| **UX Principles** | [Visual Hierarchy & Spacing](/courses/best-practices/visual-hierarchy-and-spacing) | Forms, onboarding, dashboards |
+| **Testing & Quality** | [Definition of Done](/courses/best-practices/definition-of-done) | Testing aur performance |
+| **Team Workflow** | [Git Branches & Commits](/courses/best-practices/git-branches-and-commits) | Git, PRs, CI/CD, docs |
+
+<Flow title="Har chapter kaise parhein">
+
+Rule ek line mein parhein
+↓
+Samjhein yeh kaunsa asli problem rokta hai
+↓
+Apna level dekhein: learning, production ya senior
+↓
+Bura aur acha code compare karein
+↓
+Exceptions parhein taake rule andha dhund na lage
+↓
+Apne project ki ek file par apply karein
+
+</Flow>
+
+## 6. Exceptions aur common mistakes
+
+Kuch rules is course mein jaan boojh kar sakht hain, jaise "code mein comments bilkul nahi" ya "ternary nahi". Yeh ek strict house style se liye gaye hain. Bohat si teams in mein se kuch allow karti hain. Hum rule aur us ki wajah dono batayenge, aur saaf likhenge ke trade-off kya hai.
+
+<Mistake
+  title="Har rule ko universal sach samajhna"
+  why="Kuch rules safety ke liye hain aur kuch sirf ek team ki pasand. Dono ko same weight dena behas aur confusion paida karta hai."
+  better="Har chapter ka Exceptions section parhein aur rule ki wajah yaad rakhein, sirf rule nahi."
+/>
+
+<Mistake
+  title="Pehle din se saare rules ek saath lagana"
+  why="Beginner ka dimaag concept aur rules dono ek saath nahi sambhal pata, seekhne ki raftaar ruk jati hai."
+  better="When to Learn What chapter ka roadmap follow karein aur ek waqt mein do teen practices pakki karein."
+/>
+
+<Mistake
+  title="Team ke existing style ko ignore kar ke apni pasand lana"
+  why="Ek repo mein do style hon to har naya parhne wala dono samjhega, consistency khatam."
+  better="Pehle repo ke rules follow karein, badlav chahiye to team se baat kar ke poore repo mein ek saath karein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | Koi bhi ek language ka basic, jaise [JavaScript Functions](/courses/javascript/functions) |
+| **Saath mein** | [Core Philosophy](/courses/best-practices/core-philosophy) |
+| **Baad mein** | [When to Learn What](/courses/best-practices/learning-path-and-levels), [Self-Documenting Code](/courses/best-practices/self-documenting-code) |
+
+<Flow title="Suggested order">
+
+Introduction
+↓
+Core Philosophy
+↓
+When to Learn What
+↓
+Clean Code section
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Best practice | Experience se nikla tareeqa jo code ko sasta banata hai |
+| House rules | Team ka chuna hua set, kuch universal aur kuch opinion |
+| Asli faida | Kam surprises, tez review, aasaan onboarding |
+| Kab follow karein table | Learning, production aur senior level ka farq |
+| Course ka tareeqa | Rule, wajah, level, code, steps, exceptions |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Rule yaad karna kaafi nahi. Har rule ke peeche ka bug ya cost samjhein, phir aap khud decide kar sakenge ke kab sakhti karni hai aur kab nahi.
+
+</Callout>

@@ -1,0 +1,287 @@
+{
+  "title": "Best Practices",
+  "order": 4,
+  "slug": "best-practices",
+  "description": "Production-grade coding ki best practices Roman Urdu mein: clean code, architecture, API, database, security, UX, testing aur team workflow. Kya, kyun aur kab.",
+  "badge": "BP",
+  "sections": [
+    {
+      "title": "Getting Started",
+      "chapters": [
+        {
+          "slug": "introduction",
+          "title": "Introduction"
+        },
+        {
+          "slug": "core-philosophy",
+          "title": "Core Philosophy"
+        },
+        {
+          "slug": "learning-path-and-levels",
+          "title": "When to Learn What"
+        }
+      ]
+    },
+    {
+      "title": "Clean Code",
+      "chapters": [
+        {
+          "slug": "self-documenting-code",
+          "title": "Self-Documenting Code (No Comments)"
+        },
+        {
+          "slug": "naming",
+          "title": "Naming Things"
+        },
+        {
+          "slug": "early-returns-and-braces",
+          "title": "Early Returns & Braces"
+        },
+        {
+          "slug": "conditionals-without-ternaries",
+          "title": "Conditionals Without Ternaries"
+        },
+        {
+          "slug": "small-functions",
+          "title": "Small Functions & Single Responsibility"
+        },
+        {
+          "slug": "file-size-and-organization",
+          "title": "File Size & Organization"
+        },
+        {
+          "slug": "dry-without-coupling",
+          "title": "DRY Without Tight Coupling"
+        },
+        {
+          "slug": "fail-fast-and-no-fallbacks",
+          "title": "Fail Fast, No Defensive Fallbacks"
+        },
+        {
+          "slug": "readable-formatting",
+          "title": "Breathing Room & Transient Locals"
+        },
+        {
+          "slug": "constants-and-magic-values",
+          "title": "Constants & Magic Values"
+        },
+        {
+          "slug": "refactoring-safely",
+          "title": "Refactoring Safely"
+        }
+      ]
+    },
+    {
+      "title": "Architecture & Types",
+      "chapters": [
+        {
+          "slug": "strict-typing",
+          "title": "Strict Typing"
+        },
+        {
+          "slug": "types-beside-logic",
+          "title": "Types Beside Logic"
+        },
+        {
+          "slug": "service-layer",
+          "title": "Service Layer & Thin Controllers"
+        },
+        {
+          "slug": "separation-of-concerns",
+          "title": "Separation of Concerns"
+        },
+        {
+          "slug": "dependency-injection",
+          "title": "Loose Coupling & Dependency Injection"
+        },
+        {
+          "slug": "project-structure",
+          "title": "Project Structure"
+        },
+        {
+          "slug": "following-existing-patterns",
+          "title": "Following Existing Patterns"
+        },
+        {
+          "slug": "fix-root-causes",
+          "title": "Fix Root Causes, Remove Don't Gate"
+        }
+      ]
+    },
+    {
+      "title": "Backend & API",
+      "chapters": [
+        {
+          "slug": "api-handler-shape",
+          "title": "API Handler Shape"
+        },
+        {
+          "slug": "input-validation",
+          "title": "Input Validation at the Boundary"
+        },
+        {
+          "slug": "error-handling-and-envelope",
+          "title": "Error Handling & Error Envelope"
+        },
+        {
+          "slug": "shared-api-contracts",
+          "title": "Shared API Contracts"
+        },
+        {
+          "slug": "single-fetch-client",
+          "title": "One Fetch Client"
+        },
+        {
+          "slug": "authentication",
+          "title": "Authentication Patterns"
+        },
+        {
+          "slug": "authorization-and-tenancy",
+          "title": "Authorization & Multi-Tenancy"
+        },
+        {
+          "slug": "rate-limiting-and-background-jobs",
+          "title": "Rate Limiting & Background Jobs"
+        },
+        {
+          "slug": "logging",
+          "title": "Logging"
+        }
+      ]
+    },
+    {
+      "title": "Database",
+      "chapters": [
+        {
+          "slug": "database-design",
+          "title": "Database Naming & Design"
+        },
+        {
+          "slug": "migrations",
+          "title": "Safe Migrations"
+        },
+        {
+          "slug": "generated-types",
+          "title": "Generated Database Types"
+        },
+        {
+          "slug": "query-patterns",
+          "title": "Query Patterns & Transactions"
+        }
+      ]
+    },
+    {
+      "title": "Security",
+      "chapters": [
+        {
+          "slug": "secrets-management",
+          "title": "Secrets Management"
+        },
+        {
+          "slug": "security-baseline",
+          "title": "Security Baseline"
+        },
+        {
+          "slug": "common-vulnerabilities",
+          "title": "Common Vulnerabilities (OWASP)"
+        },
+        {
+          "slug": "dependency-security",
+          "title": "Dependencies & Supply Chain"
+        }
+      ]
+    },
+    {
+      "title": "Frontend & UI",
+      "chapters": [
+        {
+          "slug": "react-component-practices",
+          "title": "React Component Practices"
+        },
+        {
+          "slug": "nextjs-practices",
+          "title": "Next.js Practices"
+        },
+        {
+          "slug": "design-tokens-and-ui",
+          "title": "Design Tokens & UI Consistency"
+        }
+      ]
+    },
+    {
+      "title": "UX Principles",
+      "chapters": [
+        {
+          "slug": "visual-hierarchy-and-spacing",
+          "title": "Visual Hierarchy & Spacing"
+        },
+        {
+          "slug": "forms-ux",
+          "title": "Forms & Funnels"
+        },
+        {
+          "slug": "onboarding-and-empty-states",
+          "title": "Onboarding & Empty States"
+        },
+        {
+          "slug": "dashboards-ux",
+          "title": "Dashboards"
+        },
+        {
+          "slug": "motion-and-iteration",
+          "title": "Motion & Design Iteration"
+        }
+      ]
+    },
+    {
+      "title": "Testing & Quality",
+      "chapters": [
+        {
+          "slug": "definition-of-done",
+          "title": "Definition of Done"
+        },
+        {
+          "slug": "testing-pyramid",
+          "title": "Testing Pyramid"
+        },
+        {
+          "slug": "endpoint-tests-first",
+          "title": "Endpoint Tests First"
+        },
+        {
+          "slug": "performance-measure-first",
+          "title": "Performance: Measure First"
+        }
+      ]
+    },
+    {
+      "title": "Team Workflow",
+      "chapters": [
+        {
+          "slug": "git-branches-and-commits",
+          "title": "Git Branches & Commits"
+        },
+        {
+          "slug": "pull-requests-and-code-review",
+          "title": "Pull Requests & Code Review"
+        },
+        {
+          "slug": "ci-cd-and-environments",
+          "title": "CI/CD & Environments"
+        },
+        {
+          "slug": "documentation-and-decisions",
+          "title": "Documentation & Decision Records"
+        },
+        {
+          "slug": "working-with-ai-agents",
+          "title": "Working with AI Coding Agents"
+        },
+        {
+          "slug": "production-readiness-checklist",
+          "title": "Production Readiness Checklist"
+        }
+      ]
+    }
+  ]
+}

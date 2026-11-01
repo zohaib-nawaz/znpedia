@@ -236,3 +236,114 @@ Next.js 16 App Router Roman Urdu mein, routing, server components, data fetching
 | 32 | `internationalization` | Internationalization (i18n) | Advanced | next.js i18n internationalization |
 | 33 | `testing` | Testing Next.js Apps | Advanced | next.js testing playwright vitest |
 | 34 | `deployment` | Deployment | Intermediate | next.js deployment vercel docker |
+
+## Best Practices (57 chapters)
+
+Production-grade coding ki best practices Roman Urdu mein: clean code, architecture, API, database, security, UX, testing aur team workflow. Kya, kyun aur kab.
+
+### Getting Started
+
+| # | Slug | Title | Level | Primary keyword |
+| --- | --- | --- | --- | --- |
+| 1 | `introduction` | Introduction | Beginner | software development best practices |
+| 2 | `core-philosophy` | Core Philosophy | Beginner | clean code principles yagni kiss |
+| 3 | `learning-path-and-levels` | When to Learn What | Beginner | junior vs senior developer practices |
+
+### Clean Code
+
+| # | Slug | Title | Level | Primary keyword |
+| --- | --- | --- | --- | --- |
+| 4 | `self-documenting-code` | Self-Documenting Code (No Comments) | Beginner | self documenting code comments |
+| 5 | `naming` | Naming Things | Beginner | naming conventions clean code |
+| 6 | `early-returns-and-braces` | Early Returns & Braces | Beginner | early return guard clause |
+| 7 | `conditionals-without-ternaries` | Conditionals Without Ternaries | Intermediate | avoid nested ternary readability |
+| 8 | `small-functions` | Small Functions & Single Responsibility | Beginner | single responsibility principle functions |
+| 9 | `file-size-and-organization` | File Size & Organization | Intermediate | file organization large components |
+| 10 | `dry-without-coupling` | DRY Without Tight Coupling | Intermediate | dry principle wrong abstraction |
+| 11 | `fail-fast-and-no-fallbacks` | Fail Fast, No Defensive Fallbacks | Intermediate | fail fast defensive programming |
+| 12 | `readable-formatting` | Breathing Room & Transient Locals | Beginner | code readability formatting |
+| 13 | `constants-and-magic-values` | Constants & Magic Values | Beginner | magic numbers named constants |
+| 14 | `refactoring-safely` | Refactoring Safely | Intermediate | safe refactoring small steps |
+
+### Architecture & Types
+
+| # | Slug | Title | Level | Primary keyword |
+| --- | --- | --- | --- | --- |
+| 15 | `strict-typing` | Strict Typing | Intermediate | typescript strict no any |
+| 16 | `types-beside-logic` | Types Beside Logic | Intermediate | typescript types file organization |
+| 17 | `service-layer` | Service Layer & Thin Controllers | Intermediate | service layer thin controllers |
+| 18 | `separation-of-concerns` | Separation of Concerns | Intermediate | separation of concerns ui logic |
+| 19 | `dependency-injection` | Loose Coupling & Dependency Injection | Advanced | dependency injection loose coupling |
+| 20 | `project-structure` | Project Structure | Intermediate | project folder structure best practices |
+| 21 | `following-existing-patterns` | Following Existing Patterns | Advanced | codebase conventions consistency |
+| 22 | `fix-root-causes` | Fix Root Causes, Remove Don't Gate | Advanced | root cause analysis feature flags |
+
+### Backend & API
+
+| # | Slug | Title | Level | Primary keyword |
+| --- | --- | --- | --- | --- |
+| 23 | `api-handler-shape` | API Handler Shape | Intermediate | rest api handler best practices |
+| 24 | `input-validation` | Input Validation at the Boundary | Intermediate | input validation zod api |
+| 25 | `error-handling-and-envelope` | Error Handling & Error Envelope | Intermediate | api error response format |
+| 26 | `shared-api-contracts` | Shared API Contracts | Advanced | typed api contract frontend backend |
+| 27 | `single-fetch-client` | One Fetch Client | Intermediate | api client wrapper fetch |
+| 28 | `authentication` | Authentication Patterns | Advanced | authentication best practices sessions tokens |
+| 29 | `authorization-and-tenancy` | Authorization & Multi-Tenancy | Advanced | authorization multi tenant rbac |
+| 30 | `rate-limiting-and-background-jobs` | Rate Limiting & Background Jobs | Advanced | rate limiting background jobs |
+| 31 | `logging` | Logging | Intermediate | logging best practices pii |
+
+### Database
+
+| # | Slug | Title | Level | Primary keyword |
+| --- | --- | --- | --- | --- |
+| 32 | `database-design` | Database Naming & Design | Intermediate | database naming conventions |
+| 33 | `migrations` | Safe Migrations | Advanced | database migrations best practices |
+| 34 | `generated-types` | Generated Database Types | Intermediate | generated database types typescript |
+| 35 | `query-patterns` | Query Patterns & Transactions | Advanced | sql injection parameterized queries n+1 |
+
+### Security
+
+| # | Slug | Title | Level | Primary keyword |
+| --- | --- | --- | --- | --- |
+| 36 | `secrets-management` | Secrets Management | Beginner | environment variables secrets management |
+| 37 | `security-baseline` | Security Baseline | Intermediate | web security checklist headers |
+| 38 | `common-vulnerabilities` | Common Vulnerabilities (OWASP) | Advanced | owasp top 10 vulnerabilities |
+| 39 | `dependency-security` | Dependencies & Supply Chain | Advanced | npm supply chain security |
+
+### Frontend & UI
+
+| # | Slug | Title | Level | Primary keyword |
+| --- | --- | --- | --- | --- |
+| 40 | `react-component-practices` | React Component Practices | Intermediate | react best practices components hooks |
+| 41 | `nextjs-practices` | Next.js Practices | Intermediate | next.js best practices |
+| 42 | `design-tokens-and-ui` | Design Tokens & UI Consistency | Intermediate | design tokens ui consistency |
+
+### UX Principles
+
+| # | Slug | Title | Level | Primary keyword |
+| --- | --- | --- | --- | --- |
+| 43 | `visual-hierarchy-and-spacing` | Visual Hierarchy & Spacing | Intermediate | visual hierarchy whitespace ux |
+| 44 | `forms-ux` | Forms & Funnels | Intermediate | form ux best practices |
+| 45 | `onboarding-and-empty-states` | Onboarding & Empty States | Intermediate | onboarding ux empty states |
+| 46 | `dashboards-ux` | Dashboards | Advanced | dashboard ux design |
+| 47 | `motion-and-iteration` | Motion & Design Iteration | Advanced | ui animation duration easing |
+
+### Testing & Quality
+
+| # | Slug | Title | Level | Primary keyword |
+| --- | --- | --- | --- | --- |
+| 48 | `definition-of-done` | Definition of Done | Beginner | definition of done checklist |
+| 49 | `testing-pyramid` | Testing Pyramid | Intermediate | testing pyramid unit integration |
+| 50 | `endpoint-tests-first` | Endpoint Tests First | Advanced | api testing auth validation |
+| 51 | `performance-measure-first` | Performance: Measure First | Advanced | premature optimization profiling |
+
+### Team Workflow
+
+| # | Slug | Title | Level | Primary keyword |
+| --- | --- | --- | --- | --- |
+| 52 | `git-branches-and-commits` | Git Branches & Commits | Beginner | git commit message best practices |
+| 53 | `pull-requests-and-code-review` | Pull Requests & Code Review | Intermediate | code review best practices |
+| 54 | `ci-cd-and-environments` | CI/CD & Environments | Intermediate | ci cd pipeline environments |
+| 55 | `documentation-and-decisions` | Documentation & Decision Records | Intermediate | architecture decision records |
+| 56 | `working-with-ai-agents` | Working with AI Coding Agents | Advanced | ai coding agents best practices |
+| 57 | `production-readiness-checklist` | Production Readiness Checklist | Advanced | production readiness checklist |

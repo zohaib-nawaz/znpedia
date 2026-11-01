@@ -1,5 +1,6 @@
 {
   "title": "JavaScript",
+  "order": 1,
   "slug": "javascript",
   "description": "JavaScript zero se advanced tak Roman Urdu mein, variables, functions, closures, async/await, DOM aur modern ES features chhote chhote chapters mein.",
   "badge": "JS",

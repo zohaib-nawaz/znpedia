@@ -1,0 +1,220 @@
+---
+title: React Component Practices
+description: React best practices components aur hooks ke liye, 400 line limit, hooks se named state object, render functions se conditional rendering aur logic component se bahar.
+keywords:
+  - react best practices components hooks
+  - react component size
+  - custom hook return object
+  - conditional rendering render function
+  - logic out of components
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Component 400 lines se chhota rahe, custom hook named object lautaye (tuple ya JSX nahi), har conditional render ek chhota render function ho, aur logic component se bahar hook ya `src/lib` mein rahe.**
+
+</Callout>
+
+Component ka kaam hai **dikhana**. State sambhalna hook ka kaam hai, aur rules (kya overdue hai, total kitna hai) `src/lib` ke pure functions ka. Jab component sirf props aur hook ki values se markup banata hai to woh chhota, parhne layak aur badalne mein mehfooz rehta hai.
+
+## 2. Kyun zaroori hai?
+
+Teen asli bugs jo yeh rules rokte hain:
+
+- Hook `[invoices, isLoading, error]` lautata tha. Ek file mein kisi ne `const [invoices, error, isLoading]` likh diya. `if (isLoading)` ab error string par chal raha tha, aur error aane par skeleton hi ghoomta raha.
+- `{items.length && <List />}` ne khali list par screen par `0` likh diya, kyunki React `0` ko render karta hai.
+- 1200 line ka `Dashboard.tsx` koi review nahi kar paata tha, is liye har PR "LGTM" ho kar merge ho jata tha.
+
+<CompareTable leftTitle="Bina rules" rightTitle="Rules ke saath">
+
+Tuple ki tarteeb ghalat, bug chupke se | Named object, naam se value, tarteeb ka masla nahi
+Nested ternary ko parhna paheli | renderBody mein seedhe if aur return
+Length aur double ampersand se 0 screen par | Braced guard, sirf element ya null
+1000 line ka component, review na mumkin | Chhote child components, apni apni file
+Rule component mein, test ke liye render | Rule pure function mein, seedha test
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Logic hooks mein nikalna aur components chhote rakhna seekhein | Yeh React ki sab se faidemand aadat hai |
+| **Production code** | Charon rules lazmi, review mein check | Team ka code tab hi review hota hai jab chhota aur pehle se andaza layak ho |
+| **Senior level** | Lint rules aur component patterns set karna | `react/jsx-no-leaked-render` jaise rules review ka bojh kam karte hain |
+
+## 4. Bura vs acha code
+
+### Bura: tuple, ternary aur logic andar
+
+```tsx
+"use client";
+
+export function InvoiceList() {
+  const [invoices, isLoading, error] = useInvoices();
+  const overdue = invoices.filter((invoice) => !invoice.paidAt && invoice.dueAt < new Date());
+
+  return (
+    <section>
+      {overdue.length && <p>{overdue.length} overdue</p>}
+      {isLoading ? <Spinner /> : error ? <p>{error}</p> : invoices.map((invoice) => (
+        <InvoiceRow key={invoice.id} invoice={invoice} />
+      ))}
+    </section>
+  );
+}
+```
+
+### Acha: named state, render functions, logic bahar
+
+Hook ka result type `use-invoices.types.ts` mein:
+
+```ts
+export type UseInvoicesResult = {
+  invoices: Invoice[];
+  isLoading: boolean;
+  error: string | null;
+  refresh: () => Promise<void>;
+};
+```
+
+Rule `src/lib/invoices/invoices.library.ts` mein:
+
+```ts
+export function isOverdue(invoice: Invoice, now: Date) {
+  return !invoice.paidAt && invoice.dueAt < now;
+}
+```
+
+Component sirf jorta aur dikhata hai:
+
+```tsx
+"use client";
+
+export function InvoiceList() {
+  const { invoices, isLoading, error, refresh } = useInvoices();
+  const overdueCount = invoices.filter((invoice) => isOverdue(invoice, new Date())).length;
+
+  const renderOverdue = () => {
+    if (overdueCount === 0) {
+      return null;
+    }
+
+    return <OverdueBadge count={overdueCount} />;
+  };
+
+  const renderBody = () => {
+    if (isLoading) {
+      return <InvoiceSkeleton />;
+    }
+
+    if (error) {
+      return <ErrorState message={error} onRetry={refresh} />;
+    }
+
+    return invoices.map((invoice) => <InvoiceRow key={invoice.id} invoice={invoice} />);
+  };
+
+  return (
+    <section>
+      {renderOverdue()}
+      {renderBody()}
+    </section>
+  );
+}
+```
+
+### Farq kya hai?
+
+| Cheez | Bura | Acha |
+| --- | --- | --- |
+| Hook ka result | Tuple, tarteeb par bharosa | `{ invoices, isLoading, error, refresh }` |
+| Overdue rule | Component mein inline | `isOverdue()` pure function, test layak |
+| Khali count | `0` screen par | Braced guard `null` lautata hai |
+| States | Nested ternary | `renderBody()` mein seedhe `if` |
+| Error par retry | Nahi | `refresh` naam se mila |
+
+## 5. Kaise apply karein?
+
+<Flow title="Component likhte waqt">
+
+State aur data ka kaam custom hook mein
+↓
+Hook named object lautaye, JSX nahi
+↓
+Rules aur calculations src/lib ke pure functions mein
+↓
+Har conditional block ek renderX function
+↓
+File 400 lines ke qareeb ho to child components alag files mein
+
+</Flow>
+
+Split karte waqt private children parent ke folder mein rakhein: `InvoiceList/components/InvoiceRow/InvoiceRow.tsx`. State utni gehri rakhein jitni mumkin ho. Usay upar sirf tab uthayein jab do siblings ko chahiye.
+
+Component kabhi seedha `fetch` na kare. Server par service call, client par typed client wala hook.
+
+## 6. Exceptions aur common mistakes
+
+Kuch rules yahan sakht house opinion hain, aur bohat si teams alag karti hain:
+
+- **Ternary aur `&&`:** zyada tar React codebases inhe aam use karte hain, aur chhota `isOpen ? "Close" : "Open"` bilkul parhne layak hai. Yahan ka rule sakht hai kyunki nested ternary jaldi paheli ban jati hai aur `&&` ka `0` wala bug aam hai. Render function har state ko naam deta hai. Trade-off: thora zyada code, magar har branch saaf.
+- **Tuple:** React ka apna `useState` tuple lautata hai kyunki do generic values hain jinhe aap rename karte ho. Do value wale chhote hooks mein kai teams tuple theek samajhti hain. Teen ya zyada values par named object hamesha behtar hai.
+- **400 lines:** yeh hard limit hai, target nahi. Aksar 150 line par hi split karna behtar hota hai.
+
+<Mistake
+  title="Hook se JSX lautana, jaise renderModal"
+  why="Hook UI ka faisla karne lagta hai, aur styling ya layout badalna ho to hook kholna parta hai."
+  better="Hook sirf data aur callbacks de, jaise isOpen aur open. Markup component banaye."
+/>
+
+<Mistake
+  title="Component mein useEffect se data fetch aur transform"
+  why="Loading, error, race conditions aur transform sab ek file mein aate hain aur reuse nahi hota."
+  better="Next.js mein server component se service call karo. Client par ek hook jo typed client use kare."
+/>
+
+<Mistake
+  title="400 line chhoone par sirf helpers ko neeche ki taraf move karna"
+  why="File phir bhi ek hi hai aur ek hi component sab kaam kar raha hai."
+  better="UI ke asal hisse alag child components banao, har ek apni file aur props type ke saath."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Custom Hooks](/courses/react/custom-hooks), [Conditional Rendering](/courses/react/conditional-rendering) |
+| **Saath mein** | [Conditionals Without Ternaries](/courses/best-practices/conditionals-without-ternaries), [Separation of Concerns](/courses/best-practices/separation-of-concerns) |
+| **Baad mein** | [Next.js Practices](/courses/best-practices/nextjs-practices), [Design Tokens & UI Consistency](/courses/best-practices/design-tokens-and-ui) |
+
+<Flow title="Suggested order">
+
+Custom Hooks
+↓
+Conditionals Without Ternaries
+↓
+React Component Practices
+↓
+Next.js Practices
+
+</Flow>
+
+## Final quick revision
+
+| Check | Haan / Nahi |
+| --- | --- |
+| Component 400 lines se kam | Haan |
+| Custom hook tuple lautata hai | Nahi |
+| Hook JSX lautata hai | Nahi |
+| Returned JSX mein ternary ya `&&` | Nahi, `renderX()` |
+| Rules aur calculations `src/lib` mein | Haan |
+| Component mein `fetch` | Nahi |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Component dikhata hai, hook sambhalta hai, library faisla karti hai. Har state ko naam do, har condition ko apna render function, aur file ko chhota rakho.
+
+</Callout>

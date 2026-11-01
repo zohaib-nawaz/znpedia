@@ -1,0 +1,209 @@
+---
+title: Input Validation at the Boundary
+description: Input validation zod api ke saath, bahar se aane wala har data boundary par parse karein taake mass assignment, crashes aur bari payloads ruk sakein.
+keywords:
+  - input validation zod api
+  - zod safeparse next.js
+  - validate request body
+  - mass assignment vulnerability
+  - server side validation
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Jo bhi data system ke bahar se aata hai, woh pehli jagah par hi schema se parse ho kar typed shape banta hai. Andar ka code sirf parsed data dekhta hai, kabhi raw input nahi.**
+
+</Callout>
+
+"Boundary" woh jagah hai jahan aap ka code kisi aur ke data se milta hai: request body, query string, route params, headers, form data, webhook payload, uploaded file, environment variables, aur third party API ka response.
+
+TypeScript types sirf compile time par hain. `request.json() as User` likhne se data User nahi ban jata, aap bas compiler se jhooth bol rahe hain. Runtime par check sirf schema karta hai, jaise Zod (Next.js mein) ya VineJS (AdonisJS mein).
+
+## 2. Kyun zaroori hai?
+
+Sab se mashhoor bug **mass assignment** hai. Signup form `name` aur `email` bhejta hai, server poori body database mein daal deta hai. Attacker body mein `"role": "admin"` add karta hai aur khud ko admin bana leta hai.
+
+Doosre bug: `quantity` mein `-5` aa gaya aur refund ho gaya. Ek 50MB ki string `bio` field mein aayi aur server ki memory bhar gayi. File ka naam `photo.png` tha lekin andar HTML script thi.
+
+<CompareTable leftTitle="Bina validation" rightTitle="Boundary par schema">
+
+Extra fields seedhe database mein, role tak badal jata hai | Schema sirf allow list wale fields rakhta hai
+Galat type andar ja kar kahin door crash karta hai | Galat input pehli line par 422 ke saath ruk jata hai
+String aur array ki koi had nahi | Har string aur array par max length
+File type extension se maana jata hai | File ke asal bytes aur size check hote hain
+as cast se jhoothi type safety | Parse ke baad sachi type safety
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Zaroori | Zod seekhna asaan hai aur aadat yahin banti hai |
+| **Production code** | Lazmi, har endpoint par | Yeh security ki pehli deewar hai |
+| **Senior level** | Shared rules aur limits tay karna | Ek jaisi email, phone, slug rules poori codebase mein |
+
+Kab seekhein: pehla form ya API banate hi. Client side validation sirf UX hai, server par validation hamesha alag se hoti hai.
+
+## 4. Bura vs acha code
+
+### Bura: cast kar ke seedha database
+
+```ts
+type SignupInput = { name: string; email: string };
+
+export async function POST(request: Request) {
+  const body = (await request.json()) as SignupInput;
+
+  const user = await db.insert(users).values(body).returning();
+
+  return Response.json(user);
+}
+```
+
+Agar body mein `role: "admin"` ya `isVerified: true` aaye to woh bhi insert ho jata hai. `name` khaali ho ya ek lakh characters ka, koi farq nahi.
+
+### Acha: schema se parse, phir sirf parsed data
+
+File `lib/users/users.types.ts`:
+
+```ts
+import { z } from "zod";
+
+export const signupSchema = z.object({
+  name: z.string().trim().min(2).max(80),
+  email: z.email().max(254),
+  password: z.string().min(12).max(128),
+});
+
+export type SignupInput = z.infer<typeof signupSchema>;
+```
+
+File `app/api/signup/route.ts`:
+
+```ts
+import { NextResponse } from "next/server";
+import { z } from "zod";
+
+import { registerUser } from "@/lib/users/users";
+import { signupSchema, USER_MESSAGES } from "@/lib/users/users.types";
+
+export async function POST(request: Request) {
+  const body: unknown = await request.json().catch(() => undefined);
+  if (body === undefined) {
+    return NextResponse.json({ error: USER_MESSAGES.malformedBody }, { status: 400 });
+  }
+
+  const parsed = signupSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: USER_MESSAGES.invalidInput, fields: z.flattenError(parsed.error).fieldErrors },
+      { status: 422 },
+    );
+  }
+
+  const user = await registerUser(parsed.data);
+
+  return NextResponse.json({ user: { id: user.id, name: user.name } }, { status: 201 });
+}
+```
+
+Query params ke liye `z.coerce` kaam aata hai, kyunki URL mein sab kuch string hota hai:
+
+```ts
+export const listQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+const query = listQuerySchema.safeParse(Object.fromEntries(new URL(request.url).searchParams));
+```
+
+### Farq kya hai?
+
+| Cheez | Bura code | Acha code |
+| --- | --- | --- |
+| Type | `as` cast, sirf dikhawa | `z.infer`, runtime check ke saath |
+| Extra fields | Database tak pohanch jate hain | `z.object` unhein hata deta hai |
+| Limits | Koi nahi | `min`, `max`, `trim` |
+| Galat JSON | 500 crash | 400 malformed |
+| Galat fields | Andar kahin crash | 422 aur field wise errors |
+
+## 5. Kaise apply karein?
+
+<Flow title="Boundary par validation">
+
+Raw input ko unknown maano
+↓
+Har endpoint ka ek schema, types file mein
+↓
+safeParse, fail par 400 ya 422
+↓
+Service ko sirf parsed.data do
+↓
+Andar dobara validate na karo
+
+</Flow>
+
+Har schema mein yeh dekhein:
+
+- Har string par `trim` aur `max`, har array par `max`.
+- Numbers par `int()`, `positive()` ya `min` / `max` jahan matlab bane.
+- Closed sets ke liye `z.enum([...])`, free text nahi.
+- Uploads: size cap, aur MIME type file ke pehle bytes (magic bytes) se check karein, naam ke extension se nahi.
+- Server actions mein `FormData` ko bhi `Object.fromEntries(formData)` se schema mein parse karein.
+
+## 6. Exceptions aur common mistakes
+
+Validation ek baar boundary par hoti hai. Service ke andar jab ek typed function doosre typed function ko call karta hai to har layer par dobara schema chalane ki zaroorat nahi. Zaroorat wahan hai jahan data phir se bahar se aaye, jaise third party API ka jawab.
+
+<Mistake
+  title="Sirf client side validation par bharosa"
+  why="Browser ka form bypass karna ek curl command ka kaam hai, server ko koi bhi body bheji ja sakti hai."
+  better="Same Zod schema client aur server dono par use karo, lekin server wala check kabhi skip na ho."
+/>
+
+<Mistake
+  title="request.json() ka result as se cast karna"
+  why="Compiler khush ho jata hai lekin runtime par data kuch bhi ho sakta hai, bug door kisi aur file mein phatta hai."
+  better="Raw input ko unknown rakho aur safeParse ke baad hi type milne do."
+/>
+
+<Mistake
+  title="Poora request object model mein daal dena"
+  why="create(body) ya update(body) se caller role, ownerId ya price jaisi cheezein khud set kar sakta hai."
+  better="Schema mein sirf woh fields rakho jo caller badal sakta hai, aur ownerId session se lo."
+/>
+
+<Mistake
+  title="Strings aur arrays par koi limit na rakhna"
+  why="Ek bari payload memory, database aur logs teeno ko bhar deti hai, yeh asaan denial of service hai."
+  better="Har field par max length rakho aur platform par body size limit bhi set karo."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Forms & Validation](/courses/nextjs/forms-and-validation), [Strict Typing](/courses/best-practices/strict-typing), [API Handler Shape](/courses/best-practices/api-handler-shape) |
+| **Saath mein** | [Error Handling & Error Envelope](/courses/best-practices/error-handling-and-envelope), [Fail Fast, No Defensive Fallbacks](/courses/best-practices/fail-fast-and-no-fallbacks) |
+| **Baad mein** | [Shared API Contracts](/courses/best-practices/shared-api-contracts), [Common Vulnerabilities (OWASP)](/courses/best-practices/common-vulnerabilities) |
+
+## Final quick revision
+
+| Check | Sawal |
+| --- | --- |
+| Har boundary | Body, query, params, headers, files, webhooks sab parse ho rahe hain? |
+| Schema | Har endpoint ka apna schema types file mein hai? |
+| Status | Galat JSON 400, galat fields 422? |
+| Allow list | Extra fields database tak nahi pohanchte? |
+| Limits | Har string, array aur upload par had hai? |
+| Cast | Kahin `as` se input ko type to nahi diya? |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Bahar ka data tab tak ajnabi hai jab tak schema use parse na kar le. Ek baar boundary par sakhti se check karo, phir andar ka saara code bharose ke saath typed data par chal sakta hai.
+
+</Callout>

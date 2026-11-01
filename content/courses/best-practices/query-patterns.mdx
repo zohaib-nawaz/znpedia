@@ -1,0 +1,222 @@
+---
+title: Query Patterns & Transactions
+description: SQL injection parameterized queries n+1 aur transactions, queries data layer mein rakhein, dynamic columns allow list karein aur multi step writes atomic banayein.
+keywords:
+  - sql injection parameterized queries n+1
+  - database transactions
+  - n+1 query problem
+  - connection pooling serverless
+  - order by allow list
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Saari queries data layer mein rehti hain aur hamesha parameterized hoti hain. Dynamic column naam allow list se aate hain, loop ke andar query nahi chalti, aur jo writes ek saath honi chahiye woh ek transaction mein hoti hain.**
+
+</Callout>
+
+Data layer woh folder hai jahan sirf database se baat hoti hai, jaise `lib/orders/orders.queries.ts`. Routes, pages aur components wahan ke functions call karte hain, khud SQL nahi banate.
+
+## 2. Kyun zaroori hai?
+
+Chaar classic bug jo is rule se rukte hain:
+
+- **SQL injection:** search box mein kisi ne `' or 1=1 --` likha. Query string jod kar bani thi, to saare users ka data wapas aa gaya. Yeh aaj bhi sab se aam breaches mein se hai.
+- **N+1:** blog page 50 posts dikhata hai aur har post ke author ke liye alag query. 51 queries, page 3 second. Traffic barha to database thak gaya.
+- **Aadha kaam:** paise transfer mein ek account se kata, doosre mein jama hone se pehle server crash. Paise ghayab.
+- **Too many connections:** serverless par har function call ne naya pool banaya. Launch wale din database ne connections dena band kar diye.
+
+<CompareTable leftTitle="Bikhri hui queries" rightTitle="Data layer aur patterns">
+
+String jod kar SQL, injection ka darwaza | Parameters, data kabhi code nahi banta
+Sort column seedha URL se | Allow list map se column naam
+Loop mein query, N+1 | Ek query join ya in ke saath
+Do writes alag alag, crash par aadha kaam | Transaction, ya sab ya kuch nahi
+Har request naya pool | Chhota pool, ek dafa bana kar reuse
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Parameterized queries lazmi | Injection ki aadat shuru se hi khatam karni hai |
+| **Production code** | Sab patterns lazmi | Data leak, ghalat balance aur outages yahin se aate hain |
+| **Senior level** | Query reviews, indexes aur pool sizing | `explain analyze` parhna aur scale ki planning |
+
+Kab seekhein: pehli SQL query likhte hi parameters. Transactions aur N+1 tab jab app mein relations aur paise wale flows aayein.
+
+## 4. Bura vs acha code
+
+### Bura: injection, N+1 aur bina transaction
+
+```ts
+export async function GET(request: Request) {
+  const params = new URL(request.url).searchParams;
+  const search = params.get("q");
+  const sort = params.get("sort");
+
+  const posts = await pool.query(
+    `select * from posts where title ilike '%${search}%' order by ${sort}`,
+  );
+
+  for (const post of posts.rows) {
+    const author = await pool.query(`select * from users where id = '${post.author_id}'`);
+    post.author = author.rows[0];
+  }
+
+  return Response.json(posts.rows);
+}
+
+export async function transfer(fromId: string, toId: string, amount: number) {
+  await pool.query("update accounts set balance = balance - $1 where id = $2", [amount, fromId]);
+  await pool.query("update accounts set balance = balance + $1 where id = $2", [amount, toId]);
+}
+```
+
+### Acha: parameters, allow list, ek query
+
+File `lib/posts/posts.queries.ts`:
+
+```ts
+const SORT_COLUMNS = {
+  newest: "p.created_at desc",
+  title: "p.title asc",
+} as const;
+
+export type PostSort = keyof typeof SORT_COLUMNS;
+
+export async function searchPosts(search: string, sort: PostSort) {
+  const result = await pool.query<PostWithAuthorRow>(
+    `select p.id, p.title, p.created_at, u.name as author_name
+       from posts p
+       join users u on u.id = p.author_id
+      where p.title ilike $1
+      order by ${SORT_COLUMNS[sort]}
+      limit 50`,
+    [`%${search}%`],
+  );
+
+  return result.rows;
+}
+```
+
+`sort` pehle hi Zod mein `z.enum(["newest", "title"])` se validate hua, aur SQL mein sirf hamari map ki value jati hai, user ki string kabhi nahi.
+
+### Acha: transaction ke saath transfer
+
+```ts
+export async function transfer(fromId: string, toId: string, amountCents: number) {
+  const client = await pool.connect();
+
+  try {
+    await client.query("begin");
+
+    const debited = await client.query(
+      "update accounts set balance_cents = balance_cents - $1 where id = $2 and balance_cents >= $1",
+      [amountCents, fromId],
+    );
+    if (debited.rowCount === 0) {
+      throw new InsufficientFundsError(fromId);
+    }
+
+    await client.query("update accounts set balance_cents = balance_cents + $1 where id = $2", [amountCents, toId]);
+    await client.query("commit");
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+```
+
+ORMs mein yahi kaam `db.transaction(async (tx) => { ... })` jaisa hota hai. Dhyan rahe ke balance check aur minus ek hi statement mein hai, alag `select` aur phir `update` nahi, warna do requests ek saath check pass kar leti hain.
+
+### Farq kya hai?
+
+| Cheez | Bura | Acha |
+| --- | --- | --- |
+| Search | String mein jora | `$1` parameter |
+| Sort | URL ki string SQL mein | Allow list map |
+| Authors | Har post par alag query | Ek `join` |
+| Columns | `select *` | Sirf zaroori columns, `limit` ke saath |
+| Transfer | Do alag writes | Transaction, fail par `rollback` |
+| Balance check | Nahi | `where balance_cents >= $1` usi statement mein |
+
+## 5. Kaise apply karein?
+
+<Flow title="Query likhne se pehle">
+
+Query data layer ke function mein rakho
+↓
+Har value parameter se, kabhi string jod kar nahi
+↓
+Dynamic naam allow list se
+↓
+Loop mein query? join ya in se ek query banao
+↓
+Kai writes? transaction mein lapeto
+
+</Flow>
+
+Connections ke liye:
+
+- Serverless par pool chhota rakhein (kuch connections) aur module level par ek dafa bana kar reuse karein, ya provider ka pooler use karein.
+- Managed database se TLS hamesha verify ho. `rejectUnauthorized: false` production mein kabhi nahi, provider ka CA certificate dein.
+- Slow query ho to andaza na lagayein, `explain analyze` se dekhein ke index use ho raha hai ya nahi.
+
+## 6. Exceptions aur common mistakes
+
+ORM ya query builder (Prisma, Drizzle, Kysely) khud parameters lagate hain, lekin un ke "raw" functions mein string jorna phir se injection khol deta hai. Admin reports jo kabhi kabhi chalti hain, un mein N+1 bardasht ho sakta hai, lekin user facing list pages par nahi.
+
+<Mistake
+  title="ORDER BY ya table naam mein user input"
+  why="Column naam parameter nahi ban sakte, is liye log string jor dete hain aur injection wapas aa jata hai."
+  better="Ek constant map rakho aur user sirf us ki key chun sake, value hamesha tumhari ho."
+/>
+
+<Mistake
+  title="Pehle select se check, phir alag update"
+  why="Do requests ek saath check pass karti hain aur dono update chal jate hain, stock ya balance minus mein chala jata hai."
+  better="Check aur update ek statement mein, ya unique constraint aur on conflict se database ko faisla karne do."
+/>
+
+<Mistake
+  title="Transaction ke andar network call"
+  why="Email ya payment API slow ho to transaction locks der tak pakre rehti hai aur baqi requests ruk jati hain."
+  better="Transaction chhota rakho, bahar ki calls commit ke baad karo ya background job mein bhejo."
+/>
+
+<Mistake
+  title="Component ya route mein query likhna"
+  why="Tenant filter aur parameters ka review har jagah karna parta hai aur ek jagah bhool jata hai."
+  better="Saari queries data layer mein, aur bahar query review mein blocker ho."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Database Naming & Design](/courses/best-practices/database-design), [Database Integration](/courses/nextjs/database-integration), [Service Layer & Thin Controllers](/courses/best-practices/service-layer) |
+| **Saath mein** | [Authorization & Multi-Tenancy](/courses/best-practices/authorization-and-tenancy), [Generated Database Types](/courses/best-practices/generated-types) |
+| **Baad mein** | [Common Vulnerabilities (OWASP)](/courses/best-practices/common-vulnerabilities), [Performance: Measure First](/courses/best-practices/performance-measure-first) |
+
+## Final quick revision
+
+| Check | Sawal |
+| --- | --- |
+| Jagah | Kya query sirf data layer mein hai? |
+| Parameters | Kya koi value string jor kar SQL mein gayi? |
+| Dynamic naam | Sort aur columns allow list se? |
+| N+1 | Kya loop ke andar query chal rahi hai? |
+| Transaction | Kai writes ek saath, fail par rollback? |
+| Connections | Chhota reused pool aur verified TLS? |
+
+<Callout variant="important" title="Yaad rakhein">
+
+User ka data hamesha parameter hai, kabhi SQL ka hissa nahi. Aur jo kaam aadha ho kar nuqsaan kare, woh transaction mein ho, taake ya poora ho ya bilkul na ho.
+
+</Callout>

@@ -1,0 +1,202 @@
+---
+title: Safe Migrations
+description: Database migrations best practices, idempotent, non destructive aur reversible migrations, aur drop, rename ya backfill hamesha insaan ke review ke baad.
+keywords:
+  - database migrations best practices
+  - idempotent migration sql
+  - expand and contract migration
+  - zero downtime migration
+  - rollback migration
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Har migration idempotent ho (do dafa chale to bhi safe), non destructive ho (mojooda data na mitaye ya badle), aur reversible ho (us ka down path likha ho). Drop, rename, type change aur backfill jaise destructive kaam insaan review karta hai aur khud apply karta hai. Live production database ko kabhi casually nahi chheda jata.**
+
+</Callout>
+
+Migration ek file hai jo database ka schema ek halat se doosri halat mein le jati hai, jaise nayi column add karna. Yeh files version control mein hoti hain taake har environment (local, staging, production) ek hi tarteeb mein ek jaisa bane.
+
+## 2. Kyun zaroori hai?
+
+Asli outages jo migrations se hote hain:
+
+- **Rename ne app gira di:** `name` ko `full_name` rename kiya. Naya code deploy hone mein do minute lage, aur un do minuton mein purana code `name` dhoondh raha tha. Har request 500.
+- **Lock ne site rok di:** ek bari table par column ki type badli. Postgres ne poori table rewrite ki aur lock rakha, saari writes 10 minute rukin.
+- **Ek query, saara data:** kisi ne production console par `update users set plan = 'free'` chala diya, `where` bhool gaya. Har paying customer free ho gaya.
+- **Do dafa chali, phat gayi:** migration aadhi chal kar fail hui, dobara chalayi to `table already exists` par atak gayi, aur deploy ruk gaya.
+
+<CompareTable leftTitle="Casual migrations" rightTitle="Safe migrations">
+
+Dobara chalne par error | if not exists, dobara chalna safe
+Rename aur drop ek hi qadam mein | Expand aur contract, kai deploys mein
+Wapas jaane ka koi rasta nahi | Har up ke saath likha hua down
+Production par haath se SQL | CI ya deploy step se, backup ke baad
+Merged migration ko edit karna | Naya migration likhna
+App code request par table banata hai | Schema sirf migration files mein
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Migration files use karna seekhein | Haath se tables banana aadat kharab karta hai |
+| **Production code** | Lazmi, har shart ke saath | Production data dobara nahi aata |
+| **Senior level** | Destructive changes ka plan aur review | Expand contract, backfills aur rollback ka faisla |
+
+Kab seekhein: jab pehli dafa deployed app ki table mein column add karna ho. [Database Naming & Design](/courses/best-practices/database-design) pehle parh lein.
+
+## 4. Bura vs acha code
+
+### Bura: destructive, non idempotent, bina down
+
+```sql
+alter table users rename column name to full_name;
+alter table users drop column legacy_role;
+alter table orders alter column total type numeric(12, 2);
+create type plan_tier as enum ('free', 'pro');
+```
+
+Rename purane code ko foran todta hai. Drop data hamesha ke liye mitata hai. Type change bari table lock karta hai. Dobara chalane par `create type` error deta hai. Wapas jaane ka koi file nahi.
+
+Aur yeh bhi bura hai, app code mein schema:
+
+```ts
+export async function saveLead(lead: Lead) {
+  await sql`create table if not exists leads (id serial primary key, email text)`;
+  await sql`insert into leads (email) values (${lead.email})`;
+}
+```
+
+Ab schema do jagah hai, migrations aur code, aur dono kabhi match nahi karenge.
+
+### Acha: additive, idempotent, down ke saath
+
+File `migrations/20261101093000_add_plan_tier_to_users.sql`:
+
+```sql
+do $$
+begin
+  create type plan_tier as enum ('free', 'pro');
+exception
+  when duplicate_object then null;
+end
+$$;
+
+alter table users add column if not exists plan_tier plan_tier not null default 'free';
+
+create index if not exists users_plan_tier_idx on users (plan_tier);
+```
+
+File `migrations/20261101093000_add_plan_tier_to_users.down.sql`:
+
+```sql
+drop index if exists users_plan_tier_idx;
+alter table users drop column if exists plan_tier;
+drop type if exists plan_tier;
+```
+
+Is up migration ko do dafa chala kar dekhein, doosri dafa kuch nahi hona chahiye. Yeh asaan test idempotency sabit karta hai. Down file development aur staging ke liye hai; production mein down chalana bhi ek soch samajh kar liya gaya faisla hai kyunki is mein data jata hai.
+
+### Rename ka sahi tareeqa: expand aur contract
+
+<Flow title="Column rename bina downtime">
+
+Deploy 1: nayi column full_name add karo (additive)
+↓
+Deploy 2: code dono columns mein likhe, purani se parhe
+↓
+Backfill script: purani rows full_name mein copy, test ke saath
+↓
+Deploy 3: code sirf full_name parhe aur likhe
+↓
+Deploy 4: insaan review ke baad purani column drop
+
+</Flow>
+
+### Farq kya hai?
+
+| Cheez | Bura | Acha |
+| --- | --- | --- |
+| Dobara chalna | Error | `if not exists`, guarded `do` block |
+| Data | Drop aur rename foran | Sirf add, drop baad mein insaan ke haath |
+| Rollback | Nahi | `.down.sql` file |
+| Naam | Kuch nahi batata | Timestamp aur kaam ka naam |
+| Schema ki jagah | Code aur migrations dono | Sirf migrations |
+
+## 5. Kaise apply karein?
+
+Har migration se pehle teen sawal:
+
+| Sawal | Agar jawab "nahi" |
+| --- | --- |
+| Kya yeh mojooda data ko mitane ya badalne se bachti hai? | Destructive hai, insaan review aur apply kare |
+| Kya yeh do dafa chal kar bhi safe hai? | `if not exists` aur guarded blocks lagao |
+| Kya is ka down path likha hai? | Down file likho ya wajah likho ke kyun mumkin nahi |
+
+Teeno ka jawab "haan" ho tabhi woh automatic pipeline se ja sakti hai. Ek bhi "nahi" ho to file PR mein rehti hai aur ek insaan backup ke baad khud apply karta hai.
+
+Baqi rules:
+
+- Ek migration, ek badlav, naam kaam batata ho: `add_plan_tier_to_users`, `create_alter_users` nahi.
+- Merged migration ko kabhi edit na karein. Ghalti ho to nayi migration likhein.
+- Migrations CI ya deploy step se chalti hain, health check aur backup ke baad. App code request par schema nahi banata.
+- Pull request par dry run (jaise `supabase db push --dry-run`) taake review mein pata ho kya chalega.
+- Staging aur production ka database kabhi ek na ho.
+- Bari Postgres table par index `create index concurrently` se, taake writes na rukein.
+
+## 6. Exceptions aur common mistakes
+
+Local database jo sirf aap ka hai, wahan reset kar ke shuru se migrations chalana bilkul theek hai. Bilkul nayi table jis mein abhi data nahi, us par drop ya rename utna khatarnak nahi, lekin phir bhi file aur review ke zariye karein taake doosre environments match karein.
+
+<Mistake
+  title="Production console par seedha SQL chalana"
+  why="Na review, na backup, na record, ek missing where clause poora table badal deta hai."
+  better="Har badlav migration ya script file mein, PR review ke baad, backup le kar chalao."
+/>
+
+<Mistake
+  title="Column rename ek hi deploy mein"
+  why="Deploy ke darmiyan purana code purana naam dhoondhta hai aur har request fail hoti hai."
+  better="Expand aur contract: nayi column add, dono mein likho, backfill, phir purani hatao."
+/>
+
+<Mistake
+  title="Merged migration file ko badal dena"
+  why="Jin environments mein woh pehle chal chuki hai unhein naya version kabhi nahi milta, schema drift ho jata hai."
+  better="Hamesha nayi migration likho jo pichli ghalti theek kare."
+/>
+
+<Mistake
+  title="Backfill ko migration ke andar chupa dena"
+  why="Lakhon rows ka update lamba lock rakhta hai, fail ho to aadha data badla hota hai aur test nahi hota."
+  better="Backfill alag script mein, batches mein, test ke saath, aur insaan ki nigrani mein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Database Naming & Design](/courses/best-practices/database-design), [Database Integration](/courses/nextjs/database-integration) |
+| **Saath mein** | [Generated Database Types](/courses/best-practices/generated-types), [CI/CD & Environments](/courses/best-practices/ci-cd-and-environments) |
+| **Baad mein** | [Query Patterns & Transactions](/courses/best-practices/query-patterns), [Production Readiness Checklist](/courses/best-practices/production-readiness-checklist) |
+
+## Final quick revision
+
+| Check | Sawal |
+| --- | --- |
+| Idempotent | Kya do dafa chalne par bhi safe hai? |
+| Non destructive | Kya koi data mit ya badal raha hai? |
+| Reversible | Kya down path likha hai? |
+| Destructive | Drop, rename, type change, backfill insaan ne review aur apply kiya? |
+| Production | Kya badlav CI se, backup ke baad, bina console ke? |
+| Edit | Kya kisi merged migration ko chheda gaya? |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Code ki ghalti agle deploy mein theek ho jati hai, data ki ghalti aksar kabhi nahi. Is liye migration add karti hai, insaan mitata hai, aur production ko sirf reviewed file chhooti hai.
+
+</Callout>

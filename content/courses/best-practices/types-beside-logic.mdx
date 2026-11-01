@@ -1,0 +1,202 @@
+---
+title: Types Beside Logic
+description: TypeScript types file organization ka practical tareeqa, har module ke saath ek .types.ts file jismein types, constants aur messages rehte hain, logic alag.
+keywords:
+  - typescript types file organization
+  - types.ts file convention
+  - colocate types with module
+  - typescript project organization
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Har module ki logic `posts.ts` mein, aur us ke types, constants aur user-facing messages saath wali `posts.types.ts` mein. Dono ek hi folder mein, jiska naam module ka naam hai.**
+
+</Callout>
+
+Logic file sirf kaam karti hai: functions, queries, calculations. Woh apne types khud declare nahi karti, `posts.types.ts` se import karti hai.
+
+```bash
+src/lib/posts/posts.ts
+src/lib/posts/posts.types.ts
+```
+
+Yeh "beside, not inside" hai. Types logic ke **saath** rehte hain (alag global folder mein nahi), magar logic file ke **andar** nahi.
+
+## 2. Kyun zaroori hai?
+
+Ek asli masla: client component ko sirf `MAX_TITLE_LENGTH` chahiye tha. Developer ne use `posts.ts` se import kiya. Magar `posts.ts` database client aur secret keys bhi import karta hai, to bundler poora server code browser bundle mein khenchne laga aur build toot gaya. Agar galti se secret wala module client tak pohanch jaye to aur bura hota hai.
+
+`.types.ts` file ki koi runtime dependency nahi hoti, is liye use server, client, tests aur scripts sab befikri se import kar sakte hain.
+
+<CompareTable leftTitle="Types logic file ke andar" rightTitle="Types beside logic">
+
+Constant lene ke liye poora server module import hota hai | Halki types file import hoti hai, koi side effect nahi
+Type dhoondhne ke liye 300 line ki file scroll | Har module ka contract ek chhoti file mein
+Error message string teen jagah alag likhi | Message ek constant, route aur test dono use karte hain
+Global types folder dumping ground ban jata hai | Har type apne module ke paas, owner wazeh
+Module delete karo to purane types bach jate hain | Folder delete, types bhi saath chale gaye
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Achi aadat, magar ek do files wale project mein lazmi nahi | Pehle types likhna seekhein. Jab file 100 lines paar kare to alag karna shuru karein |
+| **Production code** | Har `src/lib` module aur har component ke liye lazmi | Client aur server ka safe sharing, aur har module ka contract ek nazar mein |
+| **Senior level** | Convention ko lint aur review mein enforce karna | Ek folder mein do conventions ho to imports andaza bazi ban jate hain |
+
+## 4. Bura vs acha code
+
+### Bura: sab kuch ek file mein
+
+```ts
+import { db } from "@/lib/db";
+
+export const MAX_TITLE_LENGTH = 120;
+
+export type Post = {
+  id: string;
+  title: string;
+  status: "draft" | "published";
+};
+
+export async function publish(id: string): Promise<Post> {
+  const post = await db.post.findUnique({ where: { id } });
+
+  if (!post) {
+    throw new Error("Post not found");
+  }
+
+  return db.post.update({ where: { id }, data: { status: "published" } });
+}
+```
+
+### Acha: types beside logic
+
+```ts
+export const MAX_TITLE_LENGTH = 120;
+
+export const POST_NOT_FOUND = "Post not found";
+
+export type PostStatus = "draft" | "published";
+
+export type Post = {
+  id: string;
+  title: string;
+  status: PostStatus;
+};
+```
+
+Upar wali file `src/lib/posts/posts.types.ts` hai. Ab logic file:
+
+```ts
+import { db } from "@/lib/db";
+
+import { POST_NOT_FOUND, type Post } from "./posts.types";
+
+export async function publish(id: string): Promise<Post> {
+  const post = await db.post.findUnique({ where: { id } });
+
+  if (!post) {
+    throw new Error(POST_NOT_FOUND);
+  }
+
+  return db.post.update({ where: { id }, data: { status: "published" } });
+}
+```
+
+Client component ab `@/lib/posts/posts.types` se `MAX_TITLE_LENGTH` le sakta hai bina database client ko chhue.
+
+### Farq kya hai?
+
+| Cheez | Bura code | Acha code |
+| --- | --- | --- |
+| Constant import | Server module poora khinchta hai | Sirf halki types file |
+| Error message | Literal string, har jagah dobara | `POST_NOT_FOUND` constant, ek source |
+| Logic file | Types aur logic mix | Sirf logic |
+| Test | Message string copy karta hai | Wahi constant import karta hai |
+
+## 5. Kaise apply karein?
+
+<Flow title="Naya module banate waqt">
+
+Module ke naam ka folder banao, jaise src/lib/posts
+↓
+posts.types.ts mein types, constants aur messages
+↓
+posts.ts mein sirf logic, types import kar ke
+↓
+Pure helpers zyada hon to posts.library.ts
+↓
+Client aur tests sirf types file se constants lein
+
+</Flow>
+
+Components par bhi yahi pattern: `src/components/PostCard/PostCard.tsx` aur `PostCard.types.ts` jismein props ka type ho.
+
+Kya `.types.ts` mein jata hai: `type`, `interface`, `enum` jaise const objects, limits, status values, user-facing error messages. Kya nahi jata: koi function jo kuch karta ho, koi import jo side effect rakhta ho.
+
+## 6. Exceptions aur common mistakes
+
+Bohat si teams types ko usi file mein upar likhti hain, aur chhote modules mein yeh bilkul chal jata hai. Kuch teams ek global `types/` folder rakhti hain. Trade-off yeh hai ke same-file types shuru mein tez hain, magar jab client ko server module ka constant chahiye to masla shuru hota hai. Global folder mein ownership gum ho jati hai. Is course ka sakht rule: har module ka apna `.types.ts`, shuru se.
+
+Database row types haath se nahi likhe jate. Woh generated file se aate hain aur `.types.ts` unhi se derive karta hai.
+
+<Mistake
+  title="Root par ek bara types.ts banana"
+  why="Har module ke types ek file mein jama ho jate hain, file sau lines se hazaar ho jati hai aur koi owner nahi hota."
+  better="Har module ke folder mein us ka apna module.types.ts rakho."
+/>
+
+<Mistake
+  title="Types file mein logic ya side effect daal dena"
+  why="Phir types file bhi bhari ho jati hai aur client par import karna dobara khatarnak ban jata hai."
+  better="Types file mein sirf types, constants aur messages. Pure helper functions ke liye alag library file."
+/>
+
+<Mistake
+  title="Same type do jagah likhna"
+  why="Ek jagah field badli, doosri jagah purani reh gayi, aur dono ka drift chupke se bug banta hai."
+  better="Ek type ek jagah. Baqi sab use import karein ya us se Pick aur Omit se derive karein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Strict Typing](/courses/best-practices/strict-typing), [Constants & Magic Values](/courses/best-practices/constants-and-magic-values) |
+| **Saath mein** | [File Size & Organization](/courses/best-practices/file-size-and-organization), [Project Structure](/courses/best-practices/project-structure) |
+| **Baad mein** | [Generated Database Types](/courses/best-practices/generated-types), [Shared API Contracts](/courses/best-practices/shared-api-contracts) |
+
+<Flow title="Suggested order">
+
+Strict Typing
+↓
+Types Beside Logic
+↓
+Project Structure
+↓
+Shared API Contracts
+
+</Flow>
+
+## Final quick revision
+
+| Check | Haan / Nahi |
+| --- | --- |
+| Har module ka apna folder | Haan |
+| `module.types.ts` logic ke saath | Haan |
+| Logic file mein `type` declarations | Nahi |
+| Error messages constants mein | Haan |
+| Types file mein runtime side effects | Nahi |
+| Client sirf types file se constant leta hai | Haan |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Types saath rakho, andar nahi. Halki `.types.ts` file har jagah safe import hoti hai, aur logic file sirf woh kaam karti hai jiske liye bani hai.
+
+</Callout>

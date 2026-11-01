@@ -1,0 +1,194 @@
+---
+title: Constants & Magic Values
+description: Magic numbers named constants se kaise badlein. Status strings, limits aur keys ko const objects aur union types mein rakhna, TypeScript examples ke saath.
+keywords:
+  - magic numbers named constants
+  - magic strings typescript
+  - as const object typescript
+  - avoid hardcoded values
+---
+
+## 1. Yeh practice kya hai?
+
+<Callout variant="tip" title="Rule">
+
+**Code mein koi bina naam ka number ya string nahi jis ka matlab samajhna pare. Status, limits, keys aur durations ko naam do, aur jo value kai files mein aaye use ek jagah rakho.**
+
+</Callout>
+
+**Magic value** woh literal hai jo code mein achanak aata hai aur apna matlab nahi batata: `if (attempts > 5)`, `status === "pnd"`, `setTimeout(fn, 86400000)`. Parhne wala sochta hai: 5 kyun? "pnd" kya hai? Yeh number kitna hai?
+
+| Qisam | Misaal | Behtar |
+| --- | --- | --- |
+| Limit | `5` | `MAX_LOGIN_ATTEMPTS` |
+| Duration | `86400000` | `ONE_DAY_MS` |
+| Status string | `"pending"` har file mein | `ORDER_STATUS.pending` ya union type |
+| Storage key | `localStorage.getItem("tkn")` | `STORAGE_KEYS.token` |
+| Route | `"/dashboard/settings"` | `ROUTES.settings` |
+
+## 2. Kyun zaroori hai?
+
+Magic values ke do nuqsaan hain: **matlab chhupta hai**, aur **badalna mushkil** hai. Limit 5 se 10 karni hai, to har `5` dhoondo aur socho kaunsa wala login ka hai aur kaunsa kisi aur cheez ka.
+
+<CompareTable leftTitle="Magic values" rightTitle="Named constants">
+
+pending ka typo pendng, koi error nahi, bug chupke se | Typo par TypeScript foran error deta hai
+5 ka matlab andaaza | MAX_LOGIN_ATTEMPTS khud batata hai
+Limit badalni ho to poore repo mein search | Ek constant badlo
+Do files mein alag value, UI aur API ka jawab alag | Ek source, ek jawab
+Naya status add kiya, kuch jagah handle nahi hua | Record type batata hai kahan missing hai
+
+</CompareTable>
+
+## 3. Kab follow karein?
+
+| Level | Kitna zaroori | Kyun |
+| --- | --- | --- |
+| **Learning project** | Zaroori | Aasaan aadat, aur typos ke bugs se bachati hai |
+| **Production code** | Status, limits aur keys hamesha named | Repeated literals sab se aam drift bug hain |
+| **Senior level** | Constants kahan rehte hain, yeh structure banao | Ek module ke constants us ke types ke saath, shared wale ek jagah |
+
+## 4. Bura vs acha code
+
+```ts
+async function login(email: string, password: string) {
+  const user = await users.byEmail(email);
+
+  if (user.failedAttempts >= 5) {
+    throw new Error("locked");
+  }
+
+  if (user.status === "suspnded") {
+    throw new Error("suspended");
+  }
+
+  localStorage.setItem("tkn", await auth.token(user, password));
+  setTimeout(logout, 1800000);
+}
+```
+
+```ts
+export const MAX_LOGIN_ATTEMPTS = 5;
+export const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+
+export const USER_STATUS = {
+  active: "active",
+  suspended: "suspended",
+} as const;
+
+export type UserStatus = (typeof USER_STATUS)[keyof typeof USER_STATUS];
+
+export const STORAGE_KEYS = {
+  token: "auth_token",
+} as const;
+```
+
+```ts
+async function login(email: string, password: string) {
+  const user = await users.byEmail(email);
+
+  if (user.failedAttempts >= MAX_LOGIN_ATTEMPTS) {
+    throw new LockedError(user.id);
+  }
+
+  if (user.status === USER_STATUS.suspended) {
+    throw new SuspendedError(user.id);
+  }
+
+  localStorage.setItem(STORAGE_KEYS.token, await auth.token(user, password));
+  setTimeout(logout, SESSION_TIMEOUT_MS);
+}
+```
+
+| Farq kya hai? | Bura | Acha |
+| --- | --- | --- |
+| `5` | Kya hai? | `MAX_LOGIN_ATTEMPTS` |
+| `"suspnded"` | Typo, kabhi match nahi hoga, suspended user login kar lega | `USER_STATUS.suspended`, typo compile error |
+| `1800000` | Ginti karo | `30 * 60 * 1000`, parhne mein 30 minute |
+| `"tkn"` | Har file mein alag likha ja sakta hai | Ek key, ek jagah |
+
+Pehle version ka typo ek **security bug** hai: suspended user login kar sakta hai, aur koi error nahi aata.
+
+### Typed accessor, magic key nahi
+
+```ts
+const theme = store.get("thme");
+```
+
+```ts
+const theme = settings.theme();
+```
+
+Jab key ek typed function ke peeche ho, to galat key likhna mumkin hi nahi.
+
+## 5. Kaise apply karein?
+
+<Flow title="Literal dekh kar">
+
+Code mein number ya string dekho
+↓
+Kya is ka matlab bina soche samajh aata hai?
+↓
+Nahi: naam do
+↓
+Kya yeh ek set ka hissa hai jaise statuses? as const object ya union type
+↓
+Kya yeh kai files mein aata hai? Module ki types ya constants file mein rakho
+↓
+Durations ko hisaab ki shakal mein likho, jaise 30 * 60 * 1000
+
+</Flow>
+
+## 6. Exceptions aur common mistakes
+
+Har literal magic nahi. `0`, `1`, khaali string, `index + 1`, ya `array.length === 0` sab ka matlab saaf hai. Test files mein example values (`"test@example.com"`) bhi theek hain.
+
+User ko dikhne wale text ko bhi ek jagah rakhna achha hai (translation ke liye zaroori), lekin har button label ke liye constant banana chhote project mein zaroori nahi.
+
+<Mistake
+  title="Constant ka naam value jaisa"
+  why="FIVE = 5 ya SECONDS_60 matlab nahi batata, kal value badli to naam jhoot bolega."
+  better="Naam kaam bataye, jaise MAX_LOGIN_ATTEMPTS, value nahi."
+/>
+
+<Mistake
+  title="Ek constants.ts jis mein poori app ke constants"
+  why="Har module ki values ek file mein, file bohat bari aur har koi isay chhedta hai."
+  better="Har constant us module ke paas rakho jo use karta hai, sirf asli shared wale ek shared file mein."
+/>
+
+<Mistake
+  title="TypeScript enum aur string union mix"
+  why="Ek jagah enum, ek jagah string, comparison aur imports confusing ho jate hain."
+  better="Repo mein ek pattern chuno, jaise as const object plus derived union type."
+/>
+
+<Mistake
+  title="Status ko bina type ke string rakhna"
+  why="status: string kisi bhi typo ko qabool kar leta hai."
+  better="status ko union type do taake sirf valid values chalein."
+/>
+
+## 7. Pehle aur baad mein kya seekhein?
+
+| Stage | Topics |
+| --- | --- |
+| **Pehle** | [Variables](/courses/javascript/variables), [Self-Documenting Code](/courses/best-practices/self-documenting-code) |
+| **Saath mein** | [Naming Things](/courses/best-practices/naming), [DRY Without Tight Coupling](/courses/best-practices/dry-without-coupling) |
+| **Baad mein** | [Strict Typing](/courses/best-practices/strict-typing), [Types Beside Logic](/courses/best-practices/types-beside-logic), [Design Tokens & UI Consistency](/courses/best-practices/design-tokens-and-ui) |
+
+## Final quick revision
+
+| Check | Sawal |
+| --- | --- |
+| Matlab | Kya har number aur string ka matlab saaf hai? |
+| Naam | Kya constant ka naam kaam batata hai, value nahi? |
+| Set | Kya statuses as const object ya union type hain? |
+| Ek jagah | Kya repeated value ek hi jagah defined hai? |
+| Keys | Kya storage aur state keys typed accessor ke peeche hain? |
+
+<Callout variant="important" title="Yaad rakhein">
+
+Har magic value ek sawal hai jo parhne wala poochega. Naam de kar woh jawab code mein hi likh do.
+
+</Callout>
