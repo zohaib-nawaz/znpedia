@@ -1,11 +1,21 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { CourseCard } from "@/components/course-card";
 import { JsonLd } from "@/components/json-ld";
+import { ChapterAnatomy } from "@/components/landing/chapter-anatomy";
+import { CtaBand } from "@/components/landing/cta-band";
+import { Faq } from "@/components/landing/faq";
+import { Hero } from "@/components/landing/hero";
+import { LearningPath } from "@/components/landing/learning-path";
+import { SectionHeading } from "@/components/landing/section-heading";
+import { ValueProps } from "@/components/landing/value-props";
+import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { getAllCourses } from "@/lib/courses";
-import { buildCourseListJsonLd, buildWebsiteJsonLd } from "@/lib/seo";
+import { buildCourseCards, getCatalogStats, withChapterCounts } from "@/lib/catalog";
+import { getCourseTheme } from "@/lib/course-themes";
+import { getAllCourses, getCourseReadingMinutes } from "@/lib/courses";
+import { chapterAnatomy, faqItems, learningPath, valueProps } from "@/lib/landing-content";
+import { buildCourseListJsonLd, buildFaqJsonLd, buildWebsiteJsonLd } from "@/lib/seo";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
@@ -13,44 +23,56 @@ export const metadata: Metadata = {
 
 export default function HomePage() {
   const courses = getAllCourses();
+  const stats = getCatalogStats(courses);
 
   return (
     <>
-      <JsonLd data={[buildWebsiteJsonLd(), buildCourseListJsonLd(courses)]} />
+      <JsonLd
+        data={[buildWebsiteJsonLd(), buildCourseListJsonLd(courses), buildFaqJsonLd(faqItems)]}
+      />
       <SiteHeader />
-      <main className="flex-1">
-        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
-          <div className="max-w-2xl">
-            <p className="text-sm font-medium uppercase tracking-wider text-accent">
-              Course Documentation
-            </p>
-            <h1 className="mt-3 text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
-              JavaScript, React aur Next.js Roman Urdu mein seekhein
-            </h1>
-            <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
-              Har topic ek chhota, focused chapter: definition, kyun zaroori
-              hai, code example, common mistakes aur quick revision. Basics se
-              advanced tak, aur phir production-grade best practices, apni
-              speed par.
-            </p>
-            <Link
-              href="/courses"
-              className="mt-8 inline-flex items-center rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-            >
-              View all courses
-            </Link>
-          </div>
-
-          <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {courses.map((course) => (
-              <CourseCard key={course.slug} course={course} />
+      <main id="main-content" className="flex-1">
+        <Hero
+          badge={`${stats.chapterCount} chapters, ${stats.courseCount} courses, Roman Urdu mein`}
+          startHref="/courses/javascript/introduction"
+          stats={[
+            { value: String(stats.courseCount), label: "Courses" },
+            { value: String(stats.chapterCount), label: "Chapters" },
+            { value: "Free", label: "Hamesha" },
+            { value: "0", label: "Signup zaroori" },
+          ]}
+        />
+        <section aria-labelledby="courses-heading" className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+          <SectionHeading
+            id="courses-heading"
+            eyebrow="Courses"
+            title="Apna course chunein"
+            description="Har course sections mein bata hua hai, aur har chapter par uska level likha hai."
+          />
+          <div className="mt-10 grid gap-5 sm:grid-cols-2">
+            {buildCourseCards(courses, getCourseReadingMinutes).map((card) => (
+              <CourseCard
+                key={card.course.slug}
+                course={card.course}
+                shares={card.shares}
+                hours={card.hours}
+                theme={getCourseTheme(card.course.slug)}
+              />
             ))}
           </div>
         </section>
+        <ChapterAnatomy steps={chapterAnatomy} />
+        <LearningPath entries={withChapterCounts(learningPath, courses)} />
+        <ValueProps items={valueProps} />
+        <Faq items={faqItems} />
+        <CtaBand
+          title="Aaj ek chapter, kal ek aur"
+          body="Rozana 15 minute kaafi hain. Pehla chapter kholein aur dekhein structure kaise madad karta hai."
+          primary={{ label: "JavaScript se shuru karein", href: "/courses/javascript/introduction" }}
+          secondary={{ label: "Best Practices dekhein", href: "/courses/best-practices" }}
+        />
       </main>
-      <footer className="border-t border-border py-8 text-center text-sm text-muted-foreground">
-        ZnPedia: Roman Urdu mein web development
-      </footer>
+      <SiteFooter chapterCount={stats.chapterCount} />
     </>
   );
 }

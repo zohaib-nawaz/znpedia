@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { ChapterMeta } from "@/components/chapter-meta";
 import { DocsContent } from "@/components/docs-content";
 import { JsonLd } from "@/components/json-ld";
 import { Pagination } from "@/components/pagination";
@@ -12,6 +13,7 @@ import {
   getChapterLastModified,
   getCourseMeta,
 } from "@/lib/courses";
+import { getChapterPosition } from "@/lib/catalog";
 import { getAdjacentChapters, getChapterHref } from "@/lib/docs";
 import { getChapterMDX } from "@/lib/mdx";
 import {
@@ -132,7 +134,18 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
           ]}
         />
       </div>
-      <DocsContent title={title} description={description} toc={mdx.toc}>
+      <DocsContent
+        title={title}
+        description={description}
+        toc={mdx.toc}
+        meta={
+          <ChapterMeta
+            position={getChapterPosition(course, chapter.slug)}
+            level={chapter.level}
+            readingMinutes={mdx.readingMinutes}
+          />
+        }
+      >
         {mdx.content}
       </DocsContent>
       <div className="mx-auto max-w-4xl px-3 pb-8 sm:px-5 lg:pl-8">

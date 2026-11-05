@@ -107,6 +107,18 @@ export function buildChapterArticleJsonLd({
   };
 }
 
+export function buildFaqJsonLd(items: { question: string; answer: string }[]): JsonLd {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: items.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: { "@type": "Answer", text: item.answer },
+    })),
+  };
+}
+
 export function getChapterOgImagePath(courseSlug: string, chapterSlug: string): string {
   return `/og/${courseSlug}/${chapterSlug}`;
 }
