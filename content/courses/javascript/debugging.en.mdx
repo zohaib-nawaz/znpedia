@@ -1,0 +1,169 @@
+---
+title: Debugging JavaScript
+description: Learn how to debug JavaScript with DevTools, including console methods, breakpoints, the debugger keyword and the Network tab.
+keywords:
+  - javascript debugging devtools
+  - chrome devtools breakpoints
+  - console log methods
+  - debugger keyword javascript
+---
+
+## 1. What is debugging?
+
+<Callout variant="tip" title="Short definition">
+
+**Debugging is the process of finding, understanding and fixing mistakes (bugs) in code.**
+
+</Callout>
+
+The biggest JavaScript tool is the browser's **DevTools**. In Chrome, Edge and Firefox it opens with `F12` or `Cmd + Option + I` (Mac). It has panels like Console, Sources, Network and Elements.
+
+## 2. Why does it matter?
+
+Every developer writes bugs. The difference is that a good developer **finds them quickly**. Changing code by guessing wastes time, while debugging tools take you straight to the cause.
+
+<CompareTable leftTitle="Fixing by guessing" rightTitle="Proper debugging">
+
+Change the code and hope | Reproduce the bug first
+console.log everywhere | See the full state at a breakpoint
+No idea where the value changed | Run the code step by step
+Cannot understand the API problem | See the request and response in the Network tab
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Problem | Tool |
+| --- | --- |
+| **A value is wrong** | Console or a breakpoint |
+| **An error appears** | The error message and stack trace in the Console |
+| **API data is not coming** | The Network tab, status code and response |
+| **An element looks wrong** | The Elements panel, CSS and DOM |
+| **The page is slow** | The Performance panel |
+
+## 4. How does it work?
+
+Debugging follows a simple process that fits every bug:
+
+<Flow title="Debugging process">
+
+Reproduce the bug
+↓
+Read the error message and stack trace
+↓
+Set a breakpoint on the suspect line
+↓
+Check the variables and the call stack
+↓
+Understand the cause and fix it
+↓
+Test again
+
+</Flow>
+
+A **stack trace** tells you which file, which line and which chain of functions the error came from. Pay attention to the top line of the error message and the first line that belongs to your own file.
+
+## 5. Code example
+
+### Console methods
+
+```js
+const user = { name: "Ali", age: 22 };
+const users = [user, { name: "Sara", age: 25 }];
+
+console.log("user:", user);
+console.table(users);
+console.warn("This is only a warning");
+console.error("Something went wrong");
+
+console.time("loop");
+for (let i = 0; i < 100000; i++) {}
+console.timeEnd("loop");
+```
+
+### The debugger keyword
+
+```js
+function calculateTotal(items) {
+  let total = 0;
+  for (const item of items) {
+    debugger;
+    total += item.price * item.qty;
+  }
+  return total;
+}
+
+calculateTotal([{ price: 100, qty: 2 }, { price: 50 }]);
+```
+
+If DevTools is open, the code will pause on the `debugger` line. When you look at `item` there, you will see that the second item has no `qty` at all, which is why `total` becomes `NaN`.
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `console.log("user:", user)` | A value with a label, easy to recognize |
+| `console.table` | Shows an array of objects as a table |
+| `console.warn` / `console.error` | Yellow and red lines, easy to filter |
+| `console.time` / `timeEnd` | Measures how long the code takes to run |
+| `debugger` | Pauses here if DevTools is open |
+| Step over (`F10`) | Go to the next line |
+| Step into (`F11`) | Go inside the function |
+
+### Breakpoints without changing code
+
+Open the file in the Sources panel and click on the line number. For a **conditional breakpoint**, right click and write a condition, like `item.qty === undefined`. This way the code pauses only when the problem happens.
+
+### Interview tip
+
+The answer to "How do you find a bug?" should not be just console.log. Describe the process: reproduce, stack trace, breakpoints, the Network tab, and testing after the fix.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Changing code without reading the error message"
+  why="The error message often tells you directly what is undefined and on which line."
+  better="Read the full error and stack trace first, then go to that line."
+/>
+
+<Mistake
+  title="Leaving console.log and debugger in production"
+  why="Users see useless data in their console, and sometimes sensitive information leaks too."
+  better="Remove them before committing, or add the ESLint no-console and no-debugger rules."
+/>
+
+<Mistake
+  title="Logging an object and expanding it later"
+  why="The console holds an object reference, so expanding it shows the current value, not the value at the time of the log."
+  better="Log structuredClone(obj) or JSON.stringify(obj) if you need the value at that moment, or use a breakpoint."
+/>
+
+<Mistake
+  title="Ignoring the Network tab"
+  why="Many bugs are not in the frontend, but in an API response like 401, 404 or 500."
+  better="For a fetch bug, check the status code and response body in the Network tab first."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Setup & First Program](/courses/javascript/setup-and-first-program), [Functions](/courses/javascript/functions) |
+| **Alongside** | [Error Handling](/courses/javascript/error-handling), [Fetch API](/courses/javascript/fetch-api) |
+| **After** | [Event Loop](/courses/javascript/event-loop), [Testing React Apps](/courses/react/testing) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| DevTools | `F12`, Console, Sources, Network, Elements |
+| Console | `log`, `table`, `warn`, `error`, `time` |
+| Breakpoint | Click a line or use the `debugger` keyword |
+| Stack trace | Shows the path of the error |
+| Network | Check the status code and response |
+
+<Callout variant="important" title="Remember">
+
+**Understand first, then fix.** Reproduce the bug, read the error, set a breakpoint, and test again after the fix.
+
+</Callout>

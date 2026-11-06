@@ -1,0 +1,193 @@
+---
+title: Performance & Core Web Vitals
+description: Measure and improve Next.js performance and Core Web Vitals (LCP, INP, CLS) with useReportWebVitals and the bundle analyzer, with practical examples.
+keywords:
+  - next.js performance core web vitals
+  - usereportwebvitals
+  - next.js bundle analyzer
+  - lcp inp cls
+---
+
+## 1. What are performance and Core Web Vitals?
+
+<Callout variant="tip" title="Short definition">
+
+**Core Web Vitals are three Google metrics that measure real users' experience: LCP (loading), INP (interaction) and CLS (visual stability).**
+
+</Callout>
+
+| Metric | What it measures | Good score |
+| --- | --- | --- |
+| **LCP** (Largest Contentful Paint) | How long the largest element takes to appear | Under 2.5 seconds |
+| **INP** (Interaction to Next Paint) | How quickly the screen updates after a click or typing | Under 200 ms |
+| **CLS** (Cumulative Layout Shift) | How much the content moves while loading | Under 0.1 |
+
+## 2. Why does it matter?
+
+Users leave slow sites, and page experience is also a signal in Google's ranking. Next.js optimizes a lot by default, but wrong choices can cancel out that benefit.
+
+<CompareTable leftTitle="Optimizing by guesswork" rightTitle="Optimizing by measuring">
+
+It feels like the site is slow | Real users' LCP, INP and CLS data
+Everything is a Client Component | Server Components, less JavaScript
+A big library in the whole bundle | Catch heavy packages with the analyzer
+Images and fonts not optimized | next/image and next/font
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Problem | Effect | Next.js tool |
+| --- | --- | --- |
+| A large hero image | Bad LCP | `next/image` and `preload` |
+| Text moving on a font swap | Bad CLS | `next/font` |
+| Heavy client JavaScript | Bad INP | Server Components, `next/dynamic` |
+| Slow data fetch | Bad LCP | Streaming, `Suspense`, `"use cache"` |
+| Third-party scripts | Bad INP and LCP | `next/script` with `strategy` |
+
+## 4. How does it work?
+
+<Flow title="The loop for improving performance">
+
+Collect Web Vitals from real users
+↓
+Find the worst metric and page
+↓
+Find the cause with the bundle analyzer or DevTools
+↓
+Apply a fix (image, font, client JS, caching)
+↓
+Measure again on a production build
+
+</Flow>
+
+Development mode is slow and its numbers are not real. Always measure after `next build` and `next start`, or on production.
+
+## 5. Code example
+
+### Real user metrics: `useReportWebVitals`
+
+```tsx
+"use client";
+
+import { useReportWebVitals } from "next/web-vitals";
+
+type ReportCallback = Parameters<typeof useReportWebVitals>[0];
+
+const sendToAnalytics: ReportCallback = (metric) => {
+  const body = JSON.stringify({ name: metric.name, value: metric.value, rating: metric.rating });
+  navigator.sendBeacon("/api/vitals", body);
+};
+
+export function WebVitals() {
+  useReportWebVitals(sendToAnalytics);
+  return null;
+}
+```
+
+Render this component as `WebVitals` inside the `body` of the root layout.
+
+### Lazy loading a heavy component
+
+```tsx
+"use client";
+
+import dynamic from "next/dynamic";
+
+const Chart = dynamic(() => import("./chart"), {
+  loading: () => <p>Loading chart...</p>,
+});
+
+export function Dashboard() {
+  return <Chart />;
+}
+```
+
+### Analyzing the bundle
+
+```bash
+npx next analyze
+```
+
+The built-in Turbopack analyzer (Next.js 16.1+) shows modules by route and by client or server. The webpack `@next/bundle-analyzer` plugin also still works:
+
+```ts
+import type { NextConfig } from "next";
+import bundleAnalyzer from "@next/bundle-analyzer";
+
+const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === "true" });
+
+const nextConfig: NextConfig = {};
+
+export default withBundleAnalyzer(nextConfig);
+```
+
+```bash
+ANALYZE=true npx next build --webpack
+```
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `useReportWebVitals` | Runs the callback when each metric (LCP, INP, CLS, FCP, TTFB) is ready |
+| Callback defined outside | The function reference stays stable, so no duplicate reports |
+| `sendBeacon` | Sends the data even while the page is closing |
+| `dynamic()` | The chart code goes in a separate chunk and loads when needed |
+| `next analyze` | An interactive treemap of the Turbopack bundle |
+| `--webpack` | `@next/bundle-analyzer` is a webpack plugin, so you need a webpack build |
+
+## 6. Common mistakes
+
+<Mistake
+  title="Measuring performance in next dev"
+  why="Development mode has extra checks and unoptimized code, so the numbers are much worse than production."
+  better="Run next build and next start, then check Lighthouse or real user data."
+/>
+
+<Mistake
+  title="Making the whole page use client"
+  why="The whole component tree and its libraries go into the browser bundle, which hurts both INP and load time."
+  better="Add use client only on interactive leaf components and keep the rest as Server Components."
+/>
+
+<Mistake
+  title="Trusting only the Lighthouse score"
+  why="Lighthouse is a lab test on one machine, real users have slow phones and different networks, and INP is not even measured in the lab."
+  better="Also collect field data with useReportWebVitals or Vercel Speed Insights."
+/>
+
+<Mistake
+  title="Doing heavy data transforms on the client"
+  why="Libraries for markdown parsing or syntax highlighting make the client bundle large even though the output is just HTML."
+  better="Do this kind of work in a Server Component and send only the rendered markup to the client."
+/>
+
+### Interview tip
+
+"Why did INP replace FID?" FID measured only the delay of the first interaction. INP measures something close to the slowest interaction across the whole visit, so it gives a better picture of real responsiveness.
+
+## 7. What to learn before and after
+
+| Stage | Chapters |
+| --- | --- |
+| Before | [Image Optimization](/courses/nextjs/image-optimization), [Font Optimization](/courses/nextjs/font-optimization), [Server & Client Components](/courses/nextjs/server-and-client-components) |
+| Alongside | [Streaming & Suspense](/courses/nextjs/streaming-and-suspense), [Cache Components & use cache](/courses/nextjs/cache-components) |
+| After | [next.config & Turbopack](/courses/nextjs/next-config-and-turbopack), [Deployment](/courses/nextjs/deployment) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| LCP | Loading, under 2.5s |
+| INP | Responsiveness, under 200ms |
+| CLS | Stability, under 0.1 |
+| Measure | `useReportWebVitals` from `next/web-vitals` |
+| Bundle check | `next analyze` or `@next/bundle-analyzer` with `--webpack` |
+| Less JS | Server Components and `next/dynamic` |
+
+<Callout variant="important" title="Remember">
+
+Measure first, then fix. Look at real user data on a production build, catch the worst metric, and keep client JavaScript to a minimum.
+
+</Callout>

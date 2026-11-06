@@ -1,0 +1,159 @@
+---
+title: Lifting State Up
+description: Learn what lifting state up means in React, moving state to a common parent so sibling components can share the same data, with a worked example.
+keywords:
+  - react lifting state up
+  - share state between components
+  - react sibling communication
+  - single source of truth react
+---
+
+## 1. What is lifting state up?
+
+<Callout variant="tip" title="Short definition">
+
+**When two or more components need the same data, you move the state to their closest common parent and pass it down with props.**
+
+</Callout>
+
+This is called "lifting state up". The parent becomes the **owner** of the state. Children receive the value through props, plus a function prop to update it.
+
+## 2. Why does it matter?
+
+Siblings cannot talk to each other directly. Data only flows from top to bottom. If each one has its own state, they drift out of sync.
+
+<CompareTable leftTitle="Each child has its own state" rightTitle="State lives in the parent">
+
+Two copies, different values | One source of truth
+One panel opens and the other does not know | The parent decides which one is open
+Hacks to keep them in sync | Automatically in sync
+Bugs and confusion | Predictable data flow
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Use case | Shared state |
+| --- | --- |
+| **Accordion** | Which panel is open |
+| **Search + results** | The search query |
+| **Temperature converter** | Celsius and Fahrenheit from one value |
+| **Cart icon + product page** | The count of cart items |
+| **Filters + table** | The selected filters |
+
+## 4. How does it work?
+
+<Flow title="State goes up, data goes down, events go up">
+
+Keep the state in the common parent
+↓
+The parent passes the value to children through props
+↓
+The parent also passes the update function as a prop
+↓
+The child calls that function on an event
+↓
+The parent's state changes and all children re-render
+
+</Flow>
+
+A simple way to remember this pattern: **data flows down, events flow up**.
+
+## 5. Code example
+
+### Accordion: one panel at a time
+
+```jsx
+import { useState } from "react";
+
+function Panel({ title, isActive, onShow, children }) {
+  return (
+    <section>
+      <h3>{title}</h3>
+      {isActive ? <p>{children}</p> : <button onClick={onShow}>Show</button>}
+    </section>
+  );
+}
+
+export default function Accordion() {
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  return (
+    <>
+      <Panel
+        title="Delivery"
+        isActive={activeIndex === 0}
+        onShow={() => setActiveIndex(0)}
+      >
+        Delivery in 2 to 4 days.
+      </Panel>
+      <Panel
+        title="Returns"
+        isActive={activeIndex === 1}
+        onShow={() => setActiveIndex(1)}
+      >
+        You can return it within 7 days.
+      </Panel>
+    </>
+  );
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `activeIndex` | The state lives in the parent `Accordion`, not in the children |
+| `isActive` prop | Each `Panel` only receives a boolean |
+| `onShow` prop | Carries the child's click up to the parent |
+| `setActiveIndex(1)` | The parent updates, and both panels get new props |
+
+Now `Panel` is a **controlled component**: its behavior is controlled by the parent's props, not by its own state.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Copying state into every child and syncing it with effects"
+  why="You end up with two sources of truth, and if one update is missed the UI shows the wrong data."
+  better="Keep the state in one place, the common parent, and share it through props."
+/>
+
+<Mistake
+  title="Lifting state higher than needed, like putting everything in App"
+  why="A tiny change re-renders the whole tree and App becomes very heavy."
+  better="Lift the state only as far as the closest common ancestor of the components that need it."
+/>
+
+<Mistake
+  title="Giving the child the setter directly so it needs to know the shape of the parent's state"
+  why="The child becomes tied to the parent's internal details, and it is hard to reuse."
+  better="Give the child a meaningful event prop like onShow or onSelect, and keep the logic in the parent."
+/>
+
+### Interview tip
+
+"How do you share data between siblings?" The first answer is always **lifting state up**. If the tree is very deep, use context or a state management library.
+
+## 7. What to learn before and after
+
+| Stage | Chapters |
+| --- | --- |
+| **Before** | [State with useState](/courses/react/state), [Props](/courses/react/props), [Handling Events](/courses/react/events) |
+| **After** | [useContext](/courses/react/use-context), [useReducer](/courses/react/use-reducer) |
+| **Further** | [State Management Libraries](/courses/react/state-management) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| When | Two components need the same data |
+| Where | The closest common parent |
+| Data | Down through props |
+| Events | Up through function props |
+| Benefit | A single source of truth |
+
+<Callout variant="important" title="Remember">
+
+Every piece of state should have **one owner**. Shared state belongs to the common parent, and children only read props and send events.
+
+</Callout>

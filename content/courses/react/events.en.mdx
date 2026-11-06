@@ -1,0 +1,172 @@
+---
+title: Handling Events
+description: Learn how to write React onClick and other event handlers, pass arguments, use preventDefault and work with the event object.
+keywords:
+  - react onclick events
+  - react event handling
+  - react onchange
+  - event handler arguments react
+---
+
+## 1. What is handling events?
+
+<Callout variant="tip" title="Short definition">
+
+**An event handler is a function that React calls when the user does something, like a click, typing or a submit.**
+
+</Callout>
+
+In React, events are attached through JSX attributes such as `onClick`, `onChange` and `onSubmit`. The names are in **camelCase** and the value is a **function**, not a string.
+
+## 2. Why does it matter?
+
+An interactive UI means something happens when the user acts. Without events, a React app is just a static page.
+
+<CompareTable leftTitle="Plain DOM" rightTitle="React events">
+
+Find the element with querySelector | Write the handler right in JSX
+Attach addEventListener manually | The onClick attribute is enough
+Remember to remove the listener | React manages it for you
+Logic and markup live in different places | The handler sits inside the component, next to the state
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Event | When it fires | Example |
+| --- | --- | --- |
+| `onClick` | A click or tap | Like button, menu toggle |
+| `onChange` | The input value changes | Search box, checkbox |
+| `onSubmit` | A form is submitted | Login form |
+| `onKeyDown` | A key is pressed | Send a message on Enter |
+| `onMouseEnter` | The mouse moves over the element | Showing a tooltip |
+
+## 4. How does it work?
+
+<Flow title="From click to UI update">
+
+The user clicks a button
+↓
+React calls your handler and passes an event object
+↓
+The handler updates state
+↓
+React re-renders
+↓
+The new UI appears on the screen
+
+</Flow>
+
+You pass a **reference** to the function (`onClick={handleClick}`), and React calls it at the right time. If you write `handleClick()`, it runs during render instead.
+
+## 5. Code example
+
+### Basic click handler
+
+```jsx
+import { useState } from "react";
+
+export default function LikeButton() {
+  const [likes, setLikes] = useState(0);
+
+  function handleClick() {
+    setLikes(likes + 1);
+  }
+
+  return <button onClick={handleClick}>Like ({likes})</button>;
+}
+```
+
+### Passing an argument
+
+```jsx
+function SizePicker({ onSelect }) {
+  const sizes = ["S", "M", "L"];
+
+  return (
+    <div>
+      {sizes.map((size) => (
+        <button key={size} onClick={() => onSelect(size)}>
+          {size}
+        </button>
+      ))}
+    </div>
+  );
+}
+```
+
+### The event object and preventDefault
+
+```jsx
+function SearchBox() {
+  function handleKeyDown(e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      console.log("Search:", e.currentTarget.value);
+    }
+  }
+
+  return <input onKeyDown={handleKeyDown} placeholder="Search..." />;
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `onClick={handleClick}` | A reference to the function, which React calls on click |
+| `() => onSelect(size)` | An arrow function so the argument is passed later, at click time |
+| `e` | The event object (React's synthetic event, with a browser-like API) |
+| `e.key` | Which key was pressed |
+| `e.preventDefault()` | Stops the browser's default behavior |
+| `onSelect` prop | A parent function passed to the child, which the child calls on an event |
+
+Handler props are usually named with `on` (`onSelect`), and handler functions with `handle` (`handleClick`).
+
+## 6. Common mistakes
+
+<Mistake
+  title="Calling the function in onClick instead of passing a reference"
+  why="handleClick() runs during render. If it sets state, it can cause an infinite re-render loop."
+  better="Write onClick={handleClick}, or onClick={() => handleClick(id)} if you need an argument."
+/>
+
+<Mistake
+  title="Writing lowercase onclick with a string value like in HTML"
+  why="React expects a camelCase name and a function value. A string handler does not work."
+  better="Write onClick, onChange and onSubmit in camelCase and pass a function."
+/>
+
+<Mistake
+  title="Not understanding why a click on a nested element also runs the parent's handler"
+  why="Events bubble, so a click on the child also reaches the parent."
+  better="If needed, call e.stopPropagation() in the child handler."
+/>
+
+### Interview tip
+
+You may be asked "What is event bubbling?" Answer: the event first fires on the target element, then travels up through its parents. `stopPropagation` stops that, while `preventDefault` only stops the browser's default action.
+
+## 7. What to learn before and after
+
+| Stage | Chapters |
+| --- | --- |
+| **Before** | [State with useState](/courses/react/state), [Props](/courses/react/props) |
+| **After** | [Forms & Controlled Inputs](/courses/react/forms), [Lifting State Up](/courses/react/lifting-state-up) |
+| **Related** | [Conditional Rendering](/courses/react/conditional-rendering) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Naming | camelCase: `onClick`, `onChange` |
+| Value | A function reference, not a call |
+| Arguments | Wrap in an arrow function |
+| Event object | The first parameter of the handler |
+| Stop default behavior | `e.preventDefault()` |
+
+<Callout variant="important" title="Remember">
+
+**Pass** the function, do **not call** it. `onClick={handleClick}` is right, `onClick={handleClick()}` is wrong.
+
+</Callout>

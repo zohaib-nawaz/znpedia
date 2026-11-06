@@ -1,0 +1,180 @@
+---
+title: JSX
+description: Learn what React JSX is, how HTML-like syntax works inside JavaScript, and the rules for curly braces, className and writing valid JSX.
+keywords:
+  - react jsx
+  - jsx syntax
+  - jsx rules react
+  - jsx expressions curly braces
+---
+
+## 1. What is JSX?
+
+<Callout variant="tip" title="Short definition">
+
+**JSX is a syntax extension of JavaScript that lets you write HTML-like UI inside a JavaScript file.**
+
+</Callout>
+
+JSX looks like HTML, but it is really **JavaScript**. A build tool (like Vite) turns it into normal JavaScript function calls that create React elements.
+
+```jsx
+const heading = <h1 className="title">Hello</h1>;
+```
+
+## 2. Why does it matter?
+
+You can write React without JSX, but you have to write a function call for every element, and nested UI becomes very hard to read.
+
+<CompareTable leftTitle="Without JSX" rightTitle="With JSX">
+
+A createElement call for every element | Direct, HTML-like markup
+A jungle of brackets when nesting | The structure is clear at a glance
+UI and logic in separate files | UI and logic together in the component
+Typos are caught at runtime | The editor and TypeScript tell you right away
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Place | Example |
+| --- | --- |
+| **Every React component** | The UI inside `return` |
+| **Lists** | Create elements with `items.map()` |
+| **Conditional UI** | `isLoggedIn && <Profile />` |
+| **Next.js and React Native** | The same JSX syntax |
+| **Files** | `.jsx`, or `.tsx` with TypeScript |
+
+## 4. How does it work?
+
+<Flow title="From JSX to the screen">
+
+You write JSX
+↓
+Vite or Babel turns it into jsx function calls
+↓
+Each call creates a React element object
+↓
+React builds the DOM from these objects
+
+</Flow>
+
+So these two snippets are equal:
+
+```jsx
+const a = <h1 className="title">Hello</h1>;
+```
+
+```js
+import { jsx } from "react/jsx-runtime";
+
+const a = jsx("h1", { className: "title", children: "Hello" });
+```
+
+Thanks to the new JSX transform, you no longer need to write `import React from "react"` in every file.
+
+### JSX rules
+
+| Rule | Example |
+| --- | --- |
+| Return only one parent element | `<div>...</div>` or a Fragment `<>...</>` |
+| Close every tag | `<img />`, `<br />`, `<input />` |
+| `className` instead of `class` | `<p className="note">` |
+| `htmlFor` instead of `for` | `<label htmlFor="email">` |
+| Attributes in camelCase | `onClick`, `tabIndex`, `maxLength` |
+| JavaScript inside `{ }` | `<p>{user.name}</p>` |
+| `style` takes an object | `style={{ color: "red" }}` |
+
+## 5. Code example
+
+```jsx
+export default function ProfileCard() {
+  const user = { name: "Ayesha", role: "Frontend Dev", isOnline: true };
+  const skills = ["HTML", "CSS", "React"];
+
+  return (
+    <>
+      {/* This is a JSX comment */}
+      <section className="card">
+        <h2>{user.name.toUpperCase()}</h2>
+        <p style={{ color: "gray", fontSize: 14 }}>{user.role}</p>
+        <p>Status: {user.isOnline ? "Online" : "Offline"}</p>
+        <label htmlFor="msg">Message</label>
+        <input id="msg" placeholder="Type here..." />
+        <ul>
+          {skills.map((skill) => (
+            <li key={skill}>{skill}</li>
+          ))}
+        </ul>
+      </section>
+    </>
+  );
+}
+```
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `<>...</>` | A Fragment, one parent without an extra `div` |
+| `{user.name.toUpperCase()}` | Any JavaScript expression inside curly braces |
+| `style={{ ... }}` | The outer braces are JavaScript, the inner one is the object |
+| `fontSize: 14` | React turns the number into `14px` for you |
+| `? :` | A condition with a ternary, an `if` statement does not work in JSX |
+| `skills.map(...)` | A list from an array, with a unique `key` for each item |
+| `{/* ... */}` | How to write a comment inside JSX |
+
+### Interview tip
+
+"Does the browser understand JSX?" No. JSX is compiled into JavaScript function calls at build time. Only normal JavaScript reaches the browser.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Returning two sibling elements without a parent"
+  why="A function can return only one value, so you get the adjacent JSX elements error."
+  better="Wrap both in a div or a Fragment."
+/>
+
+<Mistake
+  title="Writing class and for"
+  why="These are reserved words in JavaScript, and React shows a warning."
+  better="Use className and htmlFor."
+/>
+
+<Mistake
+  title="Writing if or for inside curly braces"
+  why="Only expressions work in JSX, not statements."
+  better="Use a ternary, the && operator or map, or write the logic before the return."
+/>
+
+<Mistake
+  title="Rendering an object directly"
+  why="React cannot turn an object into text and gives the Objects are not valid as a React child error."
+  better="Render a field of the object, like user.name, or use JSON.stringify."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Setup with Vite](/courses/react/setup-with-vite), [Array Methods](/courses/javascript/array-methods), [Conditionals](/courses/javascript/conditionals) |
+| **Alongside** | [Components](/courses/react/components) |
+| **After** | [Conditional Rendering](/courses/react/conditional-rendering), [Lists & Keys](/courses/react/lists-and-keys), [Styling in React](/courses/react/styling) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| JSX | HTML-like syntax in JavaScript |
+| Compile | React elements through `jsx()` calls |
+| Adding JavaScript | `{ }` curly braces |
+| Parent | One root element or a Fragment |
+| Attributes | `className`, `htmlFor`, camelCase |
+| Style | An object, `style={{ }}` |
+
+<Callout variant="important" title="Remember">
+
+JSX is **JavaScript, not HTML**. That is why expressions work inside `{ }` and attributes use JavaScript names.
+
+</Callout>

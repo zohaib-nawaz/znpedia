@@ -1,0 +1,186 @@
+---
+title: npm & Packages
+description: Learn how npm packages are installed and managed in JavaScript projects, including package.json, node_modules, scripts and version numbers.
+keywords:
+  - npm packages javascript
+  - package json explained
+  - npm install dependencies
+  - npx and npm scripts
+---
+
+## 1. What are npm and packages?
+
+<Callout variant="tip" title="Short definition">
+
+**npm (Node Package Manager) is a tool and an online registry where you install JavaScript code written by other people (a package) into your project.**
+
+</Callout>
+
+A **package** is a folder with code and a `package.json` file. npm installs together with Node.js, so if `node -v` works, `npm -v` works too.
+
+## 2. Why does it matter?
+
+Formatting dates, calling an API, or building a React app: writing everything from scratch is a waste of time. With npm you get tested code in a single command.
+
+<CompareTable leftTitle="Without npm" rightTitle="With npm">
+
+Download library files by hand | One command with npm install
+Hard to remember versions | The version is written in package.json
+Everyone on the team has different versions | package-lock.json gives everyone the same version
+Updating is manual work | npm update and npm outdated
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Job | Example |
+| --- | --- |
+| **Creating a project** | `npm create vite@latest` |
+| **Installing a library** | `npm install react`, `npm install zod` |
+| **Dev tools** | ESLint, Prettier, TypeScript, Vitest |
+| **Running scripts** | `npm run dev`, `npm run build`, `npm test` |
+| **Running a tool without installing it** | `npx prettier --write .` |
+
+## 4. How does it work?
+
+<Flow title="npm install flow">
+
+npm install zod
+↓
+The package is downloaded from the npm registry
+↓
+It is saved in the node_modules folder
+↓
+The dependency is added to package.json
+↓
+The exact version is locked in package-lock.json
+
+</Flow>
+
+| File / folder | Job | In Git? |
+| --- | --- | --- |
+| `package.json` | Project name, scripts, dependencies | Yes |
+| `package-lock.json` | The exact version of every package | Yes |
+| `node_modules/` | The actual downloaded code | No, it goes in `.gitignore` |
+
+### Version numbers
+
+A version has the **major.minor.patch** format, like `19.2.0`.
+
+| Symbol | Meaning |
+| --- | --- |
+| `^19.2.0` | 19.2.0 or any newer 19.x.x, the major version will not change |
+| `~19.2.0` | Patch updates only, 19.2.0 or any newer 19.2.x |
+| `19.2.0` | Exactly this version |
+
+## 5. Code example
+
+### A new project and packages
+
+```bash
+mkdir my-app
+cd my-app
+npm init -y
+npm install dayjs
+npm install -D prettier
+npx prettier --version
+```
+
+### package.json
+
+```json
+{
+  "name": "my-app",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "dayjs": "^1.11.13"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2"
+  }
+}
+```
+
+### Using a package
+
+```js
+import dayjs from "dayjs";
+
+console.log(dayjs().format("DD MMM YYYY"));
+```
+
+```bash
+npm run start
+npm run format
+```
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `npm init -y` | Creates a default `package.json` |
+| `npm install dayjs` | A runtime dependency, needed for the app to run |
+| `-D` | A devDependency, needed only during development |
+| `npx` | Runs the command of an installed or remote package |
+| `"type": "module"` | Tells Node that `import` / `export` will be used |
+| `npm run format` | Runs the command written in `scripts` |
+
+### Interview tip
+
+People ask the difference between `npm install` and `npm ci`. `npm ci` installs the exact versions from `package-lock.json` only and deletes `node_modules` first, so it is better for CI and deployment.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Committing node_modules to Git"
+  why="This folder has thousands of files and can be rebuilt any time with npm install."
+  better="Keep node_modules in .gitignore and commit only package.json and package-lock.json."
+/>
+
+<Mistake
+  title="Deleting package-lock.json"
+  why="Then every developer may get slightly different versions, and you get works on my machine bugs."
+  better="Commit the lock file and use npm ci in CI."
+/>
+
+<Mistake
+  title="Installing a package for every small thing"
+  why="Every package adds security risk and bundle size."
+  better="Before installing, check whether built-in JavaScript can do the job, and check the package's downloads and maintenance."
+/>
+
+<Mistake
+  title="Making dev tools a normal dependency"
+  why="A production install then pulls in packages it does not need."
+  better="Install tools like ESLint, Prettier and TypeScript with the -D flag."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Setup & First Program](/courses/javascript/setup-and-first-program), [JSON](/courses/javascript/json) |
+| **Alongside** | [Modules: import & export](/courses/javascript/modules) |
+| **After** | [React Setup with Vite](/courses/react/setup-with-vite), [Debugging JavaScript](/courses/javascript/debugging) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| npm | Package manager and registry |
+| `package.json` | Project details, scripts, dependencies |
+| `package-lock.json` | Exact versions, commit it |
+| `node_modules` | Downloaded code, do not commit it |
+| `-D` | devDependency |
+| `npx` | Run a package's command without a global install |
+
+<Callout variant="important" title="Remember">
+
+`package.json` and `package-lock.json` are the project's **recipe card**. With these two, anyone can run `npm install` and rebuild the whole project.
+
+</Callout>

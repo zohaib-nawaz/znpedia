@@ -1,0 +1,195 @@
+---
+title: Strict Typing
+description: TypeScript strict mode and the no any rule. Avoid unchecked casts and parse API input at the boundary, with real examples of the bugs this prevents.
+keywords:
+  - typescript strict no any
+  - typescript strict mode
+  - avoid any typescript
+  - zod parse boundary
+  - type assertion as
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Keep `strict: true` on, never write `any`, do not lie about types with `as`, and parse data coming from outside at the boundary so it becomes typed.**
+
+</Callout>
+
+TypeScript only helps when you tell the compiler the truth. The moment you write `any`, the compiler stops checking that value, and writing `as User` does not turn the data into a User, it only silences the compiler.
+
+Strict typing means: anything outside your control (an API response, a form, `JSON.parse`, env) is checked first, and then all the code inside runs on typed values you can trust.
+
+## 2. Why does it matter?
+
+A real bug often looks like this: the API sent `price` as a string (`"500"`), the code wrote `as Product`, and the cart total became `0 + "500"`, which is `"0500"`. The compiler said nothing, because it was told the wrong thing.
+
+<CompareTable leftTitle="With any and casts" rightTitle="With strict typing">
+
+A wrong shape crashes far away at runtime | A wrong shape is caught right at the boundary
+any spreads from one file to many | The compiler knows the type of every value
+Renaming a field breaks nothing, the bug reaches production | Renaming a field fails the build, you fix it everywhere
+Refactoring is scary | The compiler tells you what needs to change
+Editor autocomplete does not work | Autocomplete and jump to definition work properly
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | `strict: true` from day one, build the habit of avoiding `any` | A bad habit is hard to drop later. Understanding the errors is learning TypeScript |
+| **Production code** | A must. `tsc --noEmit` in CI and the `no-explicit-any` lint rule | A single `any` ends the guarantee for the whole data flow |
+| **Senior level** | Design contracts with types, and set the boundary parsing pattern for the team | A senior owns the type safety of the whole codebase, not just their own code |
+
+## 4. Bad vs good code
+
+### Bad: any and a cast
+
+```ts
+type Product = {
+  id: string;
+  price: number;
+};
+
+export async function getProduct(id: string) {
+  const response = await fetch(`/api/products/${id}`);
+  const data: any = await response.json();
+
+  return data as Product;
+}
+
+const product = await getProduct("p1");
+const total = 0 + product.price;
+```
+
+Here `data` can be anything. `as Product` only silences the compiler. If the server sent `price: "500"`, `total` becomes a string, and the bug shows up on the cart page, not where the fetch happens.
+
+### Good: parse at the boundary
+
+```ts
+import { z } from "zod";
+
+const productSchema = z.object({
+  id: z.string(),
+  price: z.number(),
+});
+
+type Product = z.infer<typeof productSchema>;
+
+export async function getProduct(id: string): Promise<Product> {
+  const response = await fetch(`/api/products/${id}`);
+
+  return productSchema.parse(await response.json());
+}
+```
+
+Now if a wrong shape arrives, `parse` throws an error right where the data came in. Every function inside can trust `Product`.
+
+### What is the difference?
+
+| Thing | Bad code | Good code |
+| --- | --- | --- |
+| Response type | `any`, then `as Product` | `unknown` parsed into `Product` |
+| Wrong data | Crashes somewhere else, later | An error at the boundary right away |
+| Source of the type | Written by hand, separate from the schema | `z.infer` from the schema, one source |
+| Compiler | Silenced | Actually checking |
+
+## 5. How to apply it
+
+<Flow title="Steps to apply strict typing">
+
+strict true in tsconfig
+↓
+no-explicit-any as an error in ESLint
+↓
+At every boundary, parse unknown with a schema
+↓
+Inner functions accept only typed values
+↓
+Run tsc --noEmit in CI
+
+</Flow>
+
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true
+  }
+}
+```
+
+The boundaries are: a `fetch` response, form data, URL params, `JSON.parse`, `localStorage`, env variables and third-party webhooks. Treat all of these as `unknown` until they are parsed.
+
+In `catch (error)`, `error` is `unknown` too. Narrow it with `if (error instanceof Error)`, not with `any`.
+
+## 6. Exceptions and common mistakes
+
+Some things look like casts but are fine: `as const` (makes a value a literal, it does not lie) and `satisfies` (checks the shape without changing the type).
+
+Many teams allow `any` or `@ts-expect-error` in test files, or turn on strict mode later in a prototype. It feels fast at first, but every shortcut has to be hunted down later. The rule in this course is strict: no shortcuts in production code.
+
+If a library has bad types, make a typed wrapper function. Keep the cast in that one place, not across the whole app.
+
+<Mistake
+  title="Writing as just to make an error go away"
+  why="A cast checks nothing at runtime, it only closes the compiler's eyes. The bug stays, it just hides."
+  better="Narrow the value with a schema or a type guard so the compiler truly knows the shape."
+/>
+
+<Mistake
+  title="Escaping with a non-null assertion, like user!.name"
+  why="If user really is undefined, it crashes and the error message tells you nothing."
+  better="Write a clear null check, and throw a descriptive error or return early when the value is missing."
+/>
+
+<Mistake
+  title="Using the JSON.parse result directly"
+  why="JSON.parse returns any, so without a check that any spreads through the whole code."
+  better="Treat the result as unknown and pass it through a schema parse."
+/>
+
+<Mistake
+  title="Leaving ts-ignore or ts-expect-error behind"
+  why="Today's error is hidden, and tomorrow's new error will hide on the same line too."
+  better="Fix the real type problem. If it is a library bug, contain it in a wrapper and revisit it on upgrade."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [TypeScript with React](/courses/react/typescript-with-react), [Fail Fast, No Defensive Fallbacks](/courses/best-practices/fail-fast-and-no-fallbacks) |
+| **Alongside** | [Types Beside Logic](/courses/best-practices/types-beside-logic), [Input Validation at the Boundary](/courses/best-practices/input-validation) |
+| **After** | [Generated Database Types](/courses/best-practices/generated-types), [Shared API Contracts](/courses/best-practices/shared-api-contracts) |
+
+<Flow title="Suggested order">
+
+Fail Fast
+↓
+Strict Typing
+↓
+Input Validation at the Boundary
+↓
+Generated Database Types
+
+</Flow>
+
+## Final quick revision
+
+| Check | Yes / No |
+| --- | --- |
+| `strict: true` in `tsconfig` | It should be there |
+| `any` in the code | No |
+| An `as` cast that hides an error | No |
+| `@ts-ignore` / `@ts-expect-error` | No |
+| Outside data is parsed before it comes in | Yes |
+| Type and schema from one source | Yes, `z.infer` |
+
+<Callout variant="important" title="Remember">
+
+A type is a promise made to the compiler. `any` and `as` break the promise, parsing keeps it. Check data at the door, and everything inside can run with confidence.
+
+</Callout>

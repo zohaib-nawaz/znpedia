@@ -1,0 +1,190 @@
+---
+title: Iterators & Generators
+description: Learn what JavaScript iterators and generators are, how the iteration protocol, function* and yield work, with examples of lazy sequences.
+keywords:
+  - javascript iterators generators
+  - generator function yield
+  - iteration protocol
+  - symbol iterator javascript
+---
+
+## 1. What are iterators and generators?
+
+<Callout variant="tip" title="Short definition">
+
+**An iterator is an object that gives you one value at a time when you call `next()`. A generator is a special function (`function*`) that creates an iterator for you.**
+
+</Callout>
+
+`for...of`, spread `...` and destructuring all use the **iteration protocol** under the hood. Arrays, strings, `Map` and `Set` can be looped for this reason: they are all **iterable**.
+
+## 2. Why do they matter?
+
+Sometimes you do not want all the values at once, but **one by one**. For example, pages of a big list, or an infinite sequence of IDs. Filling everything into an array first wastes memory.
+
+<CompareTable leftTitle="Everything in an array" rightTitle="With a generator">
+
+The whole list must be built first | A value is created only when asked for
+A big list fills up memory | Only one value at a time
+An infinite sequence is not possible | An infinite sequence is easy
+A custom object does not work in for...of | Symbol.iterator makes it loopable
+
+</CompareTable>
+
+## 3. Where are they used?
+
+| Use case | Example |
+| --- | --- |
+| **Custom data structures** | Make your own `LinkedList` work with `for...of` |
+| **Lazy sequences** | IDs, Fibonacci, or a range created on demand |
+| **Pagination** | Fetch API pages one by one with `for await...of` |
+| **Streams** | Node.js streams and `ReadableStream` are async iterable |
+| **Libraries** | Libraries like Redux-Saga are built on generators |
+
+## 4. How do they work?
+
+An iterator's `next()` returns an object each time: `{ value, done }`. When `done` becomes true, the loop stops.
+
+A generator function **pauses** at `yield` and continues from the same place on the next `next()` call.
+
+<Flow title="Generator flow">
+
+The generator function is called
+↓
+You get an iterator object, and no code has run yet
+↓
+next() is called
+↓
+The code runs up to the first yield and pauses
+↓
+The value comes back, done is false
+↓
+At the end the function finishes, done is true
+
+</Flow>
+
+## 5. Code example
+
+### An iterator by hand
+
+```js
+const range = {
+  from: 1,
+  to: 3,
+  [Symbol.iterator]() {
+    let current = this.from;
+    const last = this.to;
+    return {
+      next() {
+        if (current <= last) {
+          return { value: current++, done: false };
+        }
+        return { value: undefined, done: true };
+      },
+    };
+  },
+};
+
+for (const n of range) {
+  console.log(n);
+}
+```
+
+### The same thing with a generator
+
+```js
+function* rangeGen(from, to) {
+  for (let i = from; i <= to; i++) {
+    yield i;
+  }
+}
+
+console.log([...rangeGen(1, 3)]);
+
+function* idMaker() {
+  let id = 1;
+  while (true) {
+    yield id++;
+  }
+}
+
+const ids = idMaker();
+console.log(ids.next().value);
+console.log(ids.next().value);
+```
+
+### Async generator
+
+```js
+async function* fetchPages(url) {
+  let page = 1;
+  while (page <= 3) {
+    const res = await fetch(`${url}?page=${page}`);
+    yield await res.json();
+    page++;
+  }
+}
+
+for await (const data of fetchPages("/api/posts")) {
+  console.log(data);
+}
+```
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `[Symbol.iterator]()` | Makes the object iterable, and `for...of` calls it |
+| `next()` | Returns `{ value, done }` |
+| `function*` | A generator function, it returns an iterator when called |
+| `yield i` | Send a value out and pause |
+| `while (true)` | An infinite loop is safe because it pauses at every `yield` |
+| `for await...of` | Awaits values from an async generator one by one |
+
+### Interview tip
+
+"What is the difference between an iterable and an iterator?" An iterable is an object that has a `Symbol.iterator` method. An iterator is the object you get from that method, and it has `next()`. A generator object is both.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Calling a generator like a normal function"
+  why="Calling rangeGen(1, 3) does not run the code, it only gives you an iterator object."
+  better="Pull out the values with for...of, spread or next()."
+/>
+
+<Mistake
+  title="Spreading an infinite generator"
+  why="Spread tries to collect all the values, and with an infinite sequence the page hangs."
+  better="Use next() or a loop with break for infinite generators."
+/>
+
+<Mistake
+  title="Looping the same iterator twice"
+  why="Once a generator object is finished, it does not give any more values."
+  better="Call the generator function again for a new loop."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Loops](/courses/javascript/loops), [Map & Set](/courses/javascript/map-and-set), [Spread & Rest](/courses/javascript/spread-and-rest) |
+| **Alongside** | [Promises](/courses/javascript/promises), [Async / Await](/courses/javascript/async-await) |
+| **After** | [Fetch API](/courses/javascript/fetch-api), [Event Loop](/courses/javascript/event-loop) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Iterable | Has `Symbol.iterator` |
+| Iterator | Has `next()` that returns `{ value, done }` |
+| Generator | A `function*` that pauses at `yield` |
+| Lazy | A value is created only when asked for |
+| Async | `async function*` and `for await...of` |
+
+<Callout variant="important" title="Remember">
+
+A generator is a function that can **pause and resume**. It pauses at `yield` and continues from the same place on `next()`.
+
+</Callout>

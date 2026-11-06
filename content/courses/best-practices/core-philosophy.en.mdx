@@ -1,0 +1,189 @@
+---
+title: Core Philosophy
+description: Clean code principles YAGNI and KISS, maintainability over speed, explicit over implicit and a small design surface. The thinking behind all the rules.
+keywords:
+  - clean code principles yagni kiss
+  - yagni principle
+  - kiss principle programming
+  - maintainability over speed
+  - explicit over implicit
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Meet today's need in the simplest, clearest way with the least new design, so that tomorrow's developer can change it easily.**
+
+</Callout>
+
+All the rules in this course come from six ideas:
+
+| Idea | Meaning |
+| --- | --- |
+| **Maintainability over speed** | Saving 10 minutes today is a loss if it costs 2 hours tomorrow |
+| **Simplicity first (KISS, YAGNI)** | The simplest solution that works. Do not build what you do not need yet |
+| **Small design surface** | A new table, API field, flag or abstraction only when the need is proven |
+| **Explicit over implicit** | The intent is clear from names and structure, not hidden magic |
+| **Delete over comment** | Do not comment out old code, delete it. Git has the history |
+| **Self-documenting** | The code explains itself through its names and shape |
+
+**KISS** means "Keep It Simple, Stupid". **YAGNI** means "You Aren't Gonna Need It": do not write code today for an imaginary future need.
+
+## 2. Why does it matter?
+
+The real cost of software is not in writing it, it is in **changing** it. A feature is written once and then read, debugged and modified for years.
+
+<CompareTable leftTitle="Speed and cleverness first" rightTitle="Simplicity and clarity first">
+
+Built a generic system for the future that was never used | Only today's work, and build more if the need comes later
+A config flag for everything | One direct path, a flag only for a real runtime difference
+A clever one-liner that only its author understands | Simple code that a new developer understands too
+Old code commented out and left behind | Deleted, and safe in Git history
+Hours spent finding a bug | The flow is direct, so the bug shows up quickly
+
+</CompareTable>
+
+Every extra abstraction, flag or table is a **promise** you will have to keep forever. The fewer promises, the lighter the load.
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Very important, especially YAGNI | Beginners often build a "scalable architecture" and never finish the project |
+| **Production code** | In every PR | Every new abstraction or table is a future burden for the team |
+| **Senior level** | Responsibility for the decision | A senior decides when growing the design surface is really needed |
+
+## 4. Bad vs good code
+
+Task: show the user's display name. Today there is only a first and last name.
+
+```ts
+type NameFormat = "full" | "first" | "last" | "initials" | "reversed";
+
+class NameFormatterFactory {
+  static create(format: NameFormat, options: { uppercase?: boolean; separator?: string } = {}) {
+    return new NameFormatter(format, options);
+  }
+}
+
+const label = NameFormatterFactory.create("full", { separator: " " }).format(user);
+```
+
+```ts
+function displayName(user: User) {
+  return `${user.firstName} ${user.lastName}`;
+}
+
+const label = displayName(user);
+```
+
+| What is the difference? | Bad | Good |
+| --- | --- | --- |
+| Need | Five formats nobody asked for | Only what is needed today |
+| Design surface | Factory, class, options object, union type | One function |
+| Reading time | Three things to understand | One glance |
+| Changing it | Tests and maintenance for every format | Grow it when the need comes |
+
+YAGNI does not mean never think about the future. It means write code that is **easy to change later**, not write every future case today.
+
+### Explicit over implicit
+
+```ts
+export default function (d: any) {
+  return fetch("/api/x", { method: "POST", body: JSON.stringify(d) });
+}
+```
+
+```ts
+export function createInvoice(input: CreateInvoiceInput) {
+  return api.post("/api/invoices", input);
+}
+```
+
+In the second version the name, type and endpoint are all clear. There is nothing to guess.
+
+## 5. How to apply it
+
+<Flow title="Before building a new feature">
+
+Write today's real need in one line
+↓
+Check whether existing code already does it
+↓
+Think of the simplest solution that works
+↓
+A new table, field, flag or abstraction? Prove it is needed
+↓
+Make the intent clear with names and types
+↓
+Delete code that is no longer useful
+
+</Flow>
+
+Ask one easy question about every design: **"If I do not build this, what breaks today?"** If the answer is "nothing", do not build it.
+
+## 6. Exceptions and common mistakes
+
+Some decisions are very expensive to change later: the database schema, a public API contract, the auth design. Thinking a little ahead here is not against YAGNI, it is responsibility. Even so, build only what is needed, and just keep it easy to change.
+
+<Mistake
+  title="Confusing simple with lazy"
+  why="Writing simple code is often harder. The first version is complex, and making it simple is the real work."
+  better="Write a first draft, think about what you can remove, and then remove it."
+/>
+
+<Mistake
+  title="Making everything configurable"
+  why="Every flag doubles the code paths and increases the test cases."
+  better="Use a flag only when the behavior really changes at runtime, otherwise keep one direct path."
+/>
+
+<Mistake
+  title="Keeping old code commented out"
+  why="The reader wonders whether it matters, and that code slowly becomes wrong."
+  better="Delete it. If you need it back, you will find it in Git history."
+/>
+
+<Mistake
+  title="Taking shortcuts in the name of speed"
+  why="The minutes saved today turn into hours of debugging and rework next month."
+  better="Write it clean from the start. It feels a little slower the first time, and then it gets fast."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Introduction](/courses/best-practices/introduction) |
+| **Alongside** | [When to Learn What](/courses/best-practices/learning-path-and-levels) |
+| **After** | [Self-Documenting Code](/courses/best-practices/self-documenting-code), [DRY Without Tight Coupling](/courses/best-practices/dry-without-coupling), [Fix Root Causes](/courses/best-practices/fix-root-causes) |
+
+<Flow title="Suggested order">
+
+Introduction
+↓
+Core Philosophy
+↓
+When to Learn What
+↓
+Self-Documenting Code
+
+</Flow>
+
+## Final quick revision
+
+| Check | Question |
+| --- | --- |
+| Maintainability | Will someone else be able to change this easily 6 months from now? |
+| KISS | Is there a simpler solution? |
+| YAGNI | Do we really need this today? |
+| Design surface | Is a new table, field, flag or abstraction necessary? |
+| Explicit | Is the intent clear from the name and type? |
+| Delete | Is any dead code left? |
+
+<Callout variant="important" title="Remember">
+
+Code is written once and read hundreds of times. Write for the reader, and write only what is needed today.
+
+</Callout>

@@ -1,0 +1,192 @@
+---
+title: Higher-Order Functions
+description: Learn JavaScript higher-order functions and callbacks, including passing functions as arguments, returning functions, and patterns like map and filter.
+keywords:
+  - javascript higher order functions callbacks
+  - functions as values
+  - callback function javascript
+  - function composition
+---
+
+## 1. What are higher-order functions?
+
+<Callout variant="tip" title="Short definition">
+
+**A higher-order function is a function that takes another function as an argument, returns a function, or does both.**
+
+</Callout>
+
+In JavaScript, functions are "first-class values". You can store them in variables, pass them as arguments, and return them from other functions. A function passed as an argument is called a **callback**.
+
+`map`, `filter`, `setTimeout`, and `addEventListener` are all higher-order functions that you use every day.
+
+## 2. Why does it matter?
+
+A lot of tasks share the same structure, and only one step in the middle changes. Higher-order functions pull that changing step out.
+
+<CompareTable leftTitle="A separate loop for every task" rightTitle="With a higher-order function">
+
+A new for loop for every filter | One filter, the condition lives in a callback
+The same loop logic in 10 places | Loop logic in one place, the task in a callback
+What is happening is hidden inside the loop | The function name tells you what it does
+Hard to reuse | Small callbacks you can mix and reuse
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Area | Example |
+| --- | --- |
+| **Arrays** | `map`, `filter`, `reduce`, `find`, `some`, `toSorted` |
+| **Events** | `addEventListener("click", handler)` |
+| **Timers** | `setTimeout(callback, 1000)` |
+| **Async** | `promise.then(callback)` |
+| **Utilities** | `debounce(fn, 300)`, `once(fn)`, `memoize(fn)` |
+| **React** | Rendering a list with `items.map((item) => ...)` |
+
+## 4. How does it work?
+
+A higher-order function works in two ways:
+
+| Way | What happens | Example |
+| --- | --- | --- |
+| **Takes a function** | Asks a callback for part of the work | `arr.filter(isActive)` |
+| **Returns a function** | Remembers a setting and builds a new function | `makeMultiplier(2)` |
+
+<Flow title="Callback flow">
+
+Give the higher-order function data and a callback
+↓
+It does its fixed work (like looping)
+↓
+It calls the callback at each step
+↓
+It uses the callback's answer to build the result
+
+</Flow>
+
+Higher-order functions that return a function rely on [Closures](/courses/javascript/closures), because the new function remembers the settings from outside.
+
+<Callout variant="important" title="Mental model">
+
+**The higher-order function does the fixed work, and the callback describes the part that changes.**
+
+</Callout>
+
+## 5. Code example
+
+### Passing a function as an argument
+
+```js
+function repeat(times, action) {
+  for (let i = 0; i < times; i++) {
+    action(i);
+  }
+}
+
+repeat(3, (i) => console.log(`Step ${i + 1}`));
+
+const isAdult = (user) => user.age >= 18;
+const users = [
+  { name: "Ali", age: 22 },
+  { name: "Hina", age: 15 },
+];
+console.log(users.filter(isAdult).map((u) => u.name));
+```
+
+### Returning a function
+
+```js
+function once(fn) {
+  let called = false;
+  let result;
+  return (...args) => {
+    if (!called) {
+      called = true;
+      result = fn(...args);
+    }
+    return result;
+  };
+}
+
+const initApp = once(() => {
+  console.log("App initialized");
+  return "ready";
+});
+
+console.log(initApp());
+console.log(initApp());
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `repeat(3, ...)` | `repeat` owns the loop, the callback owns the task |
+| `isAdult` | A named callback that can be reused |
+| `filter(isAdult).map(...)` | A chain of two higher-order functions, gives `["Ali"]` |
+| `once(fn)` | Takes `fn` and returns a new function |
+| `called` and `result` | Remembered through a closure |
+| Second `initApp()` | The message is not printed again, you only get `ready` |
+
+### Interview tip
+
+There are two kinds of callbacks: **synchronous** (like `map`, runs immediately) and **asynchronous** (like `setTimeout`, runs later). Be sure to mention this difference in an interview.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Passing the result of a function instead of the callback"
+  why="In setTimeout(showToast(), 1000), showToast runs immediately and setTimeout receives undefined."
+  better="Pass a function reference or an arrow function: setTimeout(showToast, 1000) or setTimeout(() => showToast(msg), 1000)."
+/>
+
+<Mistake
+  title="Forgetting the extra arguments that map passes"
+  why="map gives the callback (value, index, array). ['1','2','3'].map(parseInt) gives a wrong result because the index becomes the radix."
+  better="Write an explicit arrow: arr.map((s) => parseInt(s, 10)) or arr.map(Number)."
+/>
+
+<Mistake
+  title="Forgetting return in a callback"
+  why="In an arrow function with a block body, if there is no return, filter and map get undefined."
+  better="If it is a single expression, remove the braces. Otherwise write return yourself."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Functions](/courses/javascript/functions), [Arrow Functions](/courses/javascript/arrow-functions), [Closures](/courses/javascript/closures) |
+| **Alongside** | [Array Methods: map, filter, reduce](/courses/javascript/array-methods) |
+| **After** | [Callbacks](/courses/javascript/callbacks), [Promises](/courses/javascript/promises), [Debounce & Throttle](/courses/javascript/debounce-and-throttle) |
+
+<Flow title="Suggested order">
+
+Closures
+↓
+Higher-Order Functions
+↓
+Array Methods
+↓
+Callbacks
+↓
+Promises
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Higher-order function | Takes or returns a function |
+| Callback | A function passed as an argument |
+| First-class functions | Functions are treated like values |
+| Sync vs async callback | Runs immediately vs runs later |
+| Returning a function | A closure remembers the settings |
+
+<Callout variant="important" title="Remember">
+
+When you pass a callback, give the function **reference**, not its **result**. Keep the fixed logic in one place and take the changing part from the callback.
+
+</Callout>

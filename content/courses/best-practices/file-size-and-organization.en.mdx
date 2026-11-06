@@ -1,0 +1,200 @@
+---
+title: File Size & Organization
+description: How to organize large components. A 400 line component limit, one responsibility per file, and splitting a big React file into child components.
+keywords:
+  - file organization large components
+  - split large react component
+  - component file size limit
+  - one responsibility per file
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Every file has one primary responsibility. A React component file stays under 400 lines. If it grows past that, move child components into their own files.**
+
+</Callout>
+
+You saw function size in [Small Functions](/courses/best-practices/small-functions). A file is one level up: it is the home for several functions and components. The question here is "should all of this really live in one place?"
+
+| Part | Meaning |
+| --- | --- |
+| **400 line limit** | The upper bound for a `.tsx` component file |
+| **One responsibility** | The file name tells you what is inside, and only that is inside |
+| **One unit, one folder** | `components/LeadTable/LeadTable.tsx` with its own parts next to it |
+| **One naming style** | PascalCase or kebab-case within a folder, never a mix |
+
+## 2. Why does it matter?
+
+In a 1200 line file, every change feels risky. You lose context while scrolling, and two developers editing the same file end up in a merge conflict.
+
+<CompareTable leftTitle="One big file" rightTitle="Small focused files">
+
+Merge conflict on almost every change | Different people edit different files, fewer conflicts
+One state change re-renders the whole file | Child components manage their own state
+Finding something means Ctrl F and scrolling | The file name tells you where to look
+A 600 line diff in review | A small diff and a focused review
+Reusing one piece means importing the whole file | Import only the component you need
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Split when scrolling the file becomes painful | Splitting components is a core React skill |
+| **Production code** | Enforce the 400 line limit in review | Big files are the biggest enemy of team speed |
+| **Senior level** | Decide the folder structure and boundaries | Where to split is a design decision |
+
+## 4. Bad vs good code
+
+Bad: one `Dashboard.tsx` that is 900 lines long.
+
+```tsx
+export function Dashboard() {
+  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [selected, setSelected] = useState<string[]>([]);
+  const { leads, isLoading } = useLeads(filters);
+
+  return (
+    <main>
+      <header>
+        <h1>Leads</h1>
+        <input value={filters.query} onChange={(e) => setFilters({ ...filters, query: e.target.value })} />
+        <select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value as LeadStatus })}>
+          <option value="all">All</option>
+        </select>
+      </header>
+      <table>
+        <tbody>
+          {leads.map((lead) => (
+            <tr key={lead.id}>
+              <td>{lead.name}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <footer>{selected.length} selected</footer>
+    </main>
+  );
+}
+```
+
+This only shows the outline. In the real file each part is 200 lines: the filter logic, the table sorting, the bulk actions modal.
+
+Good: each part in its own file.
+
+```bash
+components/
+  Dashboard/
+    Dashboard.tsx
+    DashboardFilters/
+      DashboardFilters.tsx
+    LeadTable/
+      LeadTable.tsx
+      LeadRow.tsx
+    BulkActions/
+      BulkActions.tsx
+hooks/
+  use-leads/
+    use-leads.ts
+```
+
+```tsx
+export function Dashboard() {
+  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [selected, setSelected] = useState<string[]>([]);
+  const { leads, isLoading } = useLeads(filters);
+
+  return (
+    <main>
+      <DashboardFilters filters={filters} onChange={setFilters} />
+      <LeadTable leads={leads} isLoading={isLoading} onSelect={setSelected} />
+      <BulkActions selected={selected} />
+    </main>
+  );
+}
+```
+
+| What is the difference? | Bad | Good |
+| --- | --- | --- |
+| Size | 900 lines | 50 to 150 lines per file |
+| Responsibility | Filters, table and actions all together | `Dashboard` only wires things together |
+| Finding code | Scrolling | The folder name |
+| Testing | Render the whole dashboard | Test `LeadTable` alone |
+| Teamwork | Everyone in one file | Everyone in their own file |
+
+## 5. How to apply it
+
+<Flow title="Steps to split a big file">
+
+Scroll through the file and spot its visual or logical parts
+↓
+Any part that has its own state or its own data is a candidate
+↓
+Move that part into its own file and folder
+↓
+Pass only the props that part needs
+↓
+Move the logic into a hook or a pure function
+↓
+Let the parent only connect the children
+
+</Flow>
+
+Good signs that something should be split: separate state, a separate data source, a different reason to change, or a large block of JSX inside `.map` (that is a `Row` component).
+
+## 6. Exceptions and common mistakes
+
+400 lines is an upper limit, not a target. Sometimes splitting a file even hurts: if two parts always change together and depend on each other's internal details, separate files only add navigation. **Keep things that change together in one place**, and things that change separately apart.
+
+Config files, generated types or long constant lists can be longer than 400 lines, because they contain no logic.
+
+<Mistake
+  title="A separate file for everything, even 5 lines"
+  why="20 tiny files that only import each other make the code harder to read."
+  better="Extract a part when it has its own responsibility or the file is truly getting big."
+/>
+
+<Mistake
+  title="Mixing naming styles in one folder"
+  why="With LeadTable.tsx in one place and lead-row.tsx in another, every import becomes a guess."
+  better="Pick one convention per folder and keep it across the whole repo."
+/>
+
+<Mistake
+  title="Putting everything in utils.ts"
+  why="A utils file becomes everyone's dumping ground and can reach 1000 lines."
+  better="Keep each helper next to the module that uses it, with a clear name."
+/>
+
+<Mistake
+  title="Keeping everything in one file to avoid prop drilling"
+  why="You lose the benefit of a short file, and the problem is still there."
+  better="Use composition, the children prop or context, and still split the file."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Small Functions](/courses/best-practices/small-functions), [Components](/courses/react/components) |
+| **Alongside** | [Children & Composition](/courses/react/children-and-composition), [Custom Hooks](/courses/react/custom-hooks) |
+| **After** | [Types Beside Logic](/courses/best-practices/types-beside-logic), [Project Structure](/courses/best-practices/project-structure), [React Component Practices](/courses/best-practices/react-component-practices) |
+
+## Final quick revision
+
+| Check | Question |
+| --- | --- |
+| Size | Is the component file under 400 lines? |
+| Responsibility | Does the file name describe everything inside it? |
+| Folder | Does each component live in its own folder? |
+| Naming | Does the folder use one naming style? |
+| Cohesion | Are things that change together kept together? |
+
+<Callout variant="important" title="Remember">
+
+A big file is a warning in itself. When you start forgetting what was at the top while scrolling, it is time to split the file.
+
+</Callout>

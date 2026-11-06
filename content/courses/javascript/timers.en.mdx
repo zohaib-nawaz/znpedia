@@ -1,0 +1,188 @@
+---
+title: "Timers: setTimeout & setInterval"
+description: Learn how to delay or repeat code in JavaScript with setTimeout and setInterval, and how to cancel them with clearTimeout and clearInterval.
+keywords:
+  - javascript settimeout setinterval
+  - clearinterval javascript
+  - javascript timers
+---
+
+## 1. What are timers?
+
+<Callout variant="tip" title="Short definition">
+
+**Timers let you run code once after a delay (setTimeout) or again and again (setInterval).**
+
+</Callout>
+
+Both functions take a callback and a delay in milliseconds. This feature is not part of the JavaScript language itself, it is provided by the browser and Node.js.
+
+Every timer returns an **id**. You can use that id to cancel the timer.
+
+## 2. Why does it matter?
+
+Many tasks should not happen right away, but a little later or repeatedly, like hiding a toast message after 3 seconds or updating a clock every second.
+
+<CompareTable leftTitle="Without timers" rightTitle="With timers">
+
+An empty loop for a delay, the page freezes | A non-blocking delay, the page keeps working
+Manual tricks for repeating | A clean repeat with setInterval
+Hard to cancel the work | clearTimeout and clearInterval
+Hard to give the user feedback | Toasts, countdowns, and polling are easy
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Use case | Timer |
+| --- | --- |
+| **Toast notification** | Hide after 3s with `setTimeout` |
+| **Digital clock** | `setInterval` every 1000ms |
+| **Countdown / OTP resend** | `setInterval`, cleared at the end |
+| **Search debounce** | `setTimeout`, cleared on every keypress |
+| **Polling** | Check the server every few seconds |
+
+## 4. How does it work?
+
+<Flow title="The journey of setTimeout">
+
+setTimeout is called and returns an id
+↓
+The browser counts the time
+↓
+When time is up, the callback goes into the task queue
+↓
+When the stack is empty, the event loop runs the callback
+
+</Flow>
+
+<Callout variant="important" title="Mental model">
+
+**The delay is a minimum time, not a guaranteed time.** If the stack is busy, the callback runs even later.
+
+</Callout>
+
+| Function | Job |
+| --- | --- |
+| `setTimeout(fn, ms)` | Once, after `ms` |
+| `setInterval(fn, ms)` | Every `ms`, until cleared |
+| `clearTimeout(id)` | Cancel a pending timeout |
+| `clearInterval(id)` | Stop the interval |
+
+## 5. Code example
+
+### A toast that hides after 3 seconds
+
+```js
+function showToast(message) {
+  const toast = document.querySelector("#toast");
+  toast.textContent = message;
+  toast.hidden = false;
+
+  const id = setTimeout(() => {
+    toast.hidden = true;
+  }, 3000);
+
+  return () => clearTimeout(id);
+}
+
+const cancel = showToast("Saved!");
+```
+
+### A countdown that stops itself
+
+```js
+let seconds = 5;
+
+const intervalId = setInterval(() => {
+  console.log(seconds);
+  seconds--;
+
+  if (seconds < 0) {
+    clearInterval(intervalId);
+    console.log("Time up");
+  }
+}, 1000);
+```
+
+### A promise-based delay
+
+```js
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+await wait(1000);
+console.log("After 1 second");
+```
+
+### How does the code work?
+
+| Line | What is happening |
+| --- | --- |
+| `const id = setTimeout(...)` | Saves the timer id so you can cancel later |
+| `return () => clearTimeout(id)` | Returns a cancel function, the caller can stop it if needed |
+| `setInterval(..., 1000)` | The callback runs every second |
+| `clearInterval(intervalId)` | Stops the interval once the condition is met |
+| `wait(ms)` | Wraps the timer in a promise to use with `await` |
+
+## 6. Common mistakes
+
+<Mistake
+  title="Passing a function call instead of a callback"
+  why="In setTimeout(save(), 1000), save runs immediately and its return value is given to the timer."
+  better="Pass a function reference or an arrow function: setTimeout(save, 1000) or setTimeout(() => save(id), 1000)."
+/>
+
+<Mistake
+  title="Never clearing a setInterval"
+  why="The interval keeps running forever, causing memory leaks and duplicate work."
+  better="Save the id and call clearInterval when the work is done or the component is removed."
+/>
+
+<Mistake
+  title="Trusting exact timing"
+  why="With a busy stack or in a background tab, the browser delays or throttles timers."
+  better="For accurate time, calculate the real elapsed time with Date.now()."
+/>
+
+<Mistake
+  title="Using setInterval for async work"
+  why="If a request takes 2 seconds and the interval is 1 second, the requests overlap."
+  better="Schedule the next setTimeout when the work finishes (recursive setTimeout)."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Functions](/courses/javascript/functions), [Arrow Functions](/courses/javascript/arrow-functions), [Event Loop](/courses/javascript/event-loop) |
+| **After** | [Callbacks](/courses/javascript/callbacks), [Promises](/courses/javascript/promises), [Debounce & Throttle](/courses/javascript/debounce-and-throttle) |
+
+<Flow title="Suggested order">
+
+Event Loop
+↓
+Timers
+↓
+Callbacks
+↓
+Promises
+↓
+Debounce and Throttle
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `setTimeout` | Once, after a delay |
+| `setInterval` | Again and again, until cleared |
+| Timer id | Save it so you can cancel |
+| Delay | A minimum time, not a guarantee |
+| Promise delay | `new Promise((r) => setTimeout(r, ms))` |
+
+<Callout variant="important" title="Remember">
+
+**Save the id** of every timer and clear it when the work is done. Pass the function, do not call it.
+
+</Callout>

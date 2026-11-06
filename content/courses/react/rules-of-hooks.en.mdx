@@ -1,0 +1,162 @@
+---
+title: Rules of Hooks
+description: Learn the React rules of hooks, why hooks must be called at the top level of React functions, and how the ESLint plugin helps you follow them.
+keywords:
+  - react rules of hooks
+  - hooks top level rule
+  - eslint plugin react hooks
+  - conditional hook error react
+---
+
+## 1. What are the rules of hooks?
+
+<Callout variant="tip" title="Short definition">
+
+**Hooks have two rules: call them only at the top level, and call them only inside React function components or custom hooks.**
+
+</Callout>
+
+Hooks are functions whose names start with `use`: `useState`, `useEffect`, `useRef` and so on. They are how you tap into React's features, but they come with a few restrictions.
+
+## 2. Why does it matter?
+
+React identifies hooks **by order, not by name**. On every render, hooks must be called in exactly the same order.
+
+<CompareTable leftTitle="Breaking the rules" rightTitle="Following the rules">
+
+A hook inside an if, which runs sometimes and sometimes not | The same hooks in the same order on every render
+React gives state to the wrong hook | Each hook gets the right state
+Strange bugs and crashes | Predictable behavior
+Very hard to debug | The linter catches it early
+
+</CompareTable>
+
+## 3. Where is it used?
+
+These rules apply **everywhere** hooks are used:
+
+| Place | Allowed? |
+| --- | --- |
+| Top level of a function component | Yes |
+| Top level of a custom hook (name starts with `use`) | Yes |
+| Inside `if`, `for` or `while` | No |
+| After an early `return` | No |
+| Inside an event handler or a `useEffect` callback | No |
+| Inside a normal JavaScript function | No |
+
+## 4. How does it work?
+
+React keeps a **list** of hooks for each component. The first `useState` call is slot 1, the second is slot 2, and so on.
+
+<Flow title="The order of hooks">
+
+Render 1: useState name, useState age, useEffect
+↓
+React saves the slots: 1 name, 2 age, 3 effect
+↓
+Render 2: the same hooks in the same order
+↓
+Slot 1 goes to name, slot 2 goes to age
+
+</Flow>
+
+If the first hook is skipped in render 2 because of an `if`, the `age` hook will read slot 1 and everything shifts by one.
+
+<Callout variant="note" title="One exception">
+
+The React 19 `use()` API is not a hook, it is a special function. You can call it inside `if` statements and loops. Details are in [The use() API](/courses/react/use-hook).
+
+</Callout>
+
+## 5. Code example
+
+### Wrong: a hook inside a condition
+
+```jsx
+function Profile({ isLoggedIn }) {
+  if (isLoggedIn) {
+    const [name, setName] = useState("");
+  }
+  const [theme, setTheme] = useState("light");
+}
+```
+
+### Right: hooks on top, condition below
+
+```jsx
+function Profile({ isLoggedIn }) {
+  const [name, setName] = useState("");
+  const [theme, setTheme] = useState("light");
+
+  if (!isLoggedIn) {
+    return <p>Please log in first</p>;
+  }
+
+  return <input value={name} onChange={(e) => setName(e.target.value)} />;
+}
+```
+
+### Linter setup
+
+```bash
+npm install -D eslint-plugin-react-hooks
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| The first example | When `isLoggedIn` changes, the number of hooks changes and React gets confused |
+| The second example | Both hooks always run, only the JSX is conditional |
+| Early `return` | It comes **after** the hooks, so it is safe |
+| `eslint-plugin-react-hooks` | Shows an error in your editor when a rule is broken |
+
+The Vite and Next.js templates usually include this plugin already.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Writing a hook after an early return"
+  why="In some renders the function returns early and the hooks below are skipped, which breaks the order."
+  better="Write all hooks at the very top of the component, and put returns and conditions after them."
+/>
+
+<Mistake
+  title="Calling useState or useEffect inside an event handler"
+  why="A handler does not run during render, so there is no slot for the hook and React throws an error."
+  better="Create the hook at the top level, and only call the setter inside the handler."
+/>
+
+<Mistake
+  title="Using hooks in a custom function whose name does not start with use"
+  why="React and the linter treat it as a normal function, so the rules are not checked."
+  better="Start the name of any function that uses hooks with use, like useWindowSize."
+/>
+
+### Interview tip
+
+"Why can't hooks go in loops?" Answer: React tracks hooks by **call order**. A loop or a condition can change that order, so hooks must stay at the top level.
+
+## 7. What to learn before and after
+
+| Stage | Chapters |
+| --- | --- |
+| **Before** | [State with useState](/courses/react/state) |
+| **After** | [useEffect](/courses/react/use-effect), [useRef](/courses/react/use-ref), [Custom Hooks](/courses/react/custom-hooks) |
+| **Related** | [React Compiler](/courses/react/react-compiler) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Rule 1 | Only at the top level, outside conditions and loops |
+| Rule 2 | Only in components and custom hooks |
+| Reason | React identifies hooks by order |
+| Helper | `eslint-plugin-react-hooks` |
+| Exception | `use()` can be called conditionally |
+
+<Callout variant="important" title="Remember">
+
+**The same hooks in the same order** on every render. Put conditions in JSX, not around hooks.
+
+</Callout>

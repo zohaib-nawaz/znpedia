@@ -1,0 +1,202 @@
+---
+title: "What's New in Next.js 16"
+description: "Next.js 16 new features explained simply: Turbopack by default, proxy.ts, Cache Components, async params, React 19.2, new caching APIs and breaking changes."
+keywords:
+  - next.js 16 new features
+  - next.js 16 breaking changes
+  - next.js 16 upgrade
+  - proxy.ts next.js
+  - cache components
+---
+
+## 1. What is Next.js 16?
+
+<Callout variant="tip" title="Short definition">
+
+**Next.js 16 (October 2025) is a major release where Turbopack became the default bundler, caching became opt-in, and `proxy.ts` replaced `middleware.ts`.**
+
+</Callout>
+
+This release is about three things: **build and dev speed**, **explicit caching**, and **fast navigation**. Some old deprecated features were also removed, so you need to understand the breaking changes before you upgrade.
+
+## 2. Why does it matter?
+
+Up to Next.js 15, caching was largely implicit. Developers could not tell why a page became static or why data looked old. Next.js 16 made this model clear.
+
+<CompareTable leftTitle="Next.js 15" rightTitle="Next.js 16">
+
+Webpack by default, Turbopack opt-in | Turbopack is the default in both dev and build
+middleware.ts | proxy.ts (Node.js runtime)
+Implicit caching | Cache Components, opt-in with use cache
+experimental.ppr flag | PPR is part of cacheComponents
+Sync params still worked | params and searchParams are async only
+next lint command | ESLint or Biome directly
+revalidateTag(tag) | revalidateTag(tag, profile) and updateTag
+Node 18 support | Node 20.9+ required
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Feature | Where it helps |
+| --- | --- |
+| **Turbopack** | 2 to 5 times faster builds, Fast Refresh up to 10 times faster |
+| **Cache Components** | A static shell and dynamic parts together in one page |
+| **proxy.ts** | Auth redirects, headers, rewrites |
+| **Layout deduplication** | A layout shared by 50 links is downloaded only once |
+| **Incremental prefetching** | Prefetches only the part that is not in the cache |
+| **updateTag** | The user sees fresh data right after a form save |
+| **React 19.2** | View Transitions, `useEffectEvent`, `Activity` |
+
+## 4. How does it work?
+
+<Flow title="The Next.js 16 upgrade path">
+
+Install Node 20.9+
+   ↓
+npx @next/codemod@canary upgrade latest
+   ↓
+Rename middleware.ts to proxy.ts
+   ↓
+await params, searchParams and cookies
+   ↓
+Add default.js to parallel slots
+   ↓
+Replace next lint with eslint
+   ↓
+next build (Turbopack)
+
+</Flow>
+
+The codemod does most of the work for you. For anything left over, check the official upgrade guide.
+
+Next.js 16 comes with **React 19.2** (the App Router uses React Canary), so features like `useEffectEvent`, `<ViewTransition>` and `<Activity>` are available. **React Compiler** support is also stable (`reactCompiler: true`), but it is off by default.
+
+## 5. Code example
+
+### Turning on Cache Components
+
+```ts
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  cacheComponents: true,
+};
+
+export default nextConfig;
+```
+
+The docs for newer 16.x minor versions also ask you to set `partialPrefetching: true` alongside it, so be sure to check the docs for your version.
+
+### From middleware.ts to proxy.ts
+
+```ts
+import { NextResponse, type NextRequest } from "next/server";
+
+export function proxy(request: NextRequest) {
+  return NextResponse.redirect(new URL("/home", request.url));
+}
+
+export const config = {
+  matcher: "/old-home",
+};
+```
+
+### Async params and the new caching APIs
+
+```tsx
+import { cacheLife } from "next/cache";
+
+async function getPost(slug: string) {
+  "use cache";
+  cacheLife("hours");
+  const res = await fetch(`https://api.example.com/posts/${slug}`);
+  return res.json();
+}
+
+export default async function Page({ params }: PageProps<"/blog/[slug]">) {
+  const { slug } = await params;
+  const post = await getPost(slug);
+  return <h1>{post.title}</h1>;
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `cacheComponents: true` | Turns on `"use cache"`, `cacheLife`, `cacheTag` and PPR |
+| `proxy.ts` | The old middleware, now with the name and function `proxy` |
+| `matcher` | Which paths the proxy runs on |
+| `"use cache"` | The result of this function is cached |
+| `cacheLife("hours")` | How long the cache stays fresh |
+| `PageProps<"/blog/[slug]">` | A global type helper, the type of params comes from the route |
+| `await params` | In Next.js 16 params is a Promise |
+
+### Other breaking changes
+
+| Change | Detail |
+| --- | --- |
+| Need Webpack | `next dev --webpack`, `next build --webpack` |
+| Parallel routes | Every slot needs a `default.js`, or the build fails |
+| `revalidateTag` | Needs a second argument, like `revalidateTag("posts", "max")` |
+| New APIs | `updateTag` and `refresh`, both only in Server Actions |
+| Removed | AMP, `serverRuntimeConfig`, `publicRuntimeConfig`, `next lint` |
+| `next/image` | `minimumCacheTTL` defaults to 4 hours, `qualities` defaults to `[75]` |
+| TypeScript | At least 5.1 |
+
+### Interview tip
+
+A good answer to "What is the biggest change in Next.js 16?" is: caching is now **opt-in**. Dynamic code runs at request time by default, and you decide what to cache with `"use cache"`.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Leaving middleware.ts as it is"
+  why="It still works for edge use cases but is deprecated and will be removed in a future version."
+  better="Rename the file to proxy.ts and name the exported function proxy."
+/>
+
+<Mistake
+  title="Using params without await"
+  why="Sync access was removed in Next.js 16, and params is a Promise."
+  better="Write await params in a Server Component, and use the React use() hook in a Client Component."
+/>
+
+<Mistake
+  title="Forgetting default.js for a parallel route slot"
+  why="In Next.js 16 the build fails without default.js."
+  better="Create a default.tsx in every slot that returns null or calls notFound()."
+/>
+
+<Mistake
+  title="Still relying on a custom webpack config after moving to Turbopack"
+  why="Turbopack does not read the webpack config, so your build can behave differently."
+  better="Use the Turbopack equivalent config, or add the --webpack flag if you need to."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Introduction](/courses/nextjs/introduction), [Installation & Project Structure](/courses/nextjs/installation-and-project-structure) |
+| **In detail** | [Cache Components](/courses/nextjs/cache-components), [Proxy](/courses/nextjs/proxy), [Revalidation](/courses/nextjs/revalidation), [next.config & Turbopack](/courses/nextjs/next-config-and-turbopack) |
+| **React side** | [useEffectEvent](/courses/react/use-effect-event), [Activity](/courses/react/activity), [React Compiler](/courses/react/react-compiler) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Release | October 2025 |
+| Bundler | Turbopack by default (dev and build) |
+| Caching | `cacheComponents: true` + `"use cache"` |
+| Middleware | Now `proxy.ts` |
+| Params | Async, `await params` |
+| Node | 20.9+ |
+| React | 19.2 features |
+
+<Callout variant="important" title="Remember">
+
+The Next.js 16 formula: **Turbopack by default, opt-in caching, `proxy.ts`, async params, and a `default.js` for every parallel slot.**
+
+</Callout>

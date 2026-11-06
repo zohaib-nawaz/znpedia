@@ -1,0 +1,169 @@
+---
+title: Props
+description: Learn what React props are, how data flows from a parent to a child component, and how to use destructuring and default values, with examples.
+keywords:
+  - react props
+  - props in react
+  - pass data to component
+  - react default props
+---
+
+## 1. What are props?
+
+<Callout variant="tip" title="Short definition">
+
+**Props are the inputs a parent component gives to its child component, just like the arguments of a function.**
+
+</Callout>
+
+In React, a component is a function. Just as you give arguments to a function, you give **props** to a component. The full name of props is "properties".
+
+With props, the same component can be reused with different data. One `ProductCard` component, a hundred products.
+
+## 2. Why do they matter?
+
+Without props, you would have to write a separate component for every product. Props make a component **reusable**.
+
+<CompareTable leftTitle="Without props" rightTitle="With props">
+
+A separate component for every card | One component, data comes from outside
+Text hardcoded inside the component | The parent decides the text
+Edit every place to change something | Just change the data, the UI updates itself
+Copy-pasted code | Clean and reusable code
+
+</CompareTable>
+
+## 3. Where are they used?
+
+| Use case | Job of props |
+| --- | --- |
+| **Product card** | Pass `name`, `price`, `image` |
+| **Button** | Pass `label`, `variant`, `onClick` |
+| **User avatar** | Pass `src`, `size`, `alt` |
+| **Layout** | Pass `title` and `children` |
+
+## 4. How do they work?
+
+The parent writes attributes in JSX. React collects all of them into one **object** and gives it to the child function as the first argument.
+
+<Flow title="The journey of props">
+
+The parent writes attributes in JSX
+↓
+React turns all the attributes into one props object
+↓
+The child function receives the props object
+↓
+The child returns the UI based on the props
+
+</Flow>
+
+Data goes only **from top to bottom** (parent to child). This is called **one-way data flow**.
+
+<Callout variant="important" title="Props are read-only">
+
+A child component never changes its props. If a value needs to change, it will be the parent's **state**, and the parent will send new props.
+
+</Callout>
+
+## 5. Code example
+
+### Basic props
+
+```jsx
+function Greeting(props) {
+  return <h2>Hello, {props.name}!</h2>;
+}
+
+export default function App() {
+  return (
+    <>
+      <Greeting name="Ali" />
+      <Greeting name="Sara" />
+    </>
+  );
+}
+```
+
+### Destructuring and default values
+
+```jsx
+function ProductCard({ name, price, inStock = true }) {
+  return (
+    <div className="card">
+      <h3>{name}</h3>
+      <p>Rs. {price}</p>
+      <p>{inStock ? "Available" : "Out of stock"}</p>
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <>
+      <ProductCard name="Keyboard" price={4500} />
+      <ProductCard name="Mouse" price={1800} inStock={false} />
+    </>
+  );
+}
+```
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `name="Ali"` | A string prop, in quotes |
+| `price={4500}` | A number or any JS value, in curly braces |
+| `{ name, price }` | Destructuring the props object directly |
+| `inStock = true` | A default value, used when the parent did not pass the prop |
+| `inStock={false}` | A boolean prop explicitly set to `false` |
+
+Apart from strings, every value (number, boolean, array, object, function) is passed inside `{}`.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Changing props inside the child component"
+  why="Props are read-only. Mutating them puts the UI and the data out of sync and causes bugs."
+  better="If a value needs to change, keep it as state in the parent and give the child a function prop that updates the parent's state."
+/>
+
+<Mistake
+  title="Passing a number in quotes, like turning price into a string"
+  why="A value in quotes is always a string, so math or comparisons give wrong results."
+  better="Pass numbers, booleans and objects in curly braces, like price={4500}."
+/>
+
+<Mistake
+  title="Forgetting the curly braces in destructuring"
+  why="Writing function Card(name) makes name the whole props object, not just the name."
+  better="Write function Card({ name }) so that only name is taken from the props object."
+/>
+
+### Interview tip
+
+If you are asked "What is the difference between props and state?", the answer is: props come **from outside** and are read-only, while state is the component's **own** memory that it updates itself.
+
+## 7. What to learn before and after
+
+| Stage | Chapters |
+| --- | --- |
+| **Before** | [Components](/courses/react/components), [JSX](/courses/react/jsx) |
+| **Alongside** | [Children & Composition](/courses/react/children-and-composition) |
+| **After** | [State with useState](/courses/react/state), [Lifting State Up](/courses/react/lifting-state-up) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| What props are | Inputs given from a parent to a child |
+| Shape | An object, the first function argument |
+| Direction | Only top to bottom (one-way) |
+| Rule | A child does not change its props |
+| Default value | `= value` in destructuring |
+
+<Callout variant="important" title="Remember">
+
+Props = function arguments. A component **reads** them and does not **change** them.
+
+</Callout>

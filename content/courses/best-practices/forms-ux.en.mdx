@@ -1,0 +1,299 @@
+---
+title: Forms & Funnels
+description: Form UX best practices. Ask for fewer fields, use one column, validate on blur, write error copy that says what to do and use verb plus object button labels.
+keywords:
+  - form ux best practices
+  - inline form validation
+  - error message ux
+  - button label best practices
+  - checkout form fields
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Ask only for what you will use, ask for little at a time, and make every error tell the user what to do next.**
+
+</Callout>
+
+Forms and funnels (sign-up, setup, checkout, any multi-step flow) are where the user gives your app something. Every field, every error and every button here either moves the user forward or pushes them to leave the page.
+
+The rules fall into four groups:
+
+| Group | Rules |
+| --- | --- |
+| **What to ask** | A named use for every field, max 8 fields in checkout, prefill what you know, account wall after value |
+| **Layout** | One question per page in new and occasional flows, one column, "Step x of n" at 3 or more steps |
+| **Validation and errors** | Validate on leaving the field (blur) and on submit, error copy that names the action, a summary + a message next to the field |
+| **Buttons and payment** | Verb plus object labels, submit is never silently disabled, a loading button does not change size, card fields in a separate box |
+
+## 2. Why does it matter?
+
+According to checkout research (like the large-scale studies by the Baymard Institute), an average checkout has more than 11 fields, while most sites could do the job in about 8. When people were asked why they abandoned their cart, about 17 percent said checkout was too long, 18 percent said they were forced to create an account, 19 percent did not trust the site with their card details, and 12 percent did not see the total up front.
+
+A big travel website removed just one optional "Company" field, which people were misreading and filling with wrong data, and it made a difference of about 12 million dollars a year. Even one field is not free.
+
+The research on validation timing is also clear. In a well known usability study, inline validation raised the success rate by about 22 percent and cut completion time by about 42 percent, and the best timing was "after leaving the field", not "while typing". Showing an error while the user types is like someone interrupting you before you finish your sentence. Studies on multi-column forms show that users skip the second column.
+
+<CompareTable leftTitle="A form without the rules" rightTitle="A form with the rules">
+
+14 fields, including fax and "how did you hear about us" | 6 fields, the use of each one is known
+"Invalid input. Please try again." and the field is empty | "Enter a project name" and the input stays there
+A red toast "Form has errors" gone in 5 seconds | A summary at the top that links to each field, with focus moved there
+A 6 field registration before you can even see the product | Try first, then an account at "Save your project"
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Visible labels, one column, validation on blur, verb plus object buttons | All of this is as little work in code as the wrong way, you just need the habit |
+| **Production code** | All the rules, especially for sign-up and checkout | Every extra field and every confusing error hits sign-ups and revenue directly |
+| **Senior level** | Ask "who will use this and for what" for every new field in the PR, and measure funnel drop-off | Fields usually grow because of "it might be useful", and a senior's job is to stop that |
+
+When to learn it: the first time you build a controlled form or a Server Action form in React. It is easy to use the right pattern from your first form, and hard to fix 20 forms later.
+
+## 4. Bad vs good code
+
+### Bad form
+
+```tsx
+"use client";
+
+import { useState } from "react";
+
+export function NewProjectForm() {
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const emailValid = /^[^\s@]+@[^\s@]+$/.test(email);
+
+  return (
+    <form className="grid grid-cols-2 gap-4">
+      <input placeholder="Project name" value={name} onChange={(e) => setName(e.target.value)} />
+      <input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+      {!emailValid && <p className="text-red-500">Invalid email!</p>}
+      <input placeholder="Company (optional)" />
+      <button disabled={!name || !emailValid}>Submit</button>
+    </form>
+  );
+}
+```
+
+### Good form
+
+```tsx
+"use client";
+
+import { useState } from "react";
+
+import { SubmitButton } from "./submit-button";
+import { createProject } from "./actions";
+import { validateProject, type ProjectErrors, type ProjectField } from "./validate-project";
+
+export function NewProjectForm() {
+  const [errors, setErrors] = useState<ProjectErrors>({});
+
+  function handleBlur(field: ProjectField, value: string) {
+    setErrors((current) => ({ ...current, [field]: validateProject({ [field]: value })[field] }));
+  }
+
+  return (
+    <form action={createProject} className="flex max-w-md flex-col gap-6">
+      <div className="flex flex-col gap-2">
+        <label htmlFor="name">Project name</label>
+        <input
+          id="name"
+          name="name"
+          aria-invalid={Boolean(errors.name)}
+          aria-describedby="name-error"
+          onBlur={(e) => handleBlur("name", e.target.value)}
+          className="rounded-md border px-3 py-2"
+        />
+        <p id="name-error" className="text-sm text-destructive">{errors.name}</p>
+      </div>
+      <div className="flex flex-col gap-2">
+        <label htmlFor="email">Work email</label>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          aria-invalid={Boolean(errors.email)}
+          aria-describedby="email-error"
+          onBlur={(e) => handleBlur("email", e.target.value)}
+          className="rounded-md border px-3 py-2"
+        />
+        <p id="email-error" className="text-sm text-destructive">{errors.email}</p>
+      </div>
+      <SubmitButton label="Create project" />
+    </form>
+  );
+}
+```
+
+Error messages in one place, in the field's own words. This client check is only for UX, and validation on the server is still required:
+
+```ts
+export type ProjectField = "name" | "email";
+export type ProjectErrors = Partial<Record<ProjectField, string>>;
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function validateProject(values: Partial<Record<ProjectField, string>>): ProjectErrors {
+  const errors: ProjectErrors = {};
+  if (values.name !== undefined && !values.name.trim()) {
+    errors.name = "Enter a project name";
+  }
+  if (values.email !== undefined && !EMAIL_PATTERN.test(values.email)) {
+    errors.email = "Enter an email address like name@example.com";
+  }
+  return errors;
+}
+```
+
+A submit button that is disabled only during the request and does not change its size:
+
+```tsx
+"use client";
+
+import { useFormStatus } from "react-dom";
+
+export function SubmitButton({ label }: { label: string }) {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      aria-busy={pending}
+      data-pending={pending}
+      className="group relative inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-primary-foreground"
+    >
+      <span className="group-data-[pending=true]:invisible">{label}</span>
+      <span
+        aria-hidden="true"
+        className="absolute hidden size-4 animate-spin rounded-full border-2 border-current border-t-transparent group-data-[pending=true]:block"
+      />
+    </button>
+  );
+}
+```
+
+The Server Action validates again on submit and, if it fails, sends back an error summary. The summary appears above the form ("There is a problem" and a link to each field for every error), focus moves to it, and the same message also shows under the field. Never use a toast that disappears in 5 seconds for an error.
+
+### What is the difference?
+
+| Bad | Good | Rule |
+| --- | --- | --- |
+| The placeholder is the label | A visible `label` on every field | A placeholder disappears as soon as you type |
+| `grid-cols-2` | `flex-col`, one column | The second column gets skipped |
+| Check on every keystroke | `onBlur` and on submit | Validate after the field |
+| "Invalid email!" | "Enter an email address like name@example.com" | The error says what to do |
+| `disabled` until the form is complete | `disabled` only during `pending` | Submit is never silently disabled |
+| "Submit" | "Create project" | Verb plus object |
+| "Company (optional)" | No such field | A named use for every field |
+| An error shown only by color | `aria-invalid` + `aria-describedby` + text | Screen readers understand it too |
+
+## 5. How to apply it
+
+<Flow title="How to build a new form">
+
+Next to every field, write who will use it and for what
+↓
+Remove any field that has no use
+↓
+Prefill what the system knows, skip what does not apply
+↓
+One column, visible labels, one question per page if the flow is new or occasional
+↓
+Validate on blur and on submit, with action based error copy
+↓
+Verb plus object button, disabled only during the request
+
+</Flow>
+
+The rules in more detail:
+
+| Rule | Detail |
+| --- | --- |
+| **Question protocol** | In the PR, write next to every field who uses the answer, like "Phone: to confirm the installer visit". An optional field needs the same justification |
+| **Field count** | A checkout or paid sign-up has max 8 fields. For other forms, write the count in the PR, and justify every field above 8 |
+| **One question per page vs one form** | New or branching flows like sign-up, setup and eligibility: one thing per page. Repeated work like editing a record: max 5 related fields on one page |
+| **One column** | Put two fields in one row only when they are the same concept, like expiry and CVC, or city and postcode |
+| **Prefill and skip** | The account's email is already filled in billing and editable. A question that would make the user ineligible goes first |
+| **Progress** | With 3 or more pages, show "Step 2 of 3: Billing" and the step names. Every step saves, and a reload resumes from the same place |
+| **Error copy** | One sentence, in the field's words, saying what to do. No "invalid", "please", "sorry", "oops" and no error codes. Never clear the input |
+| **Summary + inline** | On a failed submit, a summary at the top that links to each field, focus on the summary, and the same text next to the field |
+| **Payment trust** | Card fields in a separate box (a border or tint used nowhere else on the page), max 2 trust icons inside, and the total including tax and fees before the card fields |
+| **Account wall** | First let the user see what they get, account later, unless the product cannot work without an account. Offer social or passkey sign-in along with email |
+| **Loading button** | Same width and height, the label hides, a spinner in the middle. The label does not change to "Saving...". Every action has its own pending flag |
+| **Destructive action** | Confirm before something like delete, and the confirm button is also verb plus object: "Delete 3 files" |
+
+Examples of error copy and button labels. Labels should be in sentence case ("Save and continue", not "Save And Continue"), because a good label carries the "information scent" that already says what will happen after the click:
+
+| Bad | Good |
+| --- | --- |
+| Invalid input. Please try again. | Enter a project name |
+| Email is invalid | Enter an email address like name@example.com |
+| Oops! Error 1023 | Enter a date in the past |
+| Password must have an entry | Enter a password with at least 8 characters |
+| Submit | Create project |
+| OK | Save changes |
+| Go | Search orders |
+| Yes | Delete 3 files |
+
+## 6. Exceptions and common mistakes
+
+| Situation | What to do |
+| --- | --- |
+| **Password and username** | Live feedback while typing is allowed, but as guidance ("8 characters, 2 more"), not as an error |
+| **An expert user's daily form** | A single page form is fine, a wizard gets in the way here, up to 5 related fields |
+| **A product that cannot work without an account** | The account comes first, but offer a social or passkey option with it |
+
+<Mistake
+  title="A submit button that stays disabled until the form is complete"
+  why="A disabled button has low contrast and the user cannot tell what is missing, they just get stuck."
+  better="Keep the button enabled, and show the summary and field errors when it is pressed. Disable only during the request."
+/>
+
+<Mistake
+  title="Clearing the whole field or form on an error"
+  why="The user has to type everything again and many people give up right here."
+  better="Keep the input where it is, and give a one sentence action message next to the field."
+/>
+
+<Mistake
+  title="Showing the error only in a toast"
+  why="A toast fades away and the user has to remember which field was wrong."
+  better="A summary at the top that links to each field, move focus there, and the same message under the field."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Forms & Controlled Inputs](/courses/react/forms), [Visual Hierarchy & Spacing](/courses/best-practices/visual-hierarchy-and-spacing) |
+| **Alongside** | [Forms & Validation](/courses/nextjs/forms-and-validation), [Actions, useActionState & useOptimistic](/courses/react/actions-and-form-hooks), [Input Validation at the Boundary](/courses/best-practices/input-validation) |
+| **After** | [Onboarding & Empty States](/courses/best-practices/onboarding-and-empty-states), [Error Handling & Error Envelope](/courses/best-practices/error-handling-and-envelope) |
+
+## Final quick revision
+
+| Check | What to remember |
+| --- | --- |
+| Every field | Who will use it and for what, otherwise remove it. Checkout max 8 |
+| Layout | One column, visible labels, one question per page in new flows, "Step x of n" and resume at 3+ steps |
+| Validation | On blur and on submit, not while typing |
+| Error copy | One sentence, what to do, input stays |
+| Failed submit | Summary + focus + a message next to the field |
+| Button | Verb plus object, sentence case |
+| Disabled | Only during the request, with a spinner, same size |
+| Payment | Card fields in a separate box, max 2 trust icons, total first |
+| Account | Value first, account later |
+
+<Callout variant="important" title="Remember">
+
+Every field asks for the user's time and every error tests their patience. Ask for little, check at the right moment, and tell them in every message what to do next.
+
+</Callout>

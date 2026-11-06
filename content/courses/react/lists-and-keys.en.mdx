@@ -1,0 +1,160 @@
+---
+title: Lists & Keys
+description: Learn how to render arrays in React with map, why the key prop matters, and what goes wrong when you use the array index as a key.
+keywords:
+  - react lists keys map
+  - react key prop
+  - render array in react
+  - react filter list
+---
+
+## 1. What are lists and keys?
+
+<Callout variant="tip" title="Short definition">
+
+**In React, a list is rendered with an array's `map()`, and each item gets a stable, unique `key` so React can identify it.**
+
+</Callout>
+
+Data often lives in an array: products, users, comments. `map()` turns each item into JSX. A `key` is like a small name tag that tells React which JSX belongs to which item.
+
+## 2. Why does it matter?
+
+<CompareTable leftTitle="No key or a wrong key" rightTitle="A stable unique key">
+
+React identifies items only by position | React identifies each item by its id
+When an item is deleted, state moves to the wrong row | State stays with the right item
+A key warning in the console | No warnings
+More DOM work | Only the changed item is updated
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Use case | What the key should be |
+| --- | --- |
+| **Products grid** | `product.id` |
+| **Chat messages** | `message.id` |
+| **Todo list** | `crypto.randomUUID()` when the todo is created |
+| **Table rows** | The database primary key |
+| **Static menu** | A unique `href` or `slug` |
+
+## 4. How does it work?
+
+<Flow title="Rendering and updating a list">
+
+An array of data
+↓
+map() turns each item into JSX
+↓
+Each JSX element gets a unique key
+↓
+On the next render, React compares the keys
+↓
+New items are added, removed ones are deleted, the rest stay the same
+
+</Flow>
+
+A key only needs to be unique among **siblings**, not across the whole app. The key is not passed to the component as a prop, it is only for React.
+
+## 5. Code example
+
+### Basic list
+
+```jsx
+const products = [
+  { id: "p1", name: "Keyboard", price: 4500 },
+  { id: "p2", name: "Mouse", price: 1800 },
+  { id: "p3", name: "Monitor", price: 32000 },
+];
+
+export default function ProductList() {
+  return (
+    <ul>
+      {products.map((product) => (
+        <li key={product.id}>
+          {product.name}: Rs. {product.price}
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
+
+### Filter, then map
+
+```jsx
+function CheapProducts({ products }) {
+  const cheap = products.filter((p) => p.price < 5000);
+
+  if (cheap.length === 0) {
+    return <p>No cheap products found.</p>;
+  }
+
+  return (
+    <ul>
+      {cheap.map((p) => (
+        <ProductRow key={p.id} product={p} />
+      ))}
+    </ul>
+  );
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `products.map(...)` | Each object becomes one `li` |
+| `key={product.id}` | A stable unique id that comes from the data |
+| `filter` then `map` | Filter first, then render |
+| `<ProductRow key=... />` | The key goes on the component, not on the `li` inside it |
+| Empty check | Shows a message when the list is empty |
+
+## 6. Common mistakes
+
+<Mistake
+  title="Using the array index as a key when the list can be reordered, deleted from or inserted into"
+  why="When an item is removed, the indexes shift, and React gives the old state and input value to the wrong item."
+  better="Use the data's own id. The index is only fine when the list never changes."
+/>
+
+<Mistake
+  title="Creating keys with Math.random() or randomUUID() during render"
+  why="Every render produces a new key, so React treats every item as new and rebuilds the DOM and state."
+  better="Generate the id once when the data is created and store it with the item."
+/>
+
+<Mistake
+  title="Putting the key on an element inside the component"
+  why="React needs the key on the outermost element returned from map. Putting it inside causes a warning."
+  better="Put the key where the map callback returns JSX."
+/>
+
+### Interview tip
+
+Answer "Why is index as key bad?" with an example: in a list of inputs, delete an item in the middle and the typed text shifts to the wrong row. This is a **reconciliation** problem.
+
+## 7. What to learn before and after
+
+| Stage | Chapters |
+| --- | --- |
+| **Before** | [Conditional Rendering](/courses/react/conditional-rendering), [Props](/courses/react/props) |
+| **Alongside** | [How React Renders](/courses/react/how-react-renders) |
+| **After** | [Forms & Controlled Inputs](/courses/react/forms), [React.memo & Performance](/courses/react/memo-and-performance) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Render a list | `array.map()` |
+| `key` | Unique and stable among siblings |
+| Best key | The id from your data |
+| Index as key | Only for static lists |
+| Random key | Never |
+
+<Callout variant="important" title="Remember">
+
+A key is an item's **identity**. When the id is stable, React keeps state and DOM with the right item.
+
+</Callout>

@@ -1,0 +1,185 @@
+---
+title: Arrow Functions
+description: Learn JavaScript arrow function syntax, implicit return, and how they differ from normal functions, especially the behavior of this.
+keywords:
+  - javascript arrow functions
+  - arrow function syntax
+  - implicit return javascript
+  - arrow function vs normal function
+---
+
+## 1. What are arrow functions?
+
+<Callout variant="tip" title="Short definition">
+
+**An arrow function is a short function with `=>` syntax that does not create its own `this`, and uses the outer `this` instead.**
+
+</Callout>
+
+Arrow functions arrived in ES2015 so that small functions, especially callbacks, could be written in fewer words. They are usually stored in a variable, like `const add = (a, b) => a + b`.
+
+## 2. Why does it matter?
+
+In callbacks, writing the `function` keyword and `return` again and again makes code long. On top of that, `this` was a problem in older code.
+
+<CompareTable leftTitle="Normal function callback" rightTitle="Arrow function callback">
+
+The function keyword and return every time | One line, implicit return
+this changed inside the callback | You get the outer this
+A workaround like const self = this | No workaround needed
+Long map and filter chains | Short, clean chains
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Area | Example |
+| --- | --- |
+| **Array methods** | `prices.map((p) => p * 2)` |
+| **Event handlers** | `button.addEventListener("click", () => save())` |
+| **Promises** | `fetch(url).then((res) => res.json())` |
+| **React** | `onClick={() => setCount(count + 1)}` |
+| **Timers** | `setTimeout(() => showToast(), 2000)` |
+
+## 4. How does it work?
+
+The syntax of an arrow function has three parts: parameters, `=>`, and the body. If the body is a single expression, it is returned automatically.
+
+<Flow title="From a normal function to an arrow">
+
+function (a, b) return a + b
+↓
+Remove the function keyword, put an arrow in between
+↓
+(a, b) arrow, return a + b in curly braces
+↓
+If it is one expression, remove the braces and return too
+↓
+(a, b) arrow a + b
+
+</Flow>
+
+| Form | Meaning |
+| --- | --- |
+| `() => 42` | No parameters, parentheses are required |
+| `n => n * 2` | One parameter, parentheses are optional |
+| `(a, b) => a + b` | Several parameters, implicit return |
+| `(a, b) => { return a + b; }` | Block body, you must write `return` yourself |
+| `() => ({ id: 1 })` | Parentheses to return an object |
+
+<Callout variant="important" title="Mental model">
+
+**An arrow function's `this` is the same as the `this` of the place where the arrow was written.**
+
+</Callout>
+
+## 5. Code example
+
+### Short syntax and implicit return
+
+```js
+const add = (a, b) => a + b;
+const double = (n) => n * 2;
+const toUser = (name) => ({ name, createdAt: Date.now() });
+
+const prices = [100, 250, 400];
+const withTax = prices.map((p) => Math.round(p * 1.17));
+
+console.log(add(2, 3));
+console.log(withTax);
+console.log(toUser("Ali").name);
+```
+
+### The difference in `this`
+
+```js
+const timer = {
+  seconds: 0,
+  start() {
+    setInterval(() => {
+      this.seconds += 1;
+      console.log(this.seconds);
+    }, 1000);
+  },
+};
+
+timer.start();
+```
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `(a, b) => a + b` | An expression body, `a + b` is returned automatically |
+| `({ name, ... })` | Without the parentheses, the braces would be taken as a block |
+| `prices.map((p) => ...)` | The arrow callback runs on every price |
+| `start()` | A normal method, its `this` is the `timer` object |
+| `setInterval(() => ...)` | The arrow took `this` from `start`, so `this.seconds` works |
+
+### Interview tip
+
+Arrow functions have no `this`, `arguments` or `prototype` of their own, and you cannot call them with `new`. So for object methods and constructors, use a normal function or method syntax. Details: [The this Keyword](/courses/javascript/this-keyword).
+
+## 6. Common mistakes
+
+<Mistake
+  title="Making an object method an arrow function"
+  why="An arrow's this is the outer one, so this.name is undefined and you do not get the object."
+  better="For object methods, write method syntax like greet() and use this inside."
+/>
+
+<Mistake
+  title="Forgetting parentheses when returning an object"
+  why="In () => { id: 1 }, the braces are taken as the function body, and the result is undefined."
+  better="Wrap the object in parentheses: () => ({ id: 1 })."
+/>
+
+<Mistake
+  title="Not writing return in a block body"
+  why="As soon as you add curly braces, the implicit return is gone, and the result of map fills up with undefined values."
+  better="If you use braces, write return yourself, otherwise remove the braces and keep one expression."
+/>
+
+<Mistake
+  title="Forcing arrow functions everywhere"
+  why="Arrows do not work when an event listener needs the element through this, or when you need a constructor."
+  better="Arrows for callbacks, normal functions for methods and places that need this."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Functions](/courses/javascript/functions) |
+| **Alongside** | [The this Keyword](/courses/javascript/this-keyword), [Array Methods](/courses/javascript/array-methods) |
+| **Later** | [Higher-Order Functions](/courses/javascript/higher-order-functions), [Promises](/courses/javascript/promises) |
+
+<Flow title="Suggested order">
+
+Functions
+↓
+Arrow Functions
+↓
+Scope & Hoisting
+↓
+The this Keyword
+↓
+Array Methods
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Syntax | `(params) => expression` |
+| Implicit return | Only in a body without braces |
+| Object return | `() => ({ ... })` |
+| `this` | Comes from the outer scope |
+| When not to use | Object methods, constructors, when you need `arguments` |
+
+<Callout variant="important" title="Remember">
+
+Arrow functions are great for callbacks. But they do not create their own `this`, so for object methods stick with normal method syntax.
+
+</Callout>

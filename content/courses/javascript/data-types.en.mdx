@@ -1,0 +1,176 @@
+---
+title: Data Types
+description: The full list of JavaScript data types, the 7 primitives and objects, the typeof operator, and the difference between value and reference. A beginner guide.
+keywords:
+  - javascript data types
+  - primitive vs reference javascript
+  - typeof operator
+  - null vs undefined
+  - javascript bigint symbol
+---
+
+## 1. What are data types?
+
+<Callout variant="tip" title="Short definition">
+
+**A data type tells you what kind of value something is, such as text, a number, true/false or an object, and what operations you can do with it.**
+
+</Callout>
+
+JavaScript has **8 data types**. Seven are **primitives** and one is **object**.
+
+| Type | Example | Used for |
+| --- | --- | --- |
+| `string` | `"Lahore"` | Text |
+| `number` | `42`, `3.14` | Both integers and decimals |
+| `bigint` | `9007199254740993n` | Very large integers |
+| `boolean` | `true`, `false` | Yes or no |
+| `undefined` | `undefined` | A value that was never given |
+| `null` | `null` | Deliberately "no value" |
+| `symbol` | `Symbol("id")` | A unique key |
+| `object` | `{}`, `[]`, functions, `Date` | A collection of data |
+
+## 2. Why does it matter?
+
+JavaScript is **dynamically typed**. A variable's type is decided by its value and can change. If you do not understand types, results like `"5" + 1` will surprise you.
+
+<CompareTable leftTitle="Not understanding types" rightTitle="Understanding types">
+
+Mixing text and numbers gives strange results | Check the type first, then operate
+Treating null and undefined as the same | Using each one knowing it means something different
+Changing the original by thinking you made a copy | Knowing about references, copying when needed
+Bugs show up at runtime | Checking early with typeof
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Real use | Type |
+| --- | --- |
+| **User's name, email** | `string` |
+| **Price, quantity, rating** | `number` |
+| **Logged in or not** | `boolean` |
+| **A large database ID** | `bigint` |
+| **User profile, product** | `object` |
+| **List of products** | Array, which is also an `object` |
+| **An optional field that is empty** | `null` |
+
+## 4. How does it work?
+
+Primitives are copied as a **value**. Objects are copied as a **reference**, which means both variables point to the same object.
+
+<Flow title="Value vs reference">
+
+let a = 10, let b = a
+     ↓
+b changes, a stays the same (primitive copy)
+     ↓
+const x = object, const y = x
+     ↓
+y changes, x changes too (same reference)
+
+</Flow>
+
+Primitives are **immutable**. You cannot change a character inside a string, a new string is created instead. To find out a value's type, use the `typeof` operator.
+
+<Callout variant="important" title="Mental model">
+
+**Primitive = a photocopy of the value. Object = the address of a house. Copying the address does not create a new house.**
+
+</Callout>
+
+## 5. Code example
+
+```js
+console.log(typeof "hello");
+console.log(typeof 42);
+console.log(typeof 10n);
+console.log(typeof true);
+console.log(typeof undefined);
+console.log(typeof Symbol("id"));
+console.log(typeof { a: 1 });
+console.log(typeof []);
+console.log(typeof null);
+console.log(typeof function () {});
+```
+
+Output: `string`, `number`, `bigint`, `boolean`, `undefined`, `symbol`, `object`, `object`, `object`, `function`.
+
+The difference between value and reference:
+
+```js
+let a = 10;
+let b = a;
+b = 20;
+console.log(a);
+
+const user = { name: "Hina" };
+const copy = user;
+copy.name = "Zara";
+console.log(user.name);
+
+const realCopy = structuredClone(user);
+realCopy.name = "Nida";
+console.log(user.name);
+```
+
+Output: `10`, `Zara`, `Zara`.
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `typeof null` | Gives `"object"`, an old JavaScript bug |
+| `typeof []` | `"object"`, use `Array.isArray()` to check for an array |
+| `typeof function` | `"function"`, but a function is also an object |
+| `b = a` | A copy of the primitive, a separate value |
+| `copy = user` | A reference to the same object |
+| `structuredClone()` | Makes a deep copy of the object |
+
+### Interview tip
+
+"What is the difference between `null` and `undefined`?" `undefined` means a value has not been set yet (JavaScript gives it by itself). `null` is something a developer sets on purpose to say "there is no value here". `typeof null` returning `"object"` is a historical bug.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Checking for null or an array with typeof"
+  why="typeof gives 'object' for both, so the check passes wrongly."
+  better="Use value === null for null and Array.isArray(value) for arrays."
+/>
+
+<Mistake
+  title="Thinking = copies an object"
+  why="Only the reference is copied, so a change in one place shows up in both."
+  better="Use spread syntax for a shallow copy and structuredClone for a deep copy."
+/>
+
+<Mistake
+  title="Using number for very large integers"
+  why="number can hold integers exactly only up to 2 to the power 53, and precision is lost after that."
+  better="Use BigInt for very large IDs or counts, like 9007199254740993n."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Variables](/courses/javascript/variables) |
+| **After this** | [Type Conversion](/courses/javascript/type-conversion), [Strings & Template Literals](/courses/javascript/strings), [Numbers & Math](/courses/javascript/numbers-and-math) |
+| **Further on** | [Objects](/courses/javascript/objects), [Arrays](/courses/javascript/arrays), [Spread & Rest](/courses/javascript/spread-and-rest) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Total types | 8 (7 primitives + object) |
+| Primitives | string, number, bigint, boolean, undefined, null, symbol |
+| `typeof null` | `"object"`, an old bug |
+| Primitive copy | The value is copied |
+| Object copy | The reference is copied |
+
+<Callout variant="important" title="Remember">
+
+Arrays and functions are objects too. **Primitives are copied by value, objects by reference.** For a deep copy, use `structuredClone()`.
+
+</Callout>

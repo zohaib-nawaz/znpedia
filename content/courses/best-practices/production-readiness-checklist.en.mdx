@@ -1,0 +1,198 @@
+---
+title: Production Readiness Checklist
+description: A production readiness checklist for before launch, with code, security, data, testing, CI/CD, monitoring and docs in one place, each item linked to its chapter.
+keywords:
+  - production readiness checklist
+  - launch checklist web app
+  - go live checklist
+  - pre deployment checklist
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**An app goes live for real users when every item on this checklist is either true or skipped in writing, with a reason.**
+
+</Callout>
+
+This is the last chapter of the course. It is not a new concept, it ties the earlier chapters together in one list. Each item links to the chapter where the "why" and "how" are explained.
+
+## 2. Why does it matter?
+
+On launch day your mind is on the feature, not on health checks and backups. That is why even pilots and surgeons use checklists: experience does not replace memory.
+
+<Callout variant="note" title="Real pattern">
+
+An app launched. On the first night the payment provider's webhook failed, but nothing showed in the logs because errors were being caught and swallowed. In the morning it turned out 200 orders were stuck in "pending". A health check, error alerting and "deny and log on error" were all on this checklist, and nobody had looked at them before launch.
+
+</Callout>
+
+<CompareTable leftTitle="Launch without a checklist" rightTitle="Launch with a checklist">
+
+Whatever came to mind got checked | Every area checked systematically
+Users tell you about the first incident | The health check and alerts tell you first
+There is a backup, probably | The backup was restored as a test
+Secrets somewhere in the code | Scanner clean, everything in env
+No rollback plan | Going back to the previous release is tested
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | The security and secrets part | Even a portfolio project is on the public internet |
+| **Production code** | The full list, before every launch and big release | Real users, real data, real money |
+| **Senior level** | Extend the list for the project and automate it | Lower and more predictable risk on every release |
+
+## 4. Bad vs good code
+
+### Bad: launch plan
+
+```bash
+build passes on my machine, deploying friday evening
+```
+
+### Good: launch plan
+
+```bash
+launch: orders v1, tuesday 11:00
+ci: green on main, all stages
+security: secret scan clean, headers set, cors allow-list, auth tests pass
+data: migration dry run ok, backup taken and restore tested on staging
+ops: /api/health returns 200, error alerts go to the on-call channel
+rollback: previous release kept, switch back tested on staging
+owner during launch: one named person on call for two hours
+```
+
+### What is the difference?
+
+| Thing | Bad | Good |
+| --- | --- | --- |
+| Timing | Friday evening, nobody will be around | A working day, the team is present |
+| Verification | On my machine | On CI and staging |
+| Backup | Not mentioned | Tested down to a restore |
+| Rollback | None | Tested |
+
+## 5. How to apply it
+
+### Code and architecture
+
+| Item | Chapter |
+| --- | --- |
+| Strict types, no `any` | [Strict Typing](/courses/best-practices/strict-typing) |
+| Thin controllers, logic in the service | [Service Layer & Thin Controllers](/courses/best-practices/service-layer) |
+| Errors in one consistent envelope | [Error Handling & Error Envelope](/courses/best-practices/error-handling-and-envelope) |
+| Fail fast on bad data, no silent fallbacks | [Fail Fast, No Defensive Fallbacks](/courses/best-practices/fail-fast-and-no-fallbacks) |
+
+### Security
+
+| Item | Chapter |
+| --- | --- |
+| No secret committed, scanner clean, `.env.example` complete | [Secrets Management](/courses/best-practices/secrets-management) |
+| Headers, CORS, hashed tokens, fail closed | [Security Baseline](/courses/best-practices/security-baseline) |
+| Validate at every input boundary | [Input Validation at the Boundary](/courses/best-practices/input-validation) |
+| Authorization and tenant scoping on every mutation | [Authorization & Multi-Tenancy](/courses/best-practices/authorization-and-tenancy) |
+| Check for injection, IDOR, XSS | [Common Vulnerabilities (OWASP)](/courses/best-practices/common-vulnerabilities) |
+| Lockfile, clean audit, updates on | [Dependencies & Supply Chain](/courses/best-practices/dependency-security) |
+| Rate limit on login and public endpoints | [Rate Limiting & Background Jobs](/courses/best-practices/rate-limiting-and-background-jobs) |
+
+### Data
+
+| Item | Chapter |
+| --- | --- |
+| Migrations idempotent, with a down path and a dry run | [Safe Migrations](/courses/best-practices/migrations) |
+| Generated types match the schema | [Generated Database Types](/courses/best-practices/generated-types) |
+| Parameterized queries, no N+1 | [Query Patterns & Transactions](/courses/best-practices/query-patterns) |
+| Backup taken and restore tested | [CI/CD & Environments](/courses/best-practices/ci-cd-and-environments) |
+
+### Testing and quality
+
+| Item | Chapter |
+| --- | --- |
+| Every endpoint: success, validation and auth tests | [Endpoint Tests First](/courses/best-practices/endpoint-tests-first) |
+| Unit tests and a browser test for the critical flow | [Testing Pyramid](/courses/best-practices/testing-pyramid) |
+| Every PR meets the definition of done | [Definition of Done](/courses/best-practices/definition-of-done) |
+| Slow pages measured and fixed | [Performance: Measure First](/courses/best-practices/performance-measure-first) |
+
+### Delivery and operations
+
+| Item | Chapter |
+| --- | --- |
+| Pipeline green: typecheck, lint, build, tests, secret scan | [CI/CD & Environments](/courses/best-practices/ci-cd-and-environments) |
+| Staging with a separate database | [CI/CD & Environments](/courses/best-practices/ci-cd-and-environments) |
+| `/api/health` checks env and database | [CI/CD & Environments](/courses/best-practices/ci-cd-and-environments) |
+| Secrets and personal data scrubbed from logs, errors alert | [Logging](/courses/best-practices/logging) |
+| Reviewed PRs, protected main | [Pull Requests & Code Review](/courses/best-practices/pull-requests-and-code-review) |
+
+### Docs and team
+
+| Item | Chapter |
+| --- | --- |
+| README, decisions and gotchas up to date | [Documentation & Decision Records](/courses/best-practices/documentation-and-decisions) |
+| Rules for agents and an instructions file | [Working with AI Coding Agents](/courses/best-practices/working-with-ai-agents) |
+
+<Flow title="Launch day">
+
+Fill in the checklist, write the reason for anything skipped
+↓
+The full flow on staging
+↓
+Backup and rollback ready
+↓
+A working day, the team is present
+↓
+Deploy and health check
+↓
+Watch alerts and logs for the first two hours
+
+</Flow>
+
+## 6. Exceptions and common mistakes
+
+**When the rule does not apply:** an internal tool with five users and no sensitive data does not need the full list. Even so, do not skip the security and backups part. Whatever you skip, skip it in writing and with a reason.
+
+<Mistake
+  title="Deploying on Friday evening"
+  why="If something goes wrong nobody is around over the weekend, and users suffer for two days."
+  better="Deploy on a working day, morning or afternoon, when the team is available for the next few hours."
+/>
+
+<Mistake
+  title="Having a backup but never restoring it"
+  why="Many backups turn out to be corrupt or incomplete at restore time."
+  better="Restore on staging and check that the data comes back."
+/>
+
+<Mistake
+  title="Treating the checklist as a one-time job"
+  why="Every big release brings new risks, and the first launch's list goes stale."
+  better="Run the list again before every big release and extend it by learning from new incidents."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Introduction](/courses/best-practices/introduction), [Core Philosophy](/courses/best-practices/core-philosophy) |
+| **Alongside** | [CI/CD & Environments](/courses/best-practices/ci-cd-and-environments), [Security Baseline](/courses/best-practices/security-baseline) |
+| **After** | [Deployment](/courses/nextjs/deployment), [When to Learn What](/courses/best-practices/learning-path-and-levels) |
+
+## Final quick revision
+
+| Area | One line check |
+| --- | --- |
+| Code | Strict types, fail fast, consistent errors |
+| Security | Secrets out, auth on every mutation, headers, dependencies |
+| Data | Safe migrations, backup restore tested |
+| Testing | Endpoint tests, definition of done |
+| Delivery | Green pipeline, staging, health check, rollback |
+| Ops | Logs scrubbed, alerts on, someone on call at launch |
+| Docs | Decisions and gotchas written down |
+
+<Callout variant="important" title="Remember">
+
+The checklist is a backup of your memory. Before launch every item is either true or skipped in writing, there is no middle path.
+
+</Callout>

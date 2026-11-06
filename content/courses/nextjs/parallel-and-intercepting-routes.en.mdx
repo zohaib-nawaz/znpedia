@@ -1,0 +1,217 @@
+---
+title: "Parallel & Intercepting Routes"
+description: "Next.js parallel intercepting routes: show several pages in one layout with @slot, build modal routes with (.), and add the required default.tsx in Next.js 16."
+keywords:
+  - next.js parallel intercepting routes
+  - next.js parallel routes
+  - next.js intercepting routes modal
+  - next.js default.js
+  - next.js slots
+---
+
+## 1. What are parallel and intercepting routes?
+
+<Callout variant="tip" title="Short definition">
+
+**Parallel routes use `@slot` folders to render several pages side by side in one layout. Intercepting routes use folders like `(.)` to show a route on top of the current page, for example in a modal.**
+
+</Callout>
+
+Both are advanced routing patterns and they are often used together. The most famous example is an Instagram-style gallery where clicking a photo opens a modal, but the URL changes, and a refresh loads the full photo page.
+
+## 2. Why does it matter?
+
+<CompareTable leftTitle="Normal routing" rightTitle="Parallel + intercepting">
+
+One page in one layout | Several independent slots in one layout
+A modal has no URL | A modal has its own shareable URL
+A refresh makes the modal disappear | A refresh opens the full page
+Dashboard sections share one loading state | Each slot has its own loading and error
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Use case | Pattern |
+| --- | --- |
+| **Analytics and team panels on a dashboard** | `@analytics`, `@team` parallel slots |
+| **Photo gallery modal** | `@modal` + `(.)photo/[id]` |
+| **Login modal opened from the header** | `@auth` + `(.)login` |
+| **A different panel for each role** | Choose the slot with a condition in the layout |
+| **Cart drawer with a shareable URL** | Intercepted `/cart` route |
+
+## 4. How does it work?
+
+### Parallel routes
+
+A `@name` folder is a **slot**. A slot does not become part of the URL. Instead, the parent layout receives a prop with that name.
+
+<Flow title="Slots reach the layout">
+
+app/dashboard/@analytics/page.tsx
+   +
+app/dashboard/@team/page.tsx
+   +
+app/dashboard/page.tsx (children)
+   ↓
+app/dashboard/layout.tsx receives analytics, team and children props
+   ↓
+All three render together
+
+</Flow>
+
+In Next.js 16, **every slot needs a `default.tsx`**. On a hard navigation (refresh), when Next.js does not know the current state of a slot, it shows `default.tsx`. Without it, the build fails.
+
+### Intercepting routes
+
+| Convention | Meaning |
+| --- | --- |
+| `(.)folder` | Intercepts a segment at the same level |
+| `(..)folder` | A segment one level up |
+| `(..)(..)folder` | Two levels up |
+| `(...)folder` | From the `app` root |
+
+These levels are based on **route segments**, not on the file system. A slot like `@modal` does not count as a level.
+
+<Flow title="Photo modal flow">
+
+Click a photo link in the gallery (soft navigation)
+   ↓
+@modal/(.)photo/[id] intercepts it
+   ↓
+Modal appears over the gallery, URL is /photo/7
+   ↓
+Refresh or direct link
+   ↓
+The real app/photo/[id]/page.tsx opens as a full page
+
+</Flow>
+
+## 5. Code example
+
+### Folder structure
+
+```bash
+app/
+  layout.tsx
+  page.tsx
+  @modal/
+    default.tsx
+    (.)photo/[id]/page.tsx
+  photo/[id]/page.tsx
+```
+
+### Slot in the root layout
+
+```tsx
+export default function RootLayout({ children, modal }: LayoutProps<"/">) {
+  return (
+    <html lang="en">
+      <body>
+        {children}
+        {modal}
+      </body>
+    </html>
+  );
+}
+```
+
+### default.tsx and the modal page
+
+```tsx
+export default function Default() {
+  return null;
+}
+```
+
+```tsx
+import { Modal } from "@/components/modal";
+
+export default async function PhotoModal({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  return (
+    <Modal>
+      <img src={`/photos/${id}.jpg`} alt={`Photo ${id}`} />
+    </Modal>
+  );
+}
+```
+
+```tsx
+"use client";
+
+import { useRouter } from "next/navigation";
+
+export function Modal({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  return (
+    <div className="fixed inset-0 bg-black/60" onClick={() => router.back()}>
+      <div onClick={(e) => e.stopPropagation()}>{children}</div>
+    </div>
+  );
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `@modal` | A slot, the layout receives a `modal` prop |
+| `LayoutProps<"/">` | A type helper that also types the slot props |
+| `@modal/default.tsx` | Renders `null` when the modal is not active |
+| `(.)photo/[id]` | Intercepts `/photo/[id]` at the same level |
+| `router.back()` | Closes the modal and restores the previous URL |
+| `app/photo/[id]/page.tsx` | The full page on refresh or direct visit |
+
+### Interview tip
+
+"Why should a modal have a URL?" So the user can share the link, does not lose the content on refresh, and the back button closes the modal. Parallel and intercepting routes give you exactly that.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Not creating default.tsx for a slot"
+  why="In Next.js 16, the build fails without a default file."
+  better="Add a default.tsx to every slot that returns null or calls notFound()."
+/>
+
+<Mistake
+  title="Counting intercept levels from the file system"
+  why="Levels are counted by route segments, and an @slot folder is not a level."
+  better="Inside @modal, use (.) for the same URL level and do not count the slot."
+/>
+
+<Mistake
+  title="Using router.push to close the modal"
+  why="It adds an extra history entry, and the modal opens again when the user presses back."
+  better="Use router.back() to close the modal."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Layouts & Templates](/courses/nextjs/layouts-and-templates), [Route Groups](/courses/nextjs/route-groups-and-private-folders), [Dynamic Routes](/courses/nextjs/dynamic-routes) |
+| **Alongside** | [Linking & Navigation](/courses/nextjs/linking-and-navigation), [React portals](/courses/react/portals) |
+| **After** | [Loading, Error & Not Found UI](/courses/nextjs/loading-and-error-ui), [Streaming & Suspense](/courses/nextjs/streaming-and-suspense) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Parallel slot | `@name` folder, passed to the layout as a prop |
+| Effect on the URL | A slot does not appear in the URL |
+| default.tsx | Required for every slot in Next.js 16 |
+| Intercept | `(.)`, `(..)`, `(...)` |
+| Soft navigation | Shows the intercepted UI (modal) |
+| Refresh | Shows the real full page |
+
+<Callout variant="important" title="Remember">
+
+**`@slot` = several pages in one layout, `(.)` = catching a route into a modal, and every slot needs a `default.tsx`.**
+
+</Callout>

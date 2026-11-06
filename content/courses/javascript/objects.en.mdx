@@ -1,0 +1,201 @@
+---
+title: Objects
+description: Learn what JavaScript objects are, including properties, methods, dot and bracket access, Object.entries, structuredClone, and how references work.
+keywords:
+  - javascript objects
+  - object entries keys values
+  - structuredclone javascript
+  - object reference vs copy
+---
+
+## 1. What are objects?
+
+<Callout variant="tip" title="Short definition">
+
+**An object is a collection of key-value pairs that keeps all the information about one thing in one place, under names.**
+
+</Callout>
+
+An array stores items by number (index), while an object stores them by **name (key)**. For example, a user's `name`, `email`, and `age`. When a property's value is a function, it is called a **method**.
+
+In JavaScript, almost everything is an object or behaves like one: arrays, functions, and dates all included.
+
+## 2. Why does it matter?
+
+When related data is scattered across separate variables, it is hard to manage and pass around.
+
+<CompareTable leftTitle="Separate variables" rightTitle="One object">
+
+userName, userEmail, userAge | user.name, user.email, user.age
+5 arguments for a function | One user object for a function
+The relationship between the data is unclear | All the information in one group
+Does not match JSON from an API | The API's JSON becomes an object directly
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Area | Object |
+| --- | --- |
+| **User profile** | `{ name, email, role }` |
+| **API response** | JSON data from the server |
+| **Settings** | `{ theme: "dark", language: "ur" }` |
+| **Lookup table** | `{ PK: "Pakistan", AE: "UAE" }` |
+| **React** | Props and state objects |
+
+## 4. How does it work?
+
+| Task | Syntax |
+| --- | --- |
+| Read (dot) | `user.name` |
+| Read (bracket, dynamic key) | `user[key]` |
+| Add / update | `user.age = 25` |
+| Delete | `delete user.age` |
+| Check | `"email" in user` or `Object.hasOwn(user, "email")` |
+| Loop | `Object.entries(user)` |
+
+### The reference concept
+
+A variable does not hold the object itself, it holds a **reference (address)** to it. Assigning it to another variable does not make a copy, both point to the same object.
+
+<Flow title="Reference vs copy">
+
+const a = user object
+↓
+const b = a
+↓
+a and b both point to the same object
+↓
+Changing b.name also changes a.name
+↓
+For a separate copy, use spread or structuredClone
+
+</Flow>
+
+<Callout variant="important" title="Mental model">
+
+**An object is a cabinet with labeled drawers. The variable holds the cabinet's location, not the cabinet itself.**
+
+</Callout>
+
+## 5. Code example
+
+### Creating, reading, and methods
+
+```js
+const user = {
+  name: "Ali",
+  age: 24,
+  skills: ["js", "react"],
+  greet() {
+    return `Hi, I am ${this.name}`;
+  },
+};
+
+const field = "age";
+console.log(user.name, user[field]);
+console.log(user.greet());
+
+user.city = "Lahore";
+console.log(Object.hasOwn(user, "city"));
+
+for (const [key, value] of Object.entries(user)) {
+  console.log(key, typeof value);
+}
+```
+
+### Copying: shallow vs deep
+
+```js
+const original = { name: "Sara", address: { city: "Karachi" } };
+
+const shallow = { ...original };
+const deep = structuredClone(original);
+
+shallow.address.city = "Quetta";
+
+console.log(original.address.city);
+console.log(deep.address.city);
+console.log(Object.keys(original), Object.values(deep).length);
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `user[field]` | Bracket notation when the key is in a variable, `24` |
+| `greet()` | A method, `this` = `user` |
+| `Object.hasOwn` | Whether it is an own property, `true` |
+| `Object.entries` | An array of `[key, value]` pairs |
+| `{ ...original }` | A shallow copy, the nested `address` is still shared |
+| `structuredClone` | A deep copy, nested objects are separate too |
+| Output | `Quetta` (the original changed) and `Karachi` (the deep copy is safe) |
+
+### Interview tip
+
+`{ ...obj }` and `Object.assign` only copy the first level. For a full copy of nested data, use `structuredClone`. It does not copy functions or class methods, only data.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Thinking assignment makes a copy"
+  why="const copy = user only copies the reference, so changing the copy changes user too."
+  better="Use spread for a shallow copy, and structuredClone(user) for a deep copy."
+/>
+
+<Mistake
+  title="Using dot notation for a dynamic key"
+  why="user.key literally means the property named key, not the value of the variable."
+  better="When the key is in a variable, write user[key]."
+/>
+
+<Mistake
+  title="Comparing objects with == or ==="
+  why="Two different objects are not equal even with the same data, because their references differ."
+  better="Compare specific fields, or use a deep-equal utility when needed."
+/>
+
+<Mistake
+  title="Deep copying with JSON.parse(JSON.stringify(obj))"
+  why="A Date becomes a string, and undefined, Map, and Set are lost."
+  better="Use structuredClone in modern code."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Data Types](/courses/javascript/data-types), [Arrays](/courses/javascript/arrays) |
+| **Alongside** | [Destructuring](/courses/javascript/destructuring), [Spread & Rest](/courses/javascript/spread-and-rest), [The this Keyword](/courses/javascript/this-keyword) |
+| **After** | [Optional Chaining & Nullish Coalescing](/courses/javascript/optional-chaining-and-nullish), [JSON](/courses/javascript/json), [Classes](/courses/javascript/classes) |
+
+<Flow title="Suggested order">
+
+Arrays
+↓
+Objects
+↓
+Destructuring
+↓
+Spread & Rest
+↓
+JSON
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Object | Key-value pairs |
+| Access | `obj.key` or `obj[key]` |
+| Property check | `Object.hasOwn(obj, key)` |
+| Loop | `Object.entries`, `Object.keys`, `Object.values` |
+| Shallow copy | `{ ...obj }` |
+| Deep copy | `structuredClone(obj)` |
+
+<Callout variant="important" title="Remember">
+
+A variable holds a reference to the object. Before changing data, think about whether you need a copy, and use `structuredClone` for nested data.
+
+</Callout>

@@ -1,0 +1,167 @@
+---
+title: Children & Composition
+description: Learn what the React children prop and composition are, how to put components inside each other, and how to reduce prop drilling.
+keywords:
+  - react children composition
+  - react children prop
+  - component composition
+  - react layout components
+---
+
+## 1. What are children and composition?
+
+<Callout variant="tip" title="Short definition">
+
+**`children` is a special prop that holds the JSX you write between a component's opening and closing tags.**
+
+</Callout>
+
+**Composition** means building a big UI by combining small components. Instead of inheritance (extending a class), React composes components by **putting them inside each other**.
+
+Just as you can put anything inside a `div` in HTML, you can put anything inside your own `Card` or `Modal`.
+
+## 2. Why does it matter?
+
+Many components only exist to make a "box": a border, padding, a title. What goes inside is not known in advance.
+
+<CompareTable leftTitle="Without children" rightTitle="With children">
+
+A new prop for every variation | The parent writes the inner content itself
+Only text can be passed into the card | Any JSX inside the card
+Data must be sent down many levels | Place the component directly in the right spot
+Rigid, hard to reuse | Flexible wrapper components
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Use case | Example |
+| --- | --- |
+| **Layout** | A `PageLayout` with a header, a sidebar and `children` as the content |
+| **Card / Panel** | A wrapper with a border and padding |
+| **Modal / Dialog** | Any form or message inside an overlay |
+| **Providers** | A context provider that wraps the whole app |
+| **Slots** | Passing JSX in separate props like `header` and `footer` |
+
+## 4. How does it work?
+
+When you write something between the tags, React automatically puts it in a prop named `children`.
+
+<Flow title="Children flow">
+
+The parent writes JSX between the tags
+↓
+React puts that JSX in props.children
+↓
+The wrapper component renders children anywhere it likes
+↓
+The final UI has the wrapper + the content inside
+
+</Flow>
+
+The wrapper does not know what is inside, and it should not need to. That is the power of composition.
+
+## 5. Code example
+
+### Basic children
+
+```jsx
+function Card({ title, children }) {
+  return (
+    <section className="card">
+      <h3>{title}</h3>
+      <div className="card-body">{children}</div>
+    </section>
+  );
+}
+
+export default function App() {
+  return (
+    <Card title="Profile">
+      <p>Name: Ayesha</p>
+      <button>Edit</button>
+    </Card>
+  );
+}
+```
+
+### Multiple slots
+
+```jsx
+function PageLayout({ sidebar, children }) {
+  return (
+    <div className="layout">
+      <aside>{sidebar}</aside>
+      <main>{children}</main>
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <PageLayout sidebar={<nav>Home | Settings</nav>}>
+      <h1>Dashboard</h1>
+    </PageLayout>
+  );
+}
+```
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `{ title, children }` | `children` is a prop just like the other props |
+| `{children}` | The inner JSX renders exactly where you write it |
+| `sidebar={<nav>...</nav>}` | You can also pass JSX in a normal prop (a slot) |
+| `<Card>...</Card>` | Opening and closing tags, the content between them is `children` |
+
+### Reducing prop drilling
+
+If `App` has `user` and it needs to reach `Avatar` through `Layout`, `Layout` does not need to receive `user`. `App` can build `<Avatar user={user} />` itself and give it to `Layout` as `children`. The middle component never touches the data.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Forgetting to render children in the wrapper component"
+  why="If children is not written anywhere in the return, the inner content will not appear on the screen and you will not get any error either."
+  better="Decide the spot in the wrapper's JSX where children should render."
+/>
+
+<Mistake
+  title="Creating a new prop for every small thing"
+  why="A long list of props like title, subtitle, icon and footerText makes the component rigid."
+  better="Turn the part that should be flexible into children or a JSX slot prop."
+/>
+
+<Mistake
+  title="Sending data down five levels through props"
+  why="The middle components do not need that data, yet they must pass it along."
+  better="Try composition first, build the component higher up and pass it in as children. Use context if needed."
+/>
+
+### Interview tip
+
+If you get the "composition vs inheritance" question, say: in React, code reuse happens through **composition**, and components are not extended.
+
+## 7. What to learn before and after
+
+| Stage | Chapters |
+| --- | --- |
+| **Before** | [Props](/courses/react/props), [Components](/courses/react/components) |
+| **After** | [useContext](/courses/react/use-context), [Portals](/courses/react/portals) |
+| **Related** | [Lifting State Up](/courses/react/lifting-state-up) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `children` | The JSX written between the tags |
+| Composition | A big UI built from small components |
+| Slots | Passing JSX in named props |
+| Benefit | Flexible wrappers, less prop drilling |
+
+<Callout variant="important" title="Remember">
+
+The wrapper does not need to **know** the inner content. Just put `{children}` in the right place.
+
+</Callout>

@@ -1,0 +1,178 @@
+---
+title: "Variables: let, const, var"
+description: Learn the difference between let, const and var in JavaScript, block scope, reassignment and when to use each one, with modern examples.
+keywords:
+  - javascript let const var
+  - javascript variables
+  - let vs const
+  - block scope javascript
+---
+
+## 1. What are variables?
+
+<Callout variant="tip" title="Short definition">
+
+**A variable is a named box where you keep a value so you can use or update it later.**
+
+</Callout>
+
+JavaScript has three keywords for creating variables:
+
+| Keyword | Introduced | Status today |
+| --- | --- | --- |
+| `const` | ES2015 | The default choice |
+| `let` | ES2015 | When the value needs to change |
+| `var` | From the start | The old way, avoid it in new code |
+
+## 2. Why does it matter?
+
+Without variables you would have to write every value again and again. Giving names makes code readable, and changing a value in one place updates the whole program.
+
+<CompareTable leftTitle="Old var style" rightTitle="Modern let and const">
+
+Function scope, leaks outside the block | Block scope, only inside the curly braces
+The same name can be declared again | Declaring again throws a SyntaxError
+Using before declaring gives undefined | Using before declaring gives a ReferenceError
+Every value can change | const tells you the value will not change
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Situation | Keyword | Example |
+| --- | --- | --- |
+| **API URL, config** | `const` | `const API_URL = "/api/users"` |
+| **Counter, total** | `let` | `let total = 0` |
+| **DOM element reference** | `const` | `const btn = document.querySelector("button")` |
+| **Loop counter** | `let` | `for (let i = 0; i < 5; i++)` |
+| **Array or object that changes inside** | `const` | `const cart = []` then `cart.push(item)` |
+
+## 4. How does it work?
+
+A variable's life has three steps: **declare**, **assign**, **use**.
+
+<Flow title="A variable's journey">
+
+Declare (let score)
+     ↓
+Assign (score = 10)
+     ↓
+Use (console.log(score))
+     ↓
+Reassign, only with let (score = 20)
+
+</Flow>
+
+**Scope** means how far a variable is visible. `let` and `const` are **block scoped**, which means they are limited to the curly braces block. `var` is **function scoped** and escapes outside an `if` or `for` block too.
+
+<Callout variant="important" title="Mental model">
+
+**const = a label stuck on firmly. let = a label that can be changed. var = an old label that ignores the walls of a block.**
+
+</Callout>
+
+One more concept: before they are declared, `let` and `const` are in the **Temporal Dead Zone (TDZ)**. Accessing them at that time throws an error. The details are in [Scope & Hoisting](/courses/javascript/scope-and-hoisting).
+
+## 5. Code example
+
+```js
+const appName = "ZnPedia";
+let visitors = 0;
+
+visitors = visitors + 1;
+visitors += 1;
+
+console.log(appName, visitors);
+```
+
+With `const`, changing something inside an object is allowed, but assigning a new value is not:
+
+```js
+const user = { name: "Sara", age: 21 };
+
+user.age = 22;
+console.log(user.age);
+
+user = { name: "Ali" };
+```
+
+The last line will throw `TypeError: Assignment to constant variable`.
+
+The difference in block scope:
+
+```js
+if (true) {
+  var oldWay = "visible outside too";
+  let newWay = "inside only";
+}
+
+console.log(oldWay);
+console.log(newWay);
+```
+
+The first log will work, the second will throw `ReferenceError: newWay is not defined`.
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `const appName` | The value cannot be assigned again |
+| `let visitors` | The value can change, updated with `+=` |
+| `user.age = 22` | Changing a property inside an object is allowed |
+| `user = ...` | Assigning a new value is not allowed with `const` |
+| `var oldWay` | Leaks outside the block |
+| `let newWay` | Stays inside the block |
+
+### Interview tip
+
+"Does `const` make an object immutable?" No. `const` only locks the **binding**, meaning the variable cannot point to some other value. To freeze an object completely, use `Object.freeze()`.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Writing let everywhere"
+  why="The reader cannot tell which values will change, and there is a chance of reassigning by accident."
+  better="Write const by default, and use let only when the value really needs to change."
+/>
+
+<Mistake
+  title="Using var in new code"
+  why="var ignores block scope and, because of hoisting, causes strange bugs like undefined."
+  better="Use let or const instead of var. Understand var only so you can read old code."
+/>
+
+<Mistake
+  title="Thinking const is fully immutable"
+  why="Pushing to a const array or changing an object's property still works, which causes confusion."
+  better="Remember that const only prevents reassignment. To freeze data, use Object.freeze."
+/>
+
+<Mistake
+  title="Using a variable before declaring it"
+  why="let and const are in the TDZ, so a ReferenceError is thrown."
+  better="Declare variables at the top, before you use them."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Setup & First Program](/courses/javascript/setup-and-first-program) |
+| **After this** | [Data Types](/courses/javascript/data-types), [Operators](/courses/javascript/operators) |
+| **Going deeper** | [Scope & Hoisting](/courses/javascript/scope-and-hoisting), [Closures](/courses/javascript/closures) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `const` | Default choice, cannot be reassigned |
+| `let` | For values that change, block scoped |
+| `var` | Old, function scoped, avoid it |
+| Block scope | Limited to inside the curly braces |
+| TDZ | Accessing `let` / `const` before declaring throws an error |
+
+<Callout variant="important" title="Remember">
+
+**`const` first, `let` if needed, and never `var`.** `const` locks the variable's binding, not the value.
+
+</Callout>

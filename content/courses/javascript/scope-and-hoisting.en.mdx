@@ -1,0 +1,198 @@
+---
+title: Scope & Hoisting
+description: Understand JavaScript scope and hoisting, global, function and block scope, the difference between var, let and const, and the Temporal Dead Zone.
+keywords:
+  - javascript scope hoisting
+  - block scope vs function scope
+  - temporal dead zone
+  - var let const hoisting
+  - lexical scope javascript
+---
+
+## 1. What are scope and hoisting?
+
+<Callout variant="tip" title="Short definition">
+
+**Scope tells you where a variable can be seen from. Hoisting is the behavior where declarations are registered before the code runs.**
+
+</Callout>
+
+Before running code, JavaScript scans every scope and remembers the variables and functions declared in it. This is called hoisting. The code is not physically moved up, the engine just knows in advance which name belongs to which scope.
+
+## 2. Why does it matter?
+
+If you do not understand scope, variables overwrite each other and you get strange `undefined` values or `ReferenceError`.
+
+<CompareTable leftTitle="Old var code" rightTitle="Modern let and const">
+
+var leaks outside the block | let and const stay in their own block
+Using before declaring gives undefined | Using before declaring gives a clear error
+Loop callbacks all see the last value | Each iteration has its own value
+The same name can be declared again | A duplicate declaration is an error
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Situation | The role of scope |
+| --- | --- |
+| **Loops** | `let i` creates a new binding for each iteration |
+| **Modules** | Each file has its own module scope, so globals are not polluted |
+| **Functions** | Inner variables stay private from the outside |
+| **Closures** | An inner function remembers the variables of the outer scope |
+| **Debugging** | Understanding `ReferenceError` and TDZ errors |
+
+## 4. How does it work?
+
+### Levels of scope
+
+| Scope | Who creates it | What it holds |
+| --- | --- | --- |
+| **Global** | The top level of a file (script) | Accessible from everywhere |
+| **Module** | A file with `import` / `export` | Only inside that file |
+| **Function** | Every function | `var`, `let`, `const`, all of them |
+| **Block** | `{ }`, `if`, `for` | Only `let`, `const`, `class` |
+
+When a variable is looked up, the engine moves from the inside outward. This is called the **scope chain**. JavaScript uses **lexical scope**, which means scope is decided by where the code was **written**, not where it was called.
+
+<Flow title="Variable lookup (scope chain)">
+
+Current block scope
+↓
+The outer function scope
+↓
+Module or global scope
+↓
+If not found, ReferenceError
+
+</Flow>
+
+### How hoisting behaves
+
+| Declaration | Is it hoisted? | Access before the declaration |
+| --- | --- | --- |
+| `function foo()` | Yes, the whole function | Works |
+| `var x` | Yes, with the value `undefined` | You get `undefined` |
+| `let` / `const` | Yes, but uninitialized | `ReferenceError` (TDZ) |
+| `class` | Yes, but uninitialized | `ReferenceError` (TDZ) |
+| `const fn = () => {}` | The `const` rule | `ReferenceError` (TDZ) |
+
+The **Temporal Dead Zone (TDZ)** is the part from the start of the block up to the declaration line. During this time, touching a `let` or `const` variable throws an error.
+
+<Callout variant="important" title="Mental model">
+
+**Scope = where a variable is visible. Hoisting = the engine knows the name in advance, but the value comes later.**
+
+</Callout>
+
+## 5. Code example
+
+### See hoisting
+
+```js
+console.log(sayHi());
+console.log(count);
+
+function sayHi() {
+  return "Hi";
+}
+
+var count = 5;
+
+try {
+  console.log(total);
+} catch (error) {
+  console.log(error.name);
+}
+
+let total = 10;
+```
+
+### Block scope and loops
+
+```js
+for (var i = 0; i < 3; i++) {
+  setTimeout(() => console.log("var:", i), 0);
+}
+
+for (let j = 0; j < 3; j++) {
+  setTimeout(() => console.log("let:", j), 0);
+}
+
+if (true) {
+  const secret = "block only";
+}
+console.log(typeof secret);
+```
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `sayHi()` called first | A function declaration is fully hoisted, `Hi` is printed |
+| `count` logged first | `var` is hoisted but its value is `undefined` |
+| `total` accessed first | It is in the TDZ, `ReferenceError` is printed |
+| `var i` loop | One `i` is shared, `3` is printed three times |
+| `let j` loop | A new `j` for each iteration, `0 1 2` is printed |
+| `typeof secret` | Not visible outside the block, `undefined` |
+
+### Interview tip
+
+The right answer to "Is `let` hoisted?" is: yes, but it is not initialized, so accessing it in the TDZ throws a `ReferenceError`. `var` is hoisted and initialized with `undefined`.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Using var in new code"
+  why="var is function scoped, leaks out of blocks and gives the wrong value in loop callbacks."
+  better="Keep const as the default, use let if the value must change. Learn var only to understand old code."
+/>
+
+<Mistake
+  title="Calling a function expression before its declaration"
+  why="const handler = () => ... is in the TDZ, so calling it before the declaration line throws a ReferenceError."
+  better="Define expressions first, then use them. Or write a function declaration if you need to call it above."
+/>
+
+<Mistake
+  title="A variable with the same name inside and outside"
+  why="The inner variable shadows the outer one, and you think you changed the outer one but you did not."
+  better="Use separate, clear names and turn on the linter's no-shadow rule."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Variables: let, const, var](/courses/javascript/variables), [Functions](/courses/javascript/functions) |
+| **Alongside** | [Arrow Functions](/courses/javascript/arrow-functions) |
+| **Later** | [Closures](/courses/javascript/closures), [The this Keyword](/courses/javascript/this-keyword), [Modules](/courses/javascript/modules) |
+
+<Flow title="Suggested order">
+
+Variables
+↓
+Functions
+↓
+Scope & Hoisting
+↓
+Closures
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Scope | Where a variable is accessible from |
+| Lexical scope | Scope is decided by where the code was written |
+| Block scope | `let`, `const`, `class` |
+| `var` | Function scoped, hoisted as `undefined` |
+| TDZ | Accessing `let` / `const` before the declaration line is an error |
+| Function declaration | Fully hoisted, can be called from above |
+
+<Callout variant="important" title="Remember">
+
+Use `const` and `let`, declare variables before you use them, and keep scope small. Most hoisting surprises then go away on their own.
+
+</Callout>

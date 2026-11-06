@@ -1,0 +1,173 @@
+---
+title: Introduction
+description: What software development best practices are, why teams create house rules, and how this course is organized. A simple start for beginners.
+keywords:
+  - software development best practices
+  - clean code for beginners
+  - coding standards for beginners
+  - house rules coding team
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**A best practice is a way of working that many developers learned after making the same mistakes again and again, and it makes code cheaper to read, change and run.**
+
+</Callout>
+
+Best practices are not laws. They are distilled experience: "we did this, it caused a bug, so now we do it this way."
+
+Every team picks the ones it likes and turns them into **house rules**. Some rules are the same everywhere (do not keep secrets in code), and some are just one team's preference (never write a ternary). This course covers both and says clearly which rule is universal and which is an opinion.
+
+## 2. Why does it matter?
+
+A solo developer remembers their own code. With 5 people, 50 files and 6 months later, nobody remembers anything. At that point the code has to explain itself.
+
+<CompareTable leftTitle="Without shared rules" rightTitle="With shared house rules">
+
+Every file has a different style, so reading takes time | Every file has the same shape, so it is clear at a glance
+Code review argues about style | Review focuses on real logic and bugs
+A new developer is confused for weeks | A new developer reads the rules and contributes quickly
+One bug gets fixed differently in different files | Fixed in one place, effective everywhere
+Hidden errors in production | Errors show up early and clearly
+
+</CompareTable>
+
+The real benefit is not speed, it is **fewer surprises**. Code that is predictable is cheaper to debug and cheaper to add features to.
+
+## 3. When to follow it
+
+You will find this table in every chapter. Once you understand what it means, you can decide for each chapter yourself.
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | To build the habit, not strictly | The focus is on understanding concepts, but good habits are cheapest to build now |
+| **Production code** | Follow the team's rules fully | Other people will read the code and users will be affected |
+| **Senior level** | Understand the reason and decide the trade-off | A senior makes the rules, breaks them and teaches them to others |
+
+"Learning project" means a tutorial, a practice app or a portfolio. "Production code" means code that reaches real users and is maintained by a team. "Senior level" means you do not just follow the rule, you explain when and why.
+
+## 4. Bad vs good code
+
+In every chapter of the course, bad code comes first, then good code, then a table of differences. Here is a small preview:
+
+```ts
+function calc(u: any) {
+  if (u.p > 3) return u.t * 0.9;
+  return u.t;
+}
+```
+
+```ts
+const LOYAL_CUSTOMER_MIN_ORDERS = 3;
+const LOYALTY_DISCOUNT = 0.9;
+
+function price(order: Order) {
+  if (order.customer.pastOrders <= LOYAL_CUSTOMER_MIN_ORDERS) {
+    return order.total;
+  }
+
+  return order.total * LOYALTY_DISCOUNT;
+}
+```
+
+| What is the difference? | Bad | Good |
+| --- | --- | --- |
+| Names | `calc`, `u`, `p` say nothing | `price`, `order`, `pastOrders` speak for themselves |
+| Numbers | The meaning of `3` and `0.9` is hidden | Named constants explain the meaning |
+| Type | `any`, no safety | The `Order` type, mistakes are caught at compile time |
+| Braces | A one-line `if` | Braces and an early return, a clear flow |
+
+Four practices show up in a single function. This is how the course works: each chapter explains one practice on its own.
+
+## 5. How to apply it
+
+The course is organized into sections. The first chapter of each section is:
+
+| Section | Start here | What you will learn |
+| --- | --- | --- |
+| **Getting Started** | [Core Philosophy](/courses/best-practices/core-philosophy) | The thinking behind all the rules |
+| **Clean Code** | [Self-Documenting Code](/courses/best-practices/self-documenting-code) | Naming, functions, formatting, constants |
+| **Architecture & Types** | [Strict Typing](/courses/best-practices/strict-typing) | Types, service layer, project structure |
+| **Backend & API** | [API Handler Shape](/courses/best-practices/api-handler-shape) | Handlers, validation, errors, auth |
+| **Database** | [Database Naming & Design](/courses/best-practices/database-design) | Tables, migrations, queries |
+| **Security** | [Secrets Management](/courses/best-practices/secrets-management) | Secrets, headers, OWASP, dependencies |
+| **Frontend & UI** | [React Component Practices](/courses/best-practices/react-component-practices) | Components, Next.js, design tokens |
+| **UX Principles** | [Visual Hierarchy & Spacing](/courses/best-practices/visual-hierarchy-and-spacing) | Forms, onboarding, dashboards |
+| **Testing & Quality** | [Definition of Done](/courses/best-practices/definition-of-done) | Testing and performance |
+| **Team Workflow** | [Git Branches & Commits](/courses/best-practices/git-branches-and-commits) | Git, PRs, CI/CD, docs |
+
+<Flow title="How to read each chapter">
+
+Read the rule in one line
+↓
+Understand which real problem it prevents
+↓
+Check your level: learning, production or senior
+↓
+Compare the bad and good code
+↓
+Read the exceptions so the rule does not feel blind
+↓
+Apply it to one file in your own project
+
+</Flow>
+
+## 6. Exceptions and common mistakes
+
+Some rules in this course are deliberately strict, like "no comments in code at all" or "no ternaries". These come from one strict house style. Many teams allow some of them. We give both the rule and its reason, and state clearly what the trade-off is.
+
+<Mistake
+  title="Treating every rule as a universal truth"
+  why="Some rules are for safety and some are just one team's preference. Giving them the same weight causes arguments and confusion."
+  better="Read the Exceptions section of each chapter and remember the reason for the rule, not only the rule."
+/>
+
+<Mistake
+  title="Applying all the rules together from day one"
+  why="A beginner's mind cannot handle concepts and rules at the same time, and learning slows down."
+  better="Follow the roadmap in the When to Learn What chapter and make two or three practices solid at a time."
+/>
+
+<Mistake
+  title="Ignoring the team's existing style and bringing your own preference"
+  why="If a repo has two styles, every new reader has to understand both, and consistency is gone."
+  better="Follow the repo's rules first, and if you want a change, discuss it with the team and make it across the whole repo at once."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | The basics of any one language, like [JavaScript Functions](/courses/javascript/functions) |
+| **Alongside** | [Core Philosophy](/courses/best-practices/core-philosophy) |
+| **After** | [When to Learn What](/courses/best-practices/learning-path-and-levels), [Self-Documenting Code](/courses/best-practices/self-documenting-code) |
+
+<Flow title="Suggested order">
+
+Introduction
+↓
+Core Philosophy
+↓
+When to Learn What
+↓
+Clean Code section
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Best practice | A way of working born from experience that makes code cheaper |
+| House rules | A team's chosen set, some universal and some opinion |
+| Real benefit | Fewer surprises, faster review, easier onboarding |
+| When to follow table | The difference between learning, production and senior level |
+| How the course works | Rule, reason, level, code, steps, exceptions |
+
+<Callout variant="important" title="Remember">
+
+Memorizing a rule is not enough. Understand the bug or cost behind each rule, and then you can decide for yourself when to be strict and when not to.
+
+</Callout>

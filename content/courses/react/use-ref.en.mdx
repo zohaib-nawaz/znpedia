@@ -1,0 +1,189 @@
+---
+title: useRef
+description: Learn the React useRef hook to reach DOM elements, remember values without re-rendering, and pass ref as a normal prop in React 19.
+keywords:
+  - react useref
+  - useref dom focus
+  - useref vs usestate
+  - ref as prop react 19
+---
+
+## 1. What is useRef?
+
+<Callout variant="tip" title="Short definition">
+
+**`useRef` gives you a box whose `.current` value is remembered between renders, but changing it does not trigger a re-render.**
+
+</Callout>
+
+`useRef` has two main jobs:
+
+1. Direct access to a **DOM element**, like focusing an input.
+2. **Remembering a value** that is not shown on screen, like a timer id.
+
+## 2. Why does it matter?
+
+Sometimes you need to remember a value without updating the UI. State re-renders on every change, which is wasted work here.
+
+<CompareTable leftTitle="useState" rightTitle="useRef">
+
+Changing it causes a re-render | Changing it causes no re-render
+The value changes through the setter | Assign to ref.current directly
+Data that shows in the UI | Behind-the-scenes data or a DOM node
+Safe to read during render | Do not read or write it during render
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Use case | What the ref holds |
+| --- | --- |
+| **Input focus** | The input's DOM node |
+| **Scroll to section** | The section's DOM node |
+| **Timer / interval** | The id from `setInterval` |
+| **Video play/pause** | The `video` element |
+| **Third-party library** | The container node for a chart or map |
+
+## 4. How does it work?
+
+<Flow title="The journey of a DOM ref">
+
+useRef(null) creates an empty box
+↓
+You attach the element to it with the ref attribute in JSX
+↓
+After React builds the DOM, it puts the node in ref.current
+↓
+Use ref.current in an event handler or an effect
+↓
+On unmount, React sets ref.current back to null
+
+</Flow>
+
+The ref object stays **the same** on every render. That is why its value is not lost between renders.
+
+## 5. Code example
+
+### Input focus
+
+```jsx
+import { useRef } from "react";
+
+export default function SearchBar() {
+  const inputRef = useRef(null);
+
+  return (
+    <>
+      <input ref={inputRef} placeholder="Search..." />
+      <button onClick={() => inputRef.current.focus()}>Focus</button>
+    </>
+  );
+}
+```
+
+### Remembering a timer id
+
+```jsx
+import { useRef, useState } from "react";
+
+export default function Stopwatch() {
+  const [seconds, setSeconds] = useState(0);
+  const intervalRef = useRef(null);
+
+  function start() {
+    clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);
+  }
+
+  function stop() {
+    clearInterval(intervalRef.current);
+  }
+
+  return (
+    <>
+      <p>{seconds}s</p>
+      <button onClick={start}>Start</button>
+      <button onClick={stop}>Stop</button>
+    </>
+  );
+}
+```
+
+### React 19: ref is a normal prop
+
+```jsx
+import { useRef } from "react";
+
+function MyInput({ label, ref }) {
+  return (
+    <label>
+      {label}
+      <input ref={ref} />
+    </label>
+  );
+}
+
+function Form() {
+  const nameRef = useRef(null);
+  return <MyInput label="Name" ref={nameRef} />;
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `useRef(null)` | Creates the box, with `current` starting as `null` |
+| `ref={inputRef}` | React puts the DOM node into `inputRef.current` |
+| `intervalRef.current = ...` | A direct assignment, with no re-render |
+| `{ label, ref }` | In React 19, `ref` arrives like any other prop |
+
+In older React, you needed `forwardRef` to pass a ref to a child. React 19 does not need it.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Reading or writing ref.current during render"
+  why="Changing a ref does not re-render, so the UI can show an old value, and the render becomes impure."
+  better="Use refs in event handlers and effects. Keep any value that appears on screen in state."
+/>
+
+<Mistake
+  title="Keeping UI values in a ref, like a counter"
+  why="The value changes but the screen does not update."
+  better="Keep anything that is rendered in useState, and use a ref only for behind-the-scenes data."
+/>
+
+<Mistake
+  title="Calling ref.current.focus() during the first render"
+  why="During the first render the DOM does not exist yet, so ref.current is null and you get an error."
+  better="Work with the DOM in an event handler or useEffect, once the node is attached."
+/>
+
+### Interview tip
+
+"What is the difference between useRef and useState?" Both remember a value between renders. The difference is that changing state causes a **re-render**, and changing a ref does not.
+
+## 7. What to learn before and after
+
+| Stage | Chapters |
+| --- | --- |
+| **Before** | [State with useState](/courses/react/state), [useEffect](/courses/react/use-effect) |
+| **After** | [Custom Hooks](/courses/react/custom-hooks), [Portals](/courses/react/portals) |
+| **Related** | [Forms & Controlled Inputs](/courses/react/forms) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Returns | A `{ current: value }` object |
+| Re-render | Does not happen |
+| DOM access | The `ref` attribute gives you the node |
+| Where to use | Handlers and effects, not render |
+| React 19 | `ref` is a normal prop, no `forwardRef` needed |
+
+<Callout variant="important" title="Remember">
+
+Data that shows up on screen goes in **state**. Behind-the-scenes data and DOM nodes go in a **ref**.
+
+</Callout>

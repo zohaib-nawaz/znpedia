@@ -1,0 +1,204 @@
+---
+title: Deployment
+description: Next.js deployment on Vercel, Docker and your own server - output standalone, next start and a production checklist, explained step by step.
+keywords:
+  - next.js deployment vercel docker
+  - next.js docker standalone
+  - next.js self hosting
+  - deploy next.js vercel
+---
+
+## 1. What is deployment?
+
+<Callout variant="tip" title="Short definition">
+
+**Deployment means building your app for production and running it on a server or platform so people can open it from the internet.**
+
+</Callout>
+
+Next.js has four main paths:
+
+| Option | Feature support |
+| --- | --- |
+| **Vercel** (verified adapter) | All features, zero config |
+| **Node.js server** (`next start`) | All features |
+| **Docker container** | All features |
+| **Static export** (`output: "export"`) | Limited, no server features |
+
+## 2. Why does it matter?
+
+`next dev` is only for development: it is slow, unoptimized and comes with debugging tools. Production needs an optimized build, caching and the right environment variables.
+
+<CompareTable leftTitle="next dev" rightTitle="Production deployment">
+
+Compiles on demand for every request | An already optimized build
+Unminified code and dev warnings | Minified, code-split bundles
+Runs on your local machine | Runs 24/7 on a server or platform
+Local env files | The platform's secure environment variables
+One user, you | Thousands of users, scaling and caching
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Situation | Better choice |
+| --- | --- |
+| Personal project, startup, fast launch | Vercel |
+| Your own VPS (Hostinger, DigitalOcean) | `next build` + `next start`, with PM2 or systemd |
+| Kubernetes, Cloud Run, Fly.io | Docker + `output: "standalone"` |
+| A static marketing site only | `output: "export"`, on any static host |
+
+## 4. How does it work?
+
+<Flow title="From code to production">
+
+git push
+↓
+next build (Turbopack) creates the optimized output
+↓
+Static pages, server code and assets are separated
+↓
+The platform or server runs next start
+↓
+Users get the production app
+
+</Flow>
+
+On Vercel all of this happens automatically: connect your GitHub repo, and every push creates a preview deployment, while the `main` branch creates a production deployment.
+
+## 5. Code example
+
+### Self-hosting: Node.js server
+
+```json
+{
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  }
+}
+```
+
+```bash
+npm ci
+npm run build
+PORT=3000 npm run start
+```
+
+### Standalone output for Docker
+
+```ts
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  output: "standalone",
+};
+
+export default nextConfig;
+```
+
+```bash
+FROM node:22-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+FROM node:22-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+EXPOSE 3000
+CMD ["node", "server.js"]
+```
+
+The code above is the `Dockerfile`. Build and run:
+
+```bash
+docker build -t znpedia .
+docker run -p 3000:3000 --env-file .env.production znpedia
+```
+
+### Deploying with the Vercel CLI
+
+```bash
+npm i -g vercel
+vercel
+vercel --prod
+```
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `next build` | The production build in the `.next` folder |
+| `next start` | The production server, default port 3000 |
+| `output: "standalone"` | Only the needed files and `server.js` in `.next/standalone` |
+| Copying `.next/static` and `public` | Standalone does not copy these itself, so the Dockerfile has to |
+| Multi-stage build | The builder's heavy dependencies do not end up in the final image |
+| `--env-file` | Secrets are not baked into the image, they arrive at runtime |
+| `vercel --prod` | A production deployment, without the flag it is a preview |
+
+<Callout variant="note" title="Things to watch in self-hosting">
+
+If you run several containers, each instance has its own cache. Bigger setups need a shared cache handler and the same build ID across all instances. For image optimization, `sharp` must also be installed correctly on the server.
+
+</Callout>
+
+## 6. Common mistakes
+
+<Mistake
+  title="Running next dev on a production server"
+  why="Dev mode is slow, compiles on every request and turns off production optimizations."
+  better="On the server, always run next build and then next start."
+/>
+
+<Mistake
+  title="Not copying static and public in a standalone output"
+  why="The page opens, but the CSS, JS chunks and images return 404."
+  better="Copy the .next/static and public folders next to standalone in the Dockerfile, or serve them from a CDN."
+/>
+
+<Mistake
+  title="Trying to change NEXT_PUBLIC variables at runtime"
+  why="NEXT_PUBLIC_ values are written into the client bundle at build time, so changing them later has no effect."
+  better="Set public values before the build, and read values needed at runtime from process.env on the server."
+/>
+
+<Mistake
+  title="Copying secrets into the Docker image"
+  why="As soon as the image is shared or pushed, the secrets from .env leak too."
+  better="Keep secrets in .dockerignore and provide them at runtime through env vars or platform secrets."
+/>
+
+### Interview tip
+
+"What does `output: "standalone"` do?" During the build, Next.js traces which files and `node_modules` packages are needed at runtime, and puts only those in `.next/standalone` along with a `server.js`. This makes the Docker image much smaller.
+
+## 7. What to learn before and after
+
+| Stage | Chapters |
+| --- | --- |
+| Before | [Environment Variables](/courses/nextjs/environment-variables), [next.config & Turbopack](/courses/nextjs/next-config-and-turbopack), [Testing Next.js Apps](/courses/nextjs/testing) |
+| Alongside | [Performance & Core Web Vitals](/courses/nextjs/performance), [Sitemap, Robots & OG Images](/courses/nextjs/sitemap-and-robots) |
+| After | [Database Integration](/courses/nextjs/database-integration), [Authentication](/courses/nextjs/authentication) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Easiest | Vercel, connect Git and deploy |
+| Your own server | `next build` then `next start` |
+| Docker | `output: "standalone"` and `node server.js` |
+| Copy with standalone | `.next/static` and `public` |
+| Static site | `output: "export"`, limited features |
+
+<Callout variant="important" title="Remember">
+
+In production, always use `next build` and `next start` (or Vercel). For Docker use the `standalone` output, copy the static and public folders, and never put secrets in the image.
+
+</Callout>

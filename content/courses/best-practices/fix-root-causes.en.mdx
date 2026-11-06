@@ -1,0 +1,195 @@
+---
+title: "Fix Root Causes, Remove Don't Gate"
+description: Root cause analysis and the right use of feature flags. Fix a wrong null at its producer, and delete unwanted code instead of hiding it behind a flag.
+keywords:
+  - root cause analysis feature flags
+  - fix root cause not symptom
+  - remove dead code instead of flag
+  - defensive fallback anti pattern
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Do not hide a wrong value where you see it, fix it where it was born. And do not shut off a code path you do not want behind a flag, delete it.**
+
+</Callout>
+
+This practice has two parts:
+
+- **Fix root causes:** if `undefined` shows up on the frontend, the problem is often not in the frontend. It is in the backend query, mapping or contract. Trace it back there.
+- **Remove, don't gate:** the old checkout, the old pricing rule, a half built feature. Instead of leaving them behind an `if (flag)`, take them out. A flag is only for behavior that truly changes at runtime.
+
+## 2. Why does it matter?
+
+A real story: on the profile page some users' names showed as `"Unknown"` because someone had written `user.name ?? "Unknown"`. Months later it turned out that a signup query was not saving the name at all. Thousands of users had incomplete data, and emails were going out saying "Hi Unknown". The fallback had hidden the bug.
+
+A flag story: the `legacyPricing` flag had been `false` for a year. Someone copied a config and set it to `true` by mistake. The old code that nobody tested ran in production and wrong prices were charged.
+
+<CompareTable leftTitle="Hiding the symptom and gating" rightTitle="Fix the root cause, delete the dead path">
+
+A fallback makes the screen look fine, the data stays broken | The producer is fixed, the data is right, the screen is right
+Every new consumer has to write the same guard | One fix, every consumer benefits
+The bug stays hidden for months | The bug shows up the first time
+Two code paths, both need testing | One path, one test
+A switched off flag can be switched on by mistake any time | The code is gone, so there is nothing to switch on
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | When an error appears, build the habit of finding the cause, not hiding it with `?.` | This is the core skill of debugging |
+| **Production code** | A must. Defensive fallbacks on internal data and useless flags get stopped in review | Hidden bugs corrupt data that is expensive to repair later |
+| **Senior level** | A team culture of tracing to the producer, and flags that expire | A senior is the one who carries the problem to another team's code |
+
+## 4. Bad vs good code
+
+### Bad: a guard on the consumer
+
+```tsx
+export function AuthorName({ post }: AuthorNameProps) {
+  return <span>{post.author?.name ?? "Unknown"}</span>;
+}
+```
+
+The problem was that the service query was not including the author at all:
+
+```ts
+export function list() {
+  return db.post.findMany({ select: { id: true, title: true } });
+}
+```
+
+### Good: fix the producer, make the contract strict
+
+```ts
+export function list() {
+  return db.post.findMany({
+    select: { id: true, title: true, author: { select: { name: true } } },
+  });
+}
+```
+
+```ts
+export type PostWithAuthor = Awaited<ReturnType<typeof list>>[number];
+```
+
+```tsx
+export function AuthorName({ post }: AuthorNameProps) {
+  return <span>{post.author.name}</span>;
+}
+```
+
+Now the type itself says `author.name` is always there. If the author is ever removed from the query, the build breaks instead of `"Unknown"` showing on screen.
+
+### Bad: the old path behind a flag
+
+```ts
+export function total(cart: Cart) {
+  if (flags.legacyPricing) {
+    return legacyTotal(cart);
+  }
+
+  return currentTotal(cart);
+}
+```
+
+### Good: delete the old path
+
+```ts
+export function total(cart: Cart) {
+  return currentTotal(cart);
+}
+```
+
+`legacyTotal`, the flag and its tests are all deleted. If you ever need the old code, it is in git history.
+
+### What is the difference?
+
+| Thing | Bad | Good |
+| --- | --- | --- |
+| Missing author | `"Unknown"` in the UI | Included in the query, type is non-null |
+| When the bug shows | Months later | At build or in the first test |
+| Old pricing | Alive behind a flag | Deleted |
+| Test surface | Two paths | One path |
+
+## 5. How to apply it
+
+<Flow title="Getting to the root cause">
+
+Reproduce the bug
+↓
+Trace the wrong value backwards: component, hook, client, route, service, query
+↓
+Fix it where the value first became wrong
+↓
+Write a test there that catches this bug
+↓
+Remove the useless guards downstream
+
+</Flow>
+
+Before adding a flag, ask: does this behavior truly change at runtime? Like a gradual rollout, an A/B test or a kill switch. If yes, the flag is fine, but also write down its expiry date. If the answer is "we might need it later", delete it.
+
+## 6. Exceptions and common mistakes
+
+Outside data that you do not control (a third-party API, user input) must be validated at the boundary. That is not a defensive fallback, it is necessary. The rule is about internal contracts, where the producer is your own code.
+
+When production is on fire, adding a temporary guard is fine, but also create a task for the root fix, and remove the guard together with that fix. Feature flags are a basic tool for many teams (rollouts, experiments) and this rule is not against them. It is only against flags that exist out of "fear of deleting".
+
+<Mistake
+  title="Adding ?? [] or ?? {} on required data"
+  why="The contract says the value will be there. If it did not arrive, there is a bug in the producer, and the fallback makes that bug disappear."
+  better="If the value is missing, throw a clear error and trace it back to the producer."
+/>
+
+<Mistake
+  title="The backend belongs to another team, so add a guard on the frontend"
+  why="Every consumer writes its own guard and the real problem never gets fixed."
+  better="Find the producer in the backend, open an issue or a PR, and mark the guard as temporary until then."
+/>
+
+<Mistake
+  title="Keeping the old feature behind a flag, just in case"
+  why="Switched off code is not tested, it rots, and it can be switched on by mistake and break production."
+  better="Delete it. Version control always keeps the old code."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Debugging JavaScript](/courses/javascript/debugging), [Fail Fast, No Defensive Fallbacks](/courses/best-practices/fail-fast-and-no-fallbacks) |
+| **Alongside** | [Strict Typing](/courses/best-practices/strict-typing), [Generated Database Types](/courses/best-practices/generated-types) |
+| **After** | [Refactoring Safely](/courses/best-practices/refactoring-safely), [Logging](/courses/best-practices/logging) |
+
+<Flow title="Suggested order">
+
+Fail Fast, No Defensive Fallbacks
+↓
+Fix Root Causes, Remove Don't Gate
+↓
+Generated Database Types
+↓
+Logging
+
+</Flow>
+
+## Final quick revision
+
+| Check | Yes / No |
+| --- | --- |
+| Traced the wrong value back to the producer | Yes |
+| A fallback like `?? "Unknown"` on internal data | No |
+| A test at the producer along with the fix | Yes |
+| Unwanted code behind a flag | No, delete it |
+| Wrote an expiry for every needed flag | Yes |
+
+<Callout variant="important" title="Remember">
+
+Treating the symptom only prolongs the bug. Go to where the value went wrong and fix it there. And code you do not want should not be switched off, it should be removed.
+
+</Callout>

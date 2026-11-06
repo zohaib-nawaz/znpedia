@@ -1,0 +1,180 @@
+---
+title: How React Renders
+description: Learn how React rendering works with the virtual DOM, the trigger, render and commit phases, when a re-render happens, and what reconciliation is.
+keywords:
+  - react rendering virtual dom
+  - react re-render
+  - react reconciliation
+  - render and commit phase
+---
+
+## 1. What is React rendering?
+
+<Callout variant="tip" title="Short definition">
+
+**Rendering means React calling your component function to find out what should be shown on the screen.**
+
+</Callout>
+
+Rendering does **not** mean the DOM changed right away. React first builds a description of the new UI in memory (a tree of React elements). This in-memory tree is commonly called the **virtual DOM**. Then React compares the old and new trees and makes only the necessary DOM changes.
+
+## 2. Why does it matter?
+
+Touching the real DOM again and again is expensive. If the whole page were rebuilt on every small change, the app would be slow and would lose input focus or scroll position.
+
+<CompareTable leftTitle="Rebuilding the whole DOM" rightTitle="React's way">
+
+Every element is new on each change | Only the changed nodes are updated
+Input focus and scroll reset | What did not change stays as it is
+The developer manages the DOM | The developer only changes state, React does the rest
+Many updates mean many DOM writes | Many state updates are batched into one commit
+
+</CompareTable>
+
+## 3. Where does it help?
+
+This understanding helps wherever a React app is slow or behaves strangely:
+
+| Situation | How understanding rendering helps |
+| --- | --- |
+| **Performance** | You can tell which components re-render for no reason |
+| **State reset** | You understand when state is kept and when it is lost |
+| **Lists** | You understand the role of `key` |
+| **Debugging** | The React DevTools Profiler report becomes easy to read |
+| **Interviews** | Virtual DOM and reconciliation are common questions |
+
+## 4. How does it work?
+
+Every screen update in React happens in three steps:
+
+<Flow title="Trigger, render, commit">
+
+Trigger: the first createRoot render, or a state update
+↓
+Render: React calls the component functions
+↓
+A new element tree is created
+↓
+Reconciliation: React finds the difference between the old and new trees
+↓
+Commit: only the necessary DOM changes are applied
+↓
+The browser paints the screen
+
+</Flow>
+
+### When does a re-render happen?
+
+| Reason | Detail |
+| --- | --- |
+| **Its own state changed** | A setter like `setCount` was called with a new value |
+| **The parent re-rendered** | When a parent renders, all its children render too by default |
+| **A context value changed** | The component that uses that context |
+
+Changing props is not a trigger by itself. Props change when the parent re-renders.
+
+### Two principles of reconciliation
+
+| Principle | Meaning |
+| --- | --- |
+| Same position, same type | React reuses the element and the state is kept |
+| The type changed | React removes the old part and builds a new one, and the state is lost |
+
+In lists, React uses the `key` to recognize which item is which.
+
+## 5. Code example
+
+```jsx
+import { useState } from "react";
+
+function Child() {
+  console.log("Child rendered");
+  return <p>I am the child</p>;
+}
+
+export default function Counter() {
+  const [count, setCount] = useState(0);
+  console.log("Counter rendered:", count);
+
+  function handleClick() {
+    setCount((c) => c + 1);
+    setCount((c) => c + 1);
+  }
+
+  return (
+    <div>
+      <h2>Count: {count}</h2>
+      <button onClick={handleClick}>+2</button>
+      <Child />
+    </div>
+  );
+}
+```
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| First load | Both `Counter` and `Child` render |
+| Button click | `setCount` triggers a re-render |
+| Two `setCount` calls | They are batched into one re-render, and count goes up by 2 |
+| `Child` log | `Child` renders along with its parent |
+| In the DOM | Only the text of the `h2` changes, the `p` and `button` stay the same |
+| StrictMode | In development, render may run twice, so the log can appear doubled |
+
+If you use the **React Compiler** with React 19, it memoizes components automatically, so components like `Child` avoid useless re-renders. Details are in [React Compiler](/courses/react/react-compiler).
+
+### Interview tip
+
+"Does a re-render mean a DOM update?" No. A re-render is only the component function running again. The DOM changes only when reconciliation finds a difference. That is why not every re-render is expensive.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Always treating a re-render as a problem"
+  why="Most re-renders are fast and do not even touch the DOM."
+  better="Measure first with the React DevTools Profiler, then optimize only the slow parts."
+/>
+
+<Mistake
+  title="Doing side effects during render"
+  why="Render should be pure. Fetching or changing the DOM during render causes double calls and bugs."
+  better="Put side effects in event handlers, or in useEffect if needed."
+/>
+
+<Mistake
+  title="Expecting the new value right after a state update"
+  why="setCount sets the value for the next render, and inside the same function count stays the old value."
+  better="If you need the new value, use an updater function or keep the calculated value in a variable."
+/>
+
+<Mistake
+  title="Using the index as the key in a list whose order changes"
+  why="On reorder or delete, React reuses the state of the wrong item."
+  better="Use each item's stable unique id as the key."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Components](/courses/react/components), [JSX](/courses/react/jsx), [DOM Basics](/courses/javascript/dom-basics) |
+| **Alongside** | [State with useState](/courses/react/state), [Lists & Keys](/courses/react/lists-and-keys) |
+| **After** | [React.memo & Performance](/courses/react/memo-and-performance), [React Compiler](/courses/react/react-compiler), [useEffect](/courses/react/use-effect) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Render | The component function being called |
+| Three steps | Trigger, render, commit |
+| Virtual DOM | A tree of React elements in memory |
+| Reconciliation | The difference between the old and new trees |
+| Re-render triggers | State, parent render, context |
+| Batching | Many state updates in one re-render |
+
+<Callout variant="important" title="Remember">
+
+**Render happens in memory, commit happens in the DOM.** React changes only the DOM that really changed.
+
+</Callout>

@@ -1,0 +1,298 @@
+---
+title: Visual Hierarchy & Spacing
+description: Visual hierarchy and whitespace rules for UX. One primary button, a first viewport budget, a spacing scale, a type scale and the squint test, with measurable numbers.
+keywords:
+  - visual hierarchy whitespace ux
+  - spacing scale 4px 8px
+  - one primary button per page
+  - above the fold design
+  - squint test ui design
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Every screen has one job. Spend space, size and emphasis on that job first, and put everything else below it.**
+
+</Callout>
+
+Visual hierarchy means guiding the user's eye in a set order: the most important thing first, then the next most important. The tools for this are size, weight, color, position and space.
+
+It starts with one sentence: "This screen lets `<user>` do or learn `<one thing>`." If you cannot write that sentence, the screen has two jobs. Fix that problem first, because no layout fix will repair it.
+
+The rules of this chapter at a glance:
+
+| Rule | Meaning | Number |
+| --- | --- | --- |
+| **One primary action** | Only one primary-styled button in a viewport | Max 1, and 0 is also wrong |
+| **First viewport budget** | The answer to the screen is visible without scrolling, and banners and onboarding take little space | Transient blocks max 25 percent |
+| **Whitespace creates groups** | The gap between groups is at least double the gap inside a group | Ratio 2x or more |
+| **Spacing scale** | Every margin, padding and gap comes from a fixed step | 4, 8, 12, 16, 24, 32, 48, 64 |
+| **Density** | Fixed sizes for tables and stat cards | Rows 40, 48 or 56 px |
+| **Lighten first, then remove** | Shrink, collapse or move before you remove | An order of 4 steps |
+| **Disclosure depth** | A thing is visible, or one or two clicks away | Max 2 levels |
+| **Type scale** | Few text sizes, few big things | 3 sizes + title, max 2 large |
+| **When to use a border** | Space first, then a tint, a border last | Surfaces max 2 deep |
+| **Squint test** | In a blurred screenshot, the primary thing shows first | 5 to 20 px blur |
+| **Front-load** | The first word of a heading carries information | Heading max 6 words |
+
+Two reference sizes are used for the viewport: desktop 1440 by 900 and phone 390 by 844. The "first viewport" is the part you see on page load without scrolling.
+
+## 2. Why does it matter?
+
+UX research (especially the eye-tracking studies by Nielsen Norman Group) keeps showing the same thing: users spend most of their time above the fold. In one study about 57 percent of viewing time was on the first screen and about 74 percent on the first two screens. Whatever you push down loses a big share of attention.
+
+The second reason is decision time. Hick's law says the more equal choices there are, the slower the decision. Three equal primary buttons mean the user has to work out what the next step is. Government design systems also keep one main call to action per page for this reason.
+
+Proximity also comes from research: things that are close together are seen by the brain as one group. So spacing is not just "looks nice", it tells you which thing belongs with which.
+
+<CompareTable leftTitle="Without the rules" rightTitle="With the rules">
+
+Three primary buttons, the user is confused | One primary, the rest secondary or link
+Banners and a checklist ate the first screen | Stats and main content are in the first screen
+A label floats between two inputs | The label sticks to its own field
+p-[18px], mt-5, mt-6 random values | The scale of 4, 8, 12, 16, 24, 32, 48, 64
+7 font sizes in one card | 3 sizes and one page title
+A card inside a card inside a card | Page, then card, that is all
+Blur it and a grey slab shows first | Blur it and the main number and button show first
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | One primary button, the spacing scale and 3 text sizes from now | If these three become habits, the rest of the design starts looking better on its own, and the cost is zero |
+| **Production code** | All the rules, on every screen, at both desktop and phone size | Real users do not scroll, and they get confused and leave, which directly hits conversion |
+| **Senior level** | Measure the rules in review and give feedback with numbers | Feedback like "it feels a bit off" fixes nothing, a measured height and the name of the rule does |
+
+When to learn it: as soon as you build your first real UI component with Tailwind. Learning design tokens and the spacing scale together is the easiest way.
+
+## 4. Bad vs good code
+
+### One primary action
+
+Bad: every button is primary.
+
+```tsx
+export function ProjectsHeader() {
+  return (
+    <div className="flex gap-3">
+      <button className="bg-primary text-primary-foreground px-4 py-2">New project</button>
+      <button className="bg-primary text-primary-foreground px-4 py-2">Import</button>
+      <button className="bg-primary text-primary-foreground px-4 py-2">Export</button>
+    </div>
+  );
+}
+```
+
+Good: one primary, the rest secondary and ghost.
+
+```tsx
+export function ProjectsHeader() {
+  return (
+    <div className="flex gap-2">
+      <button className="rounded-md bg-primary px-4 py-2 text-primary-foreground">Create project</button>
+      <button className="rounded-md border px-4 py-2">Import projects</button>
+      <button className="rounded-md px-4 py-2 text-muted-foreground">Export</button>
+    </div>
+  );
+}
+```
+
+Zero primary is also wrong. On a first-run screen, if no button is primary, the user cannot tell where the next step is.
+
+### Spacing that makes groups
+
+Bad: the same gap everywhere, and the label hangs between the input above and the one below.
+
+```tsx
+<form className="space-y-4">
+  <label htmlFor="name">Project name</label>
+  <input id="name" className="p-[18px]" />
+  <label htmlFor="slug">URL slug</label>
+  <input id="slug" className="mt-5" />
+</form>
+```
+
+Good: 8 px from the label to its field, 24 px from one field group to the next.
+
+```tsx
+<form className="flex flex-col gap-6">
+  <div className="flex flex-col gap-2">
+    <label htmlFor="name">Project name</label>
+    <input id="name" className="rounded-md border px-3 py-2" />
+  </div>
+  <div className="flex flex-col gap-2">
+    <label htmlFor="slug">URL slug</label>
+    <input id="slug" className="rounded-md border px-3 py-2" />
+  </div>
+</form>
+```
+
+How the spacing scale relates to Tailwind classes:
+
+| Step | Tailwind | Where to use it |
+| --- | --- | --- |
+| 4 px | `1` | An icon and its label, inside a badge |
+| 8 px | `2` | Inside one control group: label to field, button to button |
+| 12 px | `3` | Rows of a compact list, between chips |
+| 16 px | `4` | Card padding on phone, related blocks inside a card, page margin on phone |
+| 24 px | `6` | Card padding on desktop, sections inside a card, page margin on desktop |
+| 32 px | `8` | Between page sections on phone |
+| 48 px | `12` | Between page sections on desktop |
+| 64 px | `16` | Only for hero or marketing blocks, never inside an admin screen |
+
+The steps of the scale differ from each other by at least about 25 percent, so the choice is clear. If `mt-5` and `mt-6` sit side by side, the eye cannot tell the difference, it just makes the code messy.
+
+### Type scale and borders
+
+Bad: many sizes, everything bold, a card inside a card.
+
+```tsx
+<div className="rounded-xl border p-6">
+  <div className="rounded-lg border p-4">
+    <h3 className="text-xl font-bold">Revenue</h3>
+    <p className="text-[13px] font-semibold">This month</p>
+    <div className="rounded border p-3 text-3xl font-bold text-primary">$4,200</div>
+    <p className="text-[11px]">Updated 5 min ago</p>
+  </div>
+</div>
+```
+
+Good: 3 sizes, size, weight and color on only one thing, and only one level of surface.
+
+```tsx
+<section className="flex flex-col gap-1 rounded-lg border p-6">
+  <h3 className="text-sm text-muted-foreground">Revenue this month</h3>
+  <p className="text-2xl font-semibold tabular-nums">$4,200</p>
+  <p className="text-xs text-muted-foreground">Updated 5 min ago</p>
+</section>
+```
+
+### What is the difference?
+
+| Bad | Good | Rule |
+| --- | --- | --- |
+| Three primary buttons | One primary, one bordered, one ghost | One primary action |
+| Equal `space-y-4` | `gap-2` inside, `gap-6` outside | Double gap between groups |
+| `p-[18px]`, `mt-5` | Only steps from the scale | Spacing scale |
+| 5 font sizes, 4 bold | 12, 14, 24 px and one bold value | Max 3 sizes, max 2 large |
+| Three nested borders | One card | Surfaces max 2 deep |
+| "Revenue" + "This month" separate | "Revenue this month" | Front-load, fewer lines |
+
+## 5. How to apply it
+
+<Flow title="How to review a screen">
+
+Write the screen's one job in one sentence
+↓
+Open the screen at 1440 by 900 and at 390 by 844
+↓
+Measure the primary buttons, text sizes and block heights
+↓
+Squint test: blur a screenshot by 5 to 20 px
+↓
+For every mistake, take the smallest fix: lighten, collapse, move, then remove
+↓
+Measure again, and write the before and after numbers in the PR
+
+</Flow>
+
+Measure with the browser, not by guessing. In the DevTools console:
+
+```js
+const setup = document.querySelector("[data-block='setup']");
+const { top, height } = setup.getBoundingClientRect();
+const budget = window.innerHeight * 0.25;
+
+const textSizes = new Set(
+  [...document.querySelectorAll("main *")]
+    .filter((el) => el.childElementCount === 0 && el.textContent.trim())
+    .map((el) => getComputedStyle(el).fontSize)
+);
+
+console.log({ top, height, budget, textSizes: [...textSizes] });
+```
+
+The checklist for the remaining rules:
+
+| Check | When it passes |
+| --- | --- |
+| **First viewport** | The answer to the screen starts without scrolling on both desktop and phone |
+| **Transient blocks** | Banners, promos and onboarding together at most 225 px at 900, at most 211 px at 844 |
+| **Lighten first** | Order: less size or contrast, then collapse to one line, then a drawer or separate page, and remove last |
+| **Disclosure** | Everything is visible, or one click away, or two clicks away, never three |
+| **Border** | Spacing first, if that does not work a light background tint, and a border only when the block should read as one unit with unrelated content |
+| **Headings** | The first word carries information, max 6 words, the description max one line (90 characters) |
+| **Basic UI** | Body text not under 16 px, line length 60 to 75 characters, text contrast 4.5:1 |
+
+An example of front-loading: "Products: 0 added" is a good heading. "In order to get started you will first need to add some products" will be missed by a scanning user, because people read in an F-shape and only see the first words.
+
+### Interview tip
+
+If you are asked "why does this screen feel cluttered?", answer with the name of the rule and a number: "It has two primary buttons, 6 text sizes and cards nested three levels deep." That is a much stronger answer than "I just did not like it."
+
+## 6. Exceptions and common mistakes
+
+| Situation | What to do |
+| --- | --- |
+| **Marketing or hero page** | 64 px spacing and large type are allowed, not on admin screens |
+| **A brand new account with no data** | Onboarding can take more of the first viewport, because there is nothing else to show |
+| **A pricing page with three plans** | Not an exception. The recommended plan is primary, the rest secondary |
+| **A destructive confirm dialog** | The dialog has one primary (like "Delete project"), and "Cancel" is secondary |
+
+<Mistake
+  title="Deleting a busy panel outright"
+  why="The help link or setting that users or support depended on disappears."
+  better="First reduce its size or contrast, then collapse it, then move it into a drawer. Removing is the very last step."
+/>
+
+<Mistake
+  title="Arbitrary spacing values like p-[18px] or mt-5 next to mt-6"
+  why="The eye cannot tell 20 and 24 px apart, the rhythm just breaks and every developer adds their own value."
+  better="Use only steps from the scale and keep each step for its set job."
+/>
+
+<Mistake
+  title="The same gap everywhere"
+  why="A label is as close to its own field as to the previous one, so groups are not visible."
+  better="8 px inside a group, 24 px between groups. The outer gap is at least double the inner one."
+/>
+
+<Mistake
+  title="A banner, an announcement and a checklist stacked one above the other"
+  why="The first screen goes to messages and the real work is pushed below the fold."
+  better="All transient blocks share one budget, max 25 percent. Show what is closest to value and let the rest wait."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Styling in React](/courses/react/styling), [Design Tokens & UI Consistency](/courses/best-practices/design-tokens-and-ui) |
+| **Alongside** | [React Component Practices](/courses/best-practices/react-component-practices), [Styling: CSS Modules & Tailwind](/courses/nextjs/styling) |
+| **After** | [Forms & Funnels](/courses/best-practices/forms-ux), [Onboarding & Empty States](/courses/best-practices/onboarding-and-empty-states), [Dashboards](/courses/best-practices/dashboards-ux), [Motion & Design Iteration](/courses/best-practices/motion-and-iteration) |
+
+This chapter is the foundation of the UX section. The other four chapters apply these same rules to forms, onboarding, dashboards and motion.
+
+## Final quick revision
+
+| Check | What to remember |
+| --- | --- |
+| One job | The screen's job in one sentence |
+| Primary button | Exactly one in every viewport |
+| First viewport | The answer without scrolling, transient blocks max 25 percent |
+| Spacing | 4, 8, 12, 16, 24, 32, 48, 64 and a double gap between groups |
+| Type | Max 3 sizes + title, max 2 large things |
+| Surfaces | Space first, then tint, then border, max 2 deep |
+| Disclosure | Max two clicks away |
+| Squint test | The primary thing shows first in the blur |
+| Fix order | Lighten, collapse, move, remove |
+
+<Callout variant="important" title="Remember">
+
+Every pixel of a design is spent on something. First write the screen's one job, then measure whether the space is going to that job or to messages and decoration.
+
+</Callout>

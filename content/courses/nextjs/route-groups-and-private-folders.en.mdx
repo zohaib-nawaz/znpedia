@@ -1,0 +1,181 @@
+---
+title: "Route Groups & Private Folders"
+description: "Next.js route groups and private folders: organize routes with (group) folders without changing the URL, and keep files out of routing with _folder."
+keywords:
+  - next.js route groups
+  - next.js private folders
+  - next.js multiple root layouts
+  - next.js project organization
+  - next.js colocation
+---
+
+## 1. What are route groups and private folders?
+
+<Callout variant="tip" title="Short definition">
+
+**A route group `(name)` is a folder that does not appear in the URL, and a private folder `_name` is a folder that stays out of routing completely.**
+
+</Callout>
+
+Both exist for **organization**. With a route group you can group routes and give each group its own layout. With a private folder you can keep components, utils and helpers close to a route without worrying that they will turn into routes.
+
+## 2. Why does it matter?
+
+<CompareTable leftTitle="Without groups" rightTitle="With route groups">
+
+Marketing and dashboard share one layout | Each group has its own layout
+URL gets longer just to group pages | (marketing) does not appear in the URL
+All routes in one big pile | Folders organized by team and feature
+Helpers live far away from the app | _components is colocated with the route
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Situation | Structure |
+| --- | --- |
+| **A separate header for marketing pages** | `app/(marketing)/layout.tsx` |
+| **A sidebar layout for the dashboard** | `app/(dashboard)/layout.tsx` |
+| **Auth pages without the navbar** | `app/(auth)/login/page.tsx` |
+| **One layout on only some routes** | `app/(shop)/layout.tsx` for shop routes only |
+| **Components that belong to one route** | `app/blog/_components/PostCard.tsx` |
+
+## 4. How does it work?
+
+<Flow title="Route group disappears from the URL">
+
+app/(marketing)/about/page.tsx
+   ↓
+Next.js ignores the part in parentheses
+   ↓
+URL: /about
+   +
+Layout: app/(marketing)/layout.tsx
+
+</Flow>
+
+The rule for private folders is simple: a folder that starts with an underscore, and all its child folders, are left out of routing, even if there is a `page.tsx` inside.
+
+```bash
+app/
+  layout.tsx
+  (marketing)/
+    layout.tsx
+    page.tsx
+    about/page.tsx
+  (dashboard)/
+    layout.tsx
+    dashboard/page.tsx
+    _components/
+      Sidebar.tsx
+      StatsCard.tsx
+  (auth)/
+    login/page.tsx
+```
+
+| File | URL |
+| --- | --- |
+| `app/(marketing)/page.tsx` | `/` |
+| `app/(marketing)/about/page.tsx` | `/about` |
+| `app/(dashboard)/dashboard/page.tsx` | `/dashboard` |
+| `app/(auth)/login/page.tsx` | `/login` |
+| `app/(dashboard)/_components/StatsCard.tsx` | No URL |
+
+## 5. Code example
+
+### Layout of a group
+
+```tsx
+import { Sidebar } from "./_components/Sidebar";
+
+export default function DashboardGroupLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid grid-cols-[240px_1fr]">
+      <Sidebar />
+      <main>{children}</main>
+    </div>
+  );
+}
+```
+
+### Component in a private folder
+
+```tsx
+import Link from "next/link";
+
+export function Sidebar() {
+  return (
+    <aside>
+      <Link href="/dashboard">Overview</Link>
+      <Link href="/dashboard/orders">Orders</Link>
+    </aside>
+  );
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `(dashboard)/layout.tsx` | Wraps only the routes in this group |
+| `(dashboard)` | Does not appear in the URL |
+| `_components/Sidebar.tsx` | A private folder, never becomes a route |
+| `./_components/Sidebar` | A relative import, colocated with the route |
+
+<Callout variant="important" title="Multiple root layouts">
+
+If you remove the top-level `app/layout.tsx` and give each group its own root layout (with `html` and `body`), every group behaves like a completely separate app. Navigating between these groups causes a **full page load**.
+
+</Callout>
+
+### Interview tip
+
+"What is the difference between a route group and a private folder?" The routes inside a route group work normally, only its name is removed from the URL. Nothing inside a private folder ever becomes a route.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Creating pages with the same URL in two groups"
+  why="(marketing)/about and (shop)/about both produce /about, which causes a conflict error."
+  better="Define each URL in only one place. Groups are only for organization."
+/>
+
+<Mistake
+  title="Creating a page inside a private folder and expecting a route"
+  why="A folder that starts with an underscore, and its children, stay outside routing."
+  better="Keep routes in normal or group folders. Use _folder only for helpers."
+/>
+
+<Mistake
+  title="Forgetting html and body in multiple root layouts"
+  why="Once the top-level layout is removed, each group layout is the root and it needs html and body."
+  better="Always render the html and body tags in every group root layout."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Routing & Pages](/courses/nextjs/routing-and-pages), [Layouts & Templates](/courses/nextjs/layouts-and-templates) |
+| **Alongside** | [Dynamic Routes](/courses/nextjs/dynamic-routes), [JavaScript modules](/courses/javascript/modules) |
+| **After** | [Parallel & Intercepting Routes](/courses/nextjs/parallel-and-intercepting-routes), [Authentication](/courses/nextjs/authentication), [Internationalization](/courses/nextjs/internationalization) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Route group | `(name)`, does not appear in the URL |
+| Benefit | A separate layout for each group |
+| Private folder | `_name`, outside routing |
+| Colocation | Keeping components next to their route |
+| Multiple root layouts | Full page load between groups |
+
+<Callout variant="important" title="Remember">
+
+**Parentheses hide a folder from the URL, an underscore hides it from routing.**
+
+</Callout>

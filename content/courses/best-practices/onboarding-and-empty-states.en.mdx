@@ -1,0 +1,289 @@
+---
+title: Onboarding & Empty States
+description: Onboarding UX and empty state rules covering one value moment, a 3 to 5 step checklist, a space budget per account state, and an empty state with a single action.
+keywords:
+  - onboarding ux empty states
+  - onboarding checklist best practices
+  - empty state design
+  - first run experience
+  - time to value
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Onboarding has one job: get a new user to their first real value quickly, then get out of the way.**
+
+</Callout>
+
+Onboarding means the first-run screen, the setup checklist, the product tour and the empty screens a new account sees. All of these are "transient": they are visitors that stay for a few days. So their space and attention must stay limited.
+
+The rules fall into five groups:
+
+| Group | Rules |
+| --- | --- |
+| **Goal** | Name one value moment, reachable in at most 10 interactions and 5 minutes |
+| **Checklist shape** | 3 to 5 steps, steps tick themselves from data, "x of n done", steps in any order, only the next step open, each step is one title + one line + one action |
+| **Space** | Space budget based on account state, big setup on its own route, core work is never blocked |
+| **Lifecycle** | Hiding is remembered across sessions and devices, completion is celebrated once, then it disappears for good |
+| **Empty states** | The final frame of the widget, one line about what will appear, at most one action |
+
+A **value moment** is a data event where the user gets real benefit for the first time, such as "first invoice sent" or "first deploy went live". "Viewed the settings page" is not a value moment.
+
+## 2. Why does it matter?
+
+The numbers from onboarding research are quite harsh. In data from hundreds of companies, setup checklists had an average completion rate of about 19 percent and a median of about 10 percent. In product tours, about two thirds of people finish a 3 step tour, and after 5 steps completion drops below half. Every extra step has a cost.
+
+Nielsen Norman Group research says people skip tutorials, and a tutorial that stands between the user and their task slows the task down without improving performance. Users are "active": they want to do things, not read.
+
+Psychology helps too. **Endowed progress effect**: in one study, a loyalty card with 2 of 10 stamps already filled was completed by 34 percent of people, while a card with 8 empty stamps was completed by only 19 percent. **Goal gradient**: people speed up when the goal looks close. **Zeigarnik effect**: unfinished work stays on the mind. So "1 of 3 done" is motivation in itself.
+
+Also, guidance that the user opens on their own gets used 2 to 3 times more than guidance that is forced on them.
+
+<CompareTable leftTitle="Typical onboarding" rightTitle="Onboarding with the rules">
+
+9 items, including "choose a theme" and "read the docs" | 3 items that lead to the value moment
+An "I've done this" button when the server can check by itself | The step ticks itself as soon as the data arrives
+All steps open, with code snippets and forms inline | Only the next step is open, details in a drawer
+A 400 px card on top even after 2 of 3 | A 64 px bar: "2 of 3 done. Next: ..."
+Hidden, but it returns on the next login | Hide is remembered across sessions and devices
+A full-screen welcome tour you must click through first | The dashboard stays usable, the checklist sits beside it
+An "All set" panel that stays on top forever | One toast, then the checklist disappears
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | One line and one action on every empty list. An onboarding flow is not needed yet | Every app has empty states, and an empty screen is the very first thing a user sees |
+| **Production code** | All the rules, and the value moment tracked in analytics | A user who does not reach value in the first session often never comes back |
+| **Senior level** | Define the value moment, count interactions, measure checklist completion | Completion below 30 percent is a sign of friction, and this is a product-level decision |
+
+When to learn it: when you are building an app where users sign up and add their own data. Empty states first, then the checklist.
+
+## 4. Bad vs good code
+
+### Bad checklist
+
+```tsx
+"use client";
+
+import { useState } from "react";
+
+export function SetupChecklist({ steps }: { steps: Step[] }) {
+  const [hidden, setHidden] = useState(sessionStorage.getItem("hideSetup") === "1");
+  if (hidden) {
+    return <div className="h-32 rounded border p-4">Setup hidden for this session</div>;
+  }
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50">
+      {steps.map((step) => (
+        <div key={step.id} className="rounded-xl border p-6">
+          <h3 className="text-xl">{step.title}</h3>
+          <p>{step.longDescription}</p>
+          <pre>{step.codeSnippet}</pre>
+          <button className="bg-primary">I've done this</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+### Good checklist
+
+Steps are built from data, not from the user's click:
+
+```ts
+export type SetupStep = { id: string; title: string; done: boolean; actionLabel: string; href: string };
+
+export function buildSetupSteps(account: AccountSummary): SetupStep[] {
+  return [
+    { id: "account", title: "Create your account", done: true, actionLabel: "", href: "" },
+    { id: "products", title: "Add your first product", done: account.productCount > 0, actionLabel: "Add products", href: "/products/new" },
+    { id: "share", title: "Share your store link", done: account.visitCount > 0, actionLabel: "Copy link", href: "/settings/share" },
+  ];
+}
+```
+
+The component picks its own size based on state:
+
+```tsx
+import Link from "next/link";
+
+import { hideSetup } from "./actions";
+import { buildSetupSteps } from "./setup-steps";
+
+export function SetupBar({ account }: { account: AccountSummary }) {
+  const steps = buildSetupSteps(account);
+  const next = steps.find((step) => !step.done);
+
+  if (account.setupHidden || !next) {
+    return null;
+  }
+
+  const doneCount = steps.filter((step) => step.done).length;
+
+  return (
+    <section className="flex h-16 items-center gap-4 rounded-lg border px-4">
+      <p className="text-sm font-medium">{doneCount} of {steps.length} done</p>
+      <p className="text-sm text-muted-foreground">Next: {next.title}</p>
+      <Link href={next.href} className="ml-auto rounded-md bg-primary px-4 py-2 text-primary-foreground">
+        {next.actionLabel}
+      </Link>
+      <form action={hideSetup}>
+        <button className="text-sm text-muted-foreground">Hide setup</button>
+      </form>
+    </section>
+  );
+}
+```
+
+`hideSetup` is a Server Action that saves the user's preference in the database, so hiding is remembered on every device and session. The way to bring it back is a fixed place, such as "Setup checklist" in the help menu.
+
+### Empty state
+
+Bad: an empty chart axis, or an empty card with three buttons.
+
+```tsx
+<div className="h-24 rounded-lg border p-4">
+  <p>No data</p>
+  <button>Import</button>
+  <button>Create</button>
+  <button>Learn more</button>
+</div>
+```
+
+Good: the same size as the loaded widget, one line about what will appear here, one action.
+
+```tsx
+export function OrdersEmpty() {
+  return (
+    <section className="flex h-80 flex-col items-center justify-center gap-4 rounded-lg border">
+      <p className="text-sm text-muted-foreground">Orders will appear here when customers check out.</p>
+      <a href="/settings/share" className="rounded-md border px-4 py-2">Share store link</a>
+    </section>
+  );
+}
+```
+
+Sample or demo data is fine too, as long as it carries a clear "Sample data" label.
+
+### What is the difference?
+
+| Bad | Good | Rule |
+| --- | --- | --- |
+| `fixed inset-0` overlay | A bar inside the page | Core work is never blocked |
+| All steps open, snippet inline | Only the next step, details behind its link | Only the next step is open |
+| "I've done this" as the primary button | `done` comes from data | Data ticks the steps |
+| `sessionStorage` | Preference stored on the server | Hide is remembered |
+| A placeholder box when hidden | `return null` | 0 px when hidden |
+| "Create your account" still left to do | Already ticked | A head start raises completion |
+| Three buttons in an empty card | One line, one action, same height | An empty state teaches one thing |
+
+## 5. How to apply it
+
+The space onboarding gets is decided by the account state. Heights are in the first viewport:
+
+| State | Desktop 1440 by 900 | Phone 390 by 844 | Shape |
+| --- | --- | --- | --- |
+| **0 of n, no data in the account** | At most 50 percent (450 px) | At most 60 percent (506 px) | The checklist takes the place of the empty widgets, it does not stack on top of them |
+| **0 of n, data already exists** | At most 25 percent (225 px) | At most 25 percent (211 px) | Compact card: progress, next step, one action |
+| **Some done** | One bar of at most 72 px, or a side rail of at most 320 px wide | One bar of at most 72 px | "2 of 3 done", the name of the next step, one button |
+| **All done** | One completion message, once, then 0 px | Same | Gone for good |
+| **Dismissed** | 0 px, one entry in the menu to reopen | Same | Launcher only |
+
+<Flow title="How to design onboarding">
+
+Name the value moment as a data event
+↓
+Count interactions from sign-up to it, at most 10 and 5 minutes
+↓
+Keep only the 3 to 5 steps on that path
+↓
+Complete every step from data
+↓
+Apply the space budget based on state
+↓
+Give every empty widget its final frame, one line and one action
+
+</Flow>
+
+More detail on the remaining rules:
+
+| Rule | Detail |
+| --- | --- |
+| **Primary action** | The one primary button of the first-run screen is the first step toward the value moment |
+| **Step budget** | An open step: title of at most 6 words, description of at most one line (90 characters), one action, height of at most 120 px. A code snippet, form or preview goes behind that action, in a drawer, dialog or page |
+| **One step open** | Only the first unfinished step is open, the rest are one line each (icon, title, status). Opening another closes the first |
+| **Progress** | "x of n done" text + a bar or segments. Auto-completed steps count too. No percentage under 10 items |
+| **Order** | Steps in any order. Lock only on a real dependency, and the lock explains why in one line |
+| **Self-report** | "I've done this" only when the result cannot show up in the data at all, and it is a secondary button |
+| **Separate route** | More than 5 steps, a step with a form of more than 3 fields, or a dashboard that is useless without setup: put setup on its own route (like `/setup/payments`), and keep only a small bar on the dashboard |
+| **Celebrate once** | A toast or inline line on the last step, once. No confetti on every visit and no "All done" card that stays forever |
+
+The completion message matters because of the peak-end rule: people remember an experience by its best moment and by its ending. A done card that never goes away turns the ending into clutter.
+
+## 6. Exceptions and common mistakes
+
+| Situation | What to do |
+| --- | --- |
+| **A completely empty account** | Onboarding may take half the screen, because there is nothing else to show |
+| **The product cannot run without an account** | That step comes first, the rest still in any order |
+| **The UI itself can be made clearer** | Clear up the UI before building onboarding. A good UI needs less of a tour |
+
+<Mistake
+  title="A welcome tour you must click through before the dashboard"
+  why="The user came to get work done, skips the tour and does not remember what was shown. The work also starts later."
+  better="Render the dashboard widgets next to the checklist or below it. No modal, overlay or route guard should block the core screens."
+/>
+
+<Mistake
+  title="A checklist that tours features"
+  why="Steps like choose a theme or read the docs do not lead to value, they only make the list longer and completion drops."
+  better="Only the 3 to 5 steps on the path to the value moment. The rest goes in the help menu."
+/>
+
+<Mistake
+  title="Hide only for this session"
+  why="On the next login the checklist is back at full size, and the user feels the app does not listen to them."
+  better="Save hide on the server, or at least in localStorage, and reopen from a fixed place."
+/>
+
+<Mistake
+  title="Empty widget is small, the page jumps when data arrives"
+  why="Layout shift happens and the thing the user was about to click moves away."
+  better="The empty state takes the same space as the loaded widget, with one line about what will appear and at most one action."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Visual Hierarchy & Spacing](/courses/best-practices/visual-hierarchy-and-spacing), [Forms & Funnels](/courses/best-practices/forms-ux) |
+| **Alongside** | [Server Actions](/courses/nextjs/server-actions), [Loading, Error & Not Found UI](/courses/nextjs/loading-and-error-ui) |
+| **After** | [Dashboards](/courses/best-practices/dashboards-ux), [Motion & Design Iteration](/courses/best-practices/motion-and-iteration) |
+
+## Final quick revision
+
+| Check | What to remember |
+| --- | --- |
+| Value moment | A data event, at most 10 interactions and 5 minutes |
+| Steps | 3 to 5, only on the path to value |
+| Completion | Ticked from data, steps already done show as ticked |
+| Progress | "x of n done" |
+| Space | Based on state, a bar of at most 72 px once some are done |
+| Open step | Only one, at most 120 px, one action |
+| Hide | Remembered across sessions, reopen from one place, no placeholder |
+| Big setup | Its own route |
+| Core work | Never blocked |
+| Completion | One message, then gone |
+| Empty state | Final size, one line, at most one action |
+
+<Callout variant="important" title="Remember">
+
+Good onboarding is like a guest: it talks about what matters, takes little space, and leaves on time. An empty state is a small onboarding too, and one line plus one action is enough for it.
+
+</Callout>

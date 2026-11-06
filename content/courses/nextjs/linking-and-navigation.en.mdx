@@ -1,0 +1,187 @@
+---
+title: "Linking & Navigation"
+description: "Next.js link navigation explained: the Link component, prefetching, useRouter, usePathname and redirect, for fast client-side navigation between pages."
+keywords:
+  - next.js link navigation
+  - next.js link component
+  - next.js userouter
+  - next.js prefetching
+  - next.js redirect
+---
+
+## 1. What are linking and navigation?
+
+<Callout variant="tip" title="Short definition">
+
+**The `Link` component from `next/link` does client-side navigation between pages without a full page reload, and prefetches visible links ahead of time.**
+
+</Callout>
+
+Navigation has four main tools: `Link` (the most common), `useRouter` (navigate from code), `usePathname` (the current URL) and `redirect` (navigate on the server).
+
+## 2. Why does it matter?
+
+A plain `a` tag reloads the whole page on every click. The layout is rebuilt, state is lost, and the screen flashes white.
+
+<CompareTable leftTitle="A plain a tag" rightTitle="Next.js Link">
+
+The whole page reloads | Only the changed part renders
+Layout and state reset | Layout and state are preserved
+The download starts after the click | Prefetched as soon as it enters the viewport
+Feels slow | Instant, app-like navigation
+
+</CompareTable>
+
+In Next.js 16, prefetching has become smarter. **Incremental prefetching** fetches only the part that is not in the cache, the request is cancelled if the link leaves the viewport, and hovering gives it priority.
+
+## 3. Where is it used?
+
+| Situation | Tool |
+| --- | --- |
+| **Navbar, cards, menu links** | `Link` |
+| **Going to another page after a form submit** | `useRouter().push` or `redirect` in a Server Action |
+| **Highlighting the active link** | `usePathname` |
+| **Send the user away if not logged in** | `redirect("/login")` on the server |
+| **Refresh data without changing the URL** | `router.refresh()` |
+
+## 4. How does it work?
+
+<Flow title="The journey of a Link click">
+
+The Link enters the viewport
+   ↓
+Next.js prefetches the necessary part of the route
+   ↓
+The user clicks
+   ↓
+Shared layouts stay in place
+   ↓
+Only the new page segment renders
+   ↓
+The URL updates, scroll goes to the top
+
+</Flow>
+
+`Link` and `useRouter` work on the **client**. `redirect` works on the server (Server Component, Server Action, Route Handler).
+
+## 5. Code example
+
+### Link and active state
+
+```tsx
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+const links = [
+  { href: "/", label: "Home" },
+  { href: "/blog", label: "Blog" },
+  { href: "/about", label: "About" },
+];
+
+export function NavBar() {
+  const pathname = usePathname();
+
+  return (
+    <nav>
+      {links.map((link) => (
+        <Link
+          key={link.href}
+          href={link.href}
+          className={pathname === link.href ? "font-bold" : ""}
+        >
+          {link.label}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+```
+
+### Navigating from code and a server redirect
+
+```tsx
+"use client";
+
+import { useRouter } from "next/navigation";
+
+export function BackToCart() {
+  const router = useRouter();
+  return <button onClick={() => router.push("/cart")}>Go to cart</button>;
+}
+```
+
+```tsx
+import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+
+export default async function AccountPage() {
+  const session = (await cookies()).get("session");
+  if (!session) {
+    redirect("/login");
+  }
+  return <h1>Your account</h1>;
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `Link href` | Client-side navigation, automatic prefetch |
+| `usePathname()` | The current path, for the active link |
+| `"use client"` | Hooks work only in a Client Component |
+| `router.push("/cart")` | Navigates from code, adds a history entry |
+| `router.replace` | Navigates but replaces the history entry |
+| `await cookies()` | In Next.js 16 cookies is async too |
+| `redirect("/login")` | Navigates on the server, the code after it does not run |
+
+### Interview tip
+
+"Which package does `useRouter` come from?" In the App Router it comes from `next/navigation`. `next/router` belongs only to the old Pages Router.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Using a plain a tag for internal links"
+  why="Every click does a full reload and you lose the benefit of prefetching."
+  better="Always use Link for links inside the app, and an a tag is fine for external links."
+/>
+
+<Mistake
+  title="Importing useRouter from next/router"
+  why="next/router belongs to the Pages Router and gives an error in the App Router."
+  better="Import useRouter, usePathname and useSearchParams from next/navigation."
+/>
+
+<Mistake
+  title="Calling redirect inside a try catch"
+  why="redirect throws a special error internally, the catch swallows it and the redirect does not happen."
+  better="Call redirect outside the try catch, after the work is done."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Routing & Pages](/courses/nextjs/routing-and-pages), [Layouts & Templates](/courses/nextjs/layouts-and-templates) |
+| **Alongside** | [Dynamic Routes](/courses/nextjs/dynamic-routes), [Server & Client Components](/courses/nextjs/server-and-client-components) |
+| **After** | [Server Actions](/courses/nextjs/server-actions), [Proxy](/courses/nextjs/proxy), [Performance](/courses/nextjs/performance) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Main tool | `Link` from `next/link` |
+| Prefetch | As soon as it enters the viewport, incremental in Next.js 16 |
+| Navigating from code | `useRouter` from `next/navigation` |
+| Current URL | `usePathname` |
+| Server navigation | `redirect` |
+| Layout | Preserved across navigation |
+
+<Callout variant="important" title="Remember">
+
+**`Link` and `useRouter` on the client, `redirect` on the server.** Always import hooks from `next/navigation`.
+
+</Callout>

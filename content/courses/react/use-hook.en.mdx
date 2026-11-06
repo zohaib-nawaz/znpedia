@@ -1,0 +1,178 @@
+---
+title: The use() API
+description: Learn how the React use API reads a Promise or Context during render, how it works with Suspense, and how it differs from other hooks.
+keywords:
+  - react use hook
+  - react use api promise
+  - use context react 19
+  - react suspense data
+---
+
+## 1. What is the use() API?
+
+<Callout variant="tip" title="Short definition">
+
+**`use` is a React 19 API that reads the value of a resource, meaning a Promise or a Context, during render.**
+
+</Callout>
+
+`use(promise)` **suspends** the component until the Promise resolves, and the fallback of the closest `Suspense` boundary is shown. When it resolves, you get the value.
+
+`use(Context)` works just like `useContext`, but it is more flexible.
+
+## 2. Why does it matter?
+
+Before, waiting for data meant writing `useEffect` + `useState` + a loading flag.
+
+<CompareTable leftTitle="The old way" rightTitle="With use()">
+
+Fetch in useEffect, data in useState | Read the Promise directly with use
+An isLoading check in every component | The Suspense fallback shows loading
+You manage the error state yourself | An Error Boundary catches the error
+useContext cannot run inside a condition | use can run inside an if
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Situation | How |
+| --- | --- |
+| Passing a Promise from a Server Component to a Client Component | The server `fetch` Promise goes in a prop, and the client calls `use(promise)` |
+| A cached Promise from a framework or library | `use(cachedPromise)` |
+| Reading Context after a condition | `use(ThemeContext)` inside an `if` |
+| Context after an early return | `useContext` cannot do this, `use` can |
+
+## 4. How does it work?
+
+<Flow title="The use(promise) flow">
+
+The component calls use(promise) during render
+↓
+If the Promise is pending, the component suspends
+↓
+The closest Suspense fallback is shown
+↓
+The Promise resolves and React renders again
+↓
+use returns the resolved value
+
+</Flow>
+
+If the Promise is **rejected**, the closest Error Boundary shows the error.
+
+<Callout variant="note" title="How it differs from hooks">
+
+You can call `use` inside an `if` or a loop. But you still have to call it only **inside a component or a hook**, and not inside a `try/catch` block.
+
+</Callout>
+
+## 5. Code example
+
+### A Promise from the server to the client
+
+```tsx
+import { Suspense } from "react";
+import { Comments } from "./comments";
+
+export default async function PostPage() {
+  const commentsPromise = fetch("https://api.example.com/comments").then((r) => r.json());
+
+  return (
+    <Suspense fallback={<p>Loading comments...</p>}>
+      <Comments commentsPromise={commentsPromise} />
+    </Suspense>
+  );
+}
+```
+
+```tsx
+"use client";
+
+import { use } from "react";
+
+type Comment = { id: number; text: string };
+
+export function Comments({ commentsPromise }: { commentsPromise: Promise<Comment[]> }) {
+  const comments = use(commentsPromise);
+  return (
+    <ul>
+      {comments.map((c) => (
+        <li key={c.id}>{c.text}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+### Context inside a condition
+
+```tsx
+import { use, type ReactNode } from "react";
+import { ThemeContext } from "./theme-context";
+
+export function Heading({ show, children }: { show: boolean; children: ReactNode }) {
+  if (!show) {
+    return null;
+  }
+  const theme = use(ThemeContext);
+  return <h2 className={theme}>{children}</h2>;
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `fetch(...)` in the Server Component | Creates a Promise without `await`, so the page is not blocked |
+| `<Suspense fallback>` | Shows loading text until the data arrives |
+| `use(commentsPromise)` | Gets the resolved data on the client |
+| `if (!show) return null` | `use` can still run after an early return |
+| `use(ThemeContext)` | Like `useContext`, but conditional |
+
+## 6. Common mistakes
+
+<Mistake
+  title="Creating a new Promise during a Client Component's render"
+  why="A new Promise is created on every render, so the component suspends again and again and never seems to resolve."
+  better="Pass the Promise down from a Server Component, or use a stable Promise from a caching library or framework."
+/>
+
+<Mistake
+  title="Wrapping use in try catch"
+  why="use suspends by throwing a special exception, and try catch breaks that."
+  better="Use an Error Boundary for errors, or add a catch to the Promise and give a fallback value."
+/>
+
+<Mistake
+  title="Forgetting the Suspense boundary"
+  why="A component that suspends without Suspense pushes the loading state all the way up and the whole page gets stuck."
+  better="Always put a component that calls use(promise) inside a suitable Suspense."
+/>
+
+### Interview tip
+
+`use` is an **API, not a hook**, which is why it can run inside a condition. It does not cache data by itself. In real apps, the Promise comes from a framework (like Next.js) or a library like TanStack Query.
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [useContext](/courses/react/use-context), [Suspense & lazy()](/courses/react/suspense-and-lazy), [Error Boundaries](/courses/react/error-boundaries) |
+| **Alongside** | [Server Components](/courses/react/server-components), [useTransition & useDeferredValue](/courses/react/use-transition) |
+| **After** | [Data Fetching](/courses/react/data-fetching), [Actions, useActionState & useOptimistic](/courses/react/actions-and-form-hooks) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| What it is | An API for reading a Promise or Context in render |
+| Promise pending | The component suspends and the Suspense fallback shows |
+| Promise rejected | An Error Boundary handles it |
+| Conditional call | Yes, even inside `if` and loops |
+| Not allowed | Inside `try/catch`, or creating a new Promise during render |
+
+<Callout variant="important" title="Remember">
+
+With **`use(promise)`**, always think about **Suspense** and an **Error Boundary**, and keep the Promise stable. For Context, both `use` and `useContext` work.
+
+</Callout>

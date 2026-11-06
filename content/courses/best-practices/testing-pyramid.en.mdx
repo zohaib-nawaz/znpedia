@@ -1,0 +1,189 @@
+---
+title: Testing Pyramid
+description: The testing pyramid balances unit, integration and end to end tests. Learn what each layer proves, how to use a real user for auth, and how to fake vendors.
+keywords:
+  - testing pyramid unit integration
+  - unit vs integration vs e2e
+  - vitest api tests
+  - test database isolation
+  - mocking external services
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Many fast unit tests at the bottom, contract tests for every endpoint in the middle, and only a few browser tests for critical flows at the top. Each layer should prove only what it alone can prove.**
+
+</Callout>
+
+| Layer | What it proves | Example |
+| --- | --- | --- |
+| **Unit** | Pure logic: parsers, validators, calculations, token helpers | `calculateTax(1000)` returns the right number |
+| **Endpoint / integration** | API contract, every validation branch, auth failures, limits | `POST /api/orders` returns `422` on a wrong body |
+| **Browser (end to end)** | The whole user flow in a real browser | From checkout to payment |
+
+The lower layers are cheap, fast and many. The upper ones are expensive, slow and few.
+
+## 2. Why does it matter?
+
+If you check everything with browser tests, the suite runs for hours and one small UI change breaks ten tests. If you have only unit tests, every function is fine, but an endpoint goes to production without an auth check.
+
+<Callout variant="note" title="Real pattern">
+
+A team's tests ran against a shared staging database. Two developers ran the suite at the same time, one test deleted the other's data, and both started failing randomly. Within a few weeks everyone stopped trusting the tests, and even running them.
+
+</Callout>
+
+<CompareTable leftTitle="Upside-down pyramid (ice cream cone)" rightTitle="The right pyramid">
+
+Mostly browser tests | Mostly unit and endpoint tests
+Suite takes 40 minutes | Suite takes a few minutes
+Flaky, passes on retry | Deterministic
+When it fails, you do not know where | When it fails, you see the exact function or endpoint
+Shared database | Every run gets its own isolated database
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Unit tests for pure functions | Builds the testing habit and teaches writing testable code |
+| **Production code** | Unit + tests for every endpoint, browser tests for critical flows | Contract and security proven on every deploy |
+| **Senior level** | The balance of layers and the test infrastructure | The suite stays fast and trustworthy |
+
+## 4. Bad vs good code
+
+### Bad: mocking everything
+
+```ts
+vi.mock("@/lib/db");
+vi.mock("@/lib/auth");
+
+test("creates order", async () => {
+  vi.mocked(getUser).mockResolvedValue({ id: "u1", role: "admin" });
+  vi.mocked(db.order.create).mockResolvedValue({ id: "o1" });
+
+  const res = await POST(new Request("http://x", { method: "POST", body: "{}" }));
+  expect(res.status).toBe(201);
+});
+```
+
+Auth is mocked, the database is mocked, and the user is always admin. This test only proves that the mocks work. Real authorization was never tested.
+
+### Good: a unit test of pure logic
+
+```ts
+import { describe, expect, test } from "vitest";
+import { calculateTax } from "./tax";
+
+describe("calculateTax", () => {
+  test("applies standard rate", () => {
+    expect(calculateTax(1000)).toBe(170);
+  });
+
+  test("returns zero below threshold", () => {
+    expect(calculateTax(50)).toBe(0);
+  });
+});
+```
+
+### Good: an endpoint test with a real user
+
+```ts
+import { expect, test } from "vitest";
+import { signInAsSeededUser } from "../helpers/auth";
+
+test("rejects order with empty items", async () => {
+  const token = await signInAsSeededUser();
+
+  const res = await fetch(`${process.env.TEST_BASE_URL}/api/orders`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+    body: JSON.stringify({ items: [] }),
+  });
+
+  expect(res.status).toBe(422);
+});
+```
+
+A seed script creates a test user whose email is already confirmed. The test signs in as that user, so authorization and tenant scoping run exactly as in production.
+
+### What is the difference?
+
+| Thing | Bad | Good |
+| --- | --- | --- |
+| Auth | Mocked, always admin | Token of a seeded real user |
+| Database | Mocked | Isolated test database |
+| What is proven | The wiring of mocks | The real contract and rules |
+
+## 5. How to apply it
+
+<Flow title="Tests for a new feature">
+
+Pull the pure logic into its own function
+↓
+Unit tests for it (every branch)
+↓
+Endpoint tests for success, validation and auth
+↓
+One browser test if it is a critical user flow
+↓
+Run everything in CI on an isolated database
+
+</Flow>
+
+Rules that apply on every layer:
+
+- Tests never touch the production or shared staging database. CI uses a service container (like Postgres or MySQL) or a separate project.
+- External vendors (payment, SMS, email) are faked at the boundary. A test that needs a real vendor key is not a test, it is a manual script in `scripts/`.
+- Paid AI model calls do not run in the CI suite. Use a free contract test for the prompt, and run paid evaluation only manually, after a cost estimate.
+- Tests never wait for a mailbox or an SMS.
+
+## 6. Exceptions and common mistakes
+
+**When the rule does not apply:** a small marketing site with no logic gets little value from unit tests. A build and link check is enough there. Teams also differ on coverage percentage: some enforce a threshold (like 80%), others only report it so the number is visible but people do not write useless tests just to hit it. Both sides have a point.
+
+<Mistake
+  title="Checking everything with browser tests"
+  why="The suite becomes slow and flaky, and finding the problem on failure is hard."
+  better="Logic in unit tests, contract in endpoint tests, browser only for critical flows."
+/>
+
+<Mistake
+  title="Mocking auth"
+  why="Then authorization and tenant scoping are never tested, and those are the most dangerous bugs."
+  better="Sign in for real with a seeded test user and send the token."
+/>
+
+<Mistake
+  title="Tests that depend on order"
+  why="If one test needs another test's data, it fails when run alone or in parallel."
+  better="Each test creates its own data and does not rely on any other test."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Small Functions & Single Responsibility](/courses/best-practices/small-functions), [Definition of Done](/courses/best-practices/definition-of-done) |
+| **Alongside** | [Testing React Apps](/courses/react/testing), [Testing Next.js Apps](/courses/nextjs/testing) |
+| **After** | [Endpoint Tests First](/courses/best-practices/endpoint-tests-first), [CI/CD & Environments](/courses/best-practices/ci-cd-and-environments) |
+
+## Final quick revision
+
+| Check | Yes? |
+| --- | --- |
+| Unit tests for pure logic | |
+| Contract tests for every endpoint | |
+| Browser tests only for critical flows | |
+| Tests sign in as a seeded real user | |
+| Isolated database, never production | |
+| Vendors faked, paid AI calls kept out of CI | |
+
+<Callout variant="important" title="Remember">
+
+A test's job is to give confidence. A test that tests a mock, or fails now and then, does not give confidence, it gives noise.
+
+</Callout>

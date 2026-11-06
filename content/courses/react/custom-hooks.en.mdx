@@ -1,0 +1,176 @@
+---
+title: Custom Hooks
+description: Learn how to pull repeated stateful logic into reusable React custom hooks, with naming rules and real examples for beginners.
+keywords:
+  - react custom hooks
+  - create custom hook react
+  - reusable logic react
+  - react hooks pattern
+---
+
+## 1. What are custom hooks?
+
+<Callout variant="tip" title="Short definition">
+
+**A custom hook is a normal JavaScript function whose name starts with `use` and which calls other hooks inside it.**
+
+</Callout>
+
+When two or more components share the same logic, like checking online status or tracking the window size, you can pull that logic out into a custom hook.
+
+Every component that calls the hook gets **its own separate state**. A hook shares logic, not state.
+
+## 2. Why do they matter?
+
+<CompareTable leftTitle="Without a custom hook" rightTitle="With a custom hook">
+
+The same useState and useEffect in every component | The logic lives in one hook, one line everywhere
+A bug fix has to be made in three places | One fix, and all components are correct
+Components get long and confusing | Components focus only on UI
+Logic is hard to test | You can test the hook on its own
+
+</CompareTable>
+
+## 3. Where are they used?
+
+| Hook name | What it does |
+| --- | --- |
+| `useOnlineStatus` | Tells you whether the user is online or offline |
+| `useLocalStorage` | Syncs state with localStorage |
+| `useDebounce` | Updates a value after typing stops |
+| `useWindowSize` | The width and height of the screen |
+| `useAuth` | Gets the current user from Context |
+
+## 4. How do they work?
+
+<Flow title="The process of extracting logic">
+
+Notice the same hook logic in two components
+↓
+Move it into a function that starts with use
+↓
+Return the values that are needed
+↓
+Call the hook in your components
+↓
+Each call gets its own separate state
+
+</Flow>
+
+The [Rules of Hooks](/courses/react/rules-of-hooks) apply to custom hooks too: call them at the top level, not inside loops or conditions.
+
+## 5. Code example
+
+### useOnlineStatus
+
+```tsx
+import { useEffect, useState } from "react";
+
+export function useOnlineStatus() {
+  const [isOnline, setIsOnline] = useState(true);
+
+  useEffect(() => {
+    const update = () => setIsOnline(navigator.onLine);
+    update();
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    return () => {
+      window.removeEventListener("online", update);
+      window.removeEventListener("offline", update);
+    };
+  }, []);
+
+  return isOnline;
+}
+```
+
+### Using it in two components
+
+```tsx
+import { useOnlineStatus } from "./use-online-status";
+
+export function StatusBar() {
+  const isOnline = useOnlineStatus();
+  return <p>{isOnline ? "Online" : "Offline"}</p>;
+}
+
+export function SaveButton() {
+  const isOnline = useOnlineStatus();
+  return <button disabled={!isOnline}>Save</button>;
+}
+```
+
+### useDebounce
+
+```tsx
+import { useEffect, useState } from "react";
+
+export function useDebounce<T>(value: T, delay = 400) {
+  const [debounced, setDebounced] = useState(value);
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(id);
+  }, [value, delay]);
+
+  return debounced;
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `useOnlineStatus` | The `use` prefix tells React and the linter that this is a hook |
+| `useEffect` cleanup | Removes the listeners when the component is removed |
+| `return isOnline` | The hook returns only the value that is needed |
+| Two components | Each has its own separate `isOnline` state |
+| `useDebounce<T>` | A generic hook that works with a value of any type |
+
+## 6. Common mistakes
+
+<Mistake
+  title="Not starting the function name with use"
+  why="The linter cannot check the Rules of Hooks, and using hooks inside it looks wrong."
+  better="Name every function that calls hooks useSomething."
+/>
+
+<Mistake
+  title="Turning every function into a hook"
+  why="If no hook is used inside, it is just a normal helper function."
+  better="Write a simple function for logic without hooks, like formatPrice."
+/>
+
+<Mistake
+  title="Thinking a custom hook shares state"
+  why="Each call has its own state, so a change in one component is not visible in another."
+  better="If you need to share state, use lifting state up or Context."
+/>
+
+### Interview tip
+
+A good custom hook does **one thing**, and its name tells you what it does. Avoid generic lifecycle hooks like `useMount`, because they go against React's model.
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Rules of Hooks](/courses/react/rules-of-hooks), [useEffect](/courses/react/use-effect), [useRef](/courses/react/use-ref) |
+| **Alongside** | [useContext](/courses/react/use-context), [useReducer](/courses/react/use-reducer) |
+| **After** | [useEffectEvent](/courses/react/use-effect-event), [Data Fetching](/courses/react/data-fetching), [Testing React Apps](/courses/react/testing) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| What it is | A function starting with `use` that calls hooks |
+| What is shared | Logic, not state |
+| Rules | The Rules of Hooks apply here too |
+| Return value | Whatever is needed: a value, an array or an object |
+| Benefit | Reusable, testable, clean components |
+
+<Callout variant="important" title="Remember">
+
+Whenever you see the same hook logic in two components, pull it into a **custom hook**. Start the name with `use` and let the hook do one thing.
+
+</Callout>

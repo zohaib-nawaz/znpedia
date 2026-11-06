@@ -1,0 +1,242 @@
+---
+title: Authentication Patterns
+description: Authentication best practices for sessions and tokens. Resolve the user in one place, fail closed, store only hashed tokens and use secure cookies.
+keywords:
+  - authentication best practices sessions tokens
+  - session cookie security
+  - fail closed authentication
+  - password hashing
+  - nextjs auth pattern
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Only one shared function or middleware decides who the caller is. It fails closed, tokens are stored only as hashes, and every page and handler calls this function itself.**
+
+</Callout>
+
+Authentication answers "who are you?". It is different from authorization, which asks "what are you allowed to do?".
+
+There are three common and sound models. Pick one at a time, and do not invent a fourth yourself:
+
+| Model | When |
+| --- | --- |
+| Managed auth provider (Supabase Auth, Auth.js, etc.) | A web app where users have accounts |
+| Passwordless session (a code or link by email) | Visitors or a small admin team with no classic account |
+| Access tokens (with expiry) | An API used by a mobile app or other clients |
+
+## 2. Why does it matter?
+
+A real and very common bug: auth middleware wrapped in a `try/catch`. An error happened while verifying the token, the catch logged it and called `next()`. Result: a small database problem made **every route public**. This is called failing open.
+
+Another: in Next.js, security was placed only in middleware. In 2025 a vulnerability appeared where sending a special header made the middleware get skipped entirely. Apps whose pages checked the user themselves were safe.
+
+A third: session tokens were stored in plain text in the database. A backup leaked and every user's session was stolen.
+
+<CompareTable leftTitle="Scattered auth" rightTitle="One place, fail closed">
+
+Each route reads the cookie itself | One getCurrentUser function, nobody else touches the cookie
+On error the request continues | On error, 401, never allow
+Only middleware is the security boundary | Every page and handler checks for itself
+Token stored in plain text in the database | Only the SHA-256 hash is stored
+Token from Math.random | 32 random bytes from crypto
+Login reveals whether an email is registered | The answer is the same in every case
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Learn to use a provider | Writing auth yourself is fine for learning, but not in production |
+| **Production code** | Required, and with a proven library | A mistake here is a direct account takeover |
+| **Senior level** | Choosing the model, fail closed review | Designing for outages, token rotation and machine callers |
+
+When to learn it: the first time you build a page for logged in users only. Look at [Cookies & Headers](/courses/nextjs/cookies-and-headers) and [Authentication](/courses/nextjs/authentication) first.
+
+## 4. Bad vs good code
+
+### Bad: fail open and a weak token
+
+```ts
+export async function authMiddleware(request: Request, next: () => Promise<Response>) {
+  try {
+    const token = request.headers.get("authorization");
+    request.user = await verifyToken(token);
+  } catch (error) {
+    console.log("auth failed", error);
+  }
+  return next();
+}
+
+export function createSessionToken() {
+  return Math.random().toString(36).slice(2);
+}
+```
+
+`next()` runs even on an error. `Math.random` is predictable and the token is not cryptographically secure.
+
+### Good: sessions in one module
+
+File `lib/auth/session.ts`:
+
+```ts
+import "server-only";
+
+import { createHash, randomBytes } from "node:crypto";
+import { cookies } from "next/headers";
+
+import { insertSession, findActiveSessionByHash } from "./session.queries";
+import { SESSION_COOKIE, SESSION_MAX_AGE_SECONDS } from "./session.types";
+
+function hashToken(token: string) {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+export async function startSession(userId: string) {
+  const token = randomBytes(32).toString("base64url");
+  const expiresAt = new Date(Date.now() + SESSION_MAX_AGE_SECONDS * 1000);
+
+  await insertSession({ userId, tokenHash: hashToken(token), expiresAt });
+
+  const cookieStore = await cookies();
+  cookieStore.set(SESSION_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: SESSION_MAX_AGE_SECONDS,
+  });
+}
+
+export async function getCurrentUser() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(SESSION_COOKIE)?.value;
+  if (!token) {
+    return null;
+  }
+
+  const session = await findActiveSessionByHash(hashToken(token));
+  if (!session) {
+    return null;
+  }
+
+  return session.user;
+}
+```
+
+`findActiveSessionByHash` only returns a row whose `expires_at` is in the future and whose `revoked_at` is empty. Logout revokes the row, so even a stolen token stops working.
+
+For machine callers, such as cron, check a shared secret:
+
+```ts
+import { timingSafeEqual } from "node:crypto";
+
+export function isCronRequest(request: Request) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) {
+    throw new MissingConfigError("CRON_SECRET");
+  }
+
+  const expected = Buffer.from(`Bearer ${secret}`);
+  const received = Buffer.from(request.headers.get("authorization") ?? "");
+  if (expected.length !== received.length) {
+    return false;
+  }
+
+  return timingSafeEqual(expected, received);
+}
+```
+
+If the secret is not set, the request is not allowed, and it becomes a 503 error.
+
+### What is the difference?
+
+| Thing | Bad code | Good code |
+| --- | --- | --- |
+| On error | `next()`, everything public | `null` or 401, nothing allowed |
+| Token | `Math.random` | `randomBytes(32)` |
+| Storage | Plain token | SHA-256 hash |
+| Cookie | Default settings | `httpOnly`, `secure`, `sameSite`, `maxAge` |
+| Revoke | Not possible | Through `revoked_at` |
+| Secret compare | `!==` | `timingSafeEqual` |
+
+## 5. How to apply it
+
+<Flow title="The straight path for auth">
+
+Pick one model and use a proven library
+↓
+One function resolves the caller, nobody else reads the cookie
+↓
+Fail closed on an error or a missing secret
+↓
+Tokens from random bytes, store only the hash
+↓
+Every page and handler calls the function itself
+
+</Flow>
+
+A few more important points:
+
+- For passwords use scrypt, argon2 or bcrypt, through a library. Never plain text or md5.
+- The response for login and "forgot password" should be the same whether or not the email is registered.
+- Rate limit the login endpoint.
+- `proxy.ts` (formerly middleware) should only refresh the session. It is a convenience, not a security boundary.
+- If the auth provider is down, keep "signed out" and "could not verify" as different states. Do not quietly treat an error as an anonymous user.
+- On mobile, keep the token in secure storage, not in ordinary storage.
+
+## 6. Exceptions and common mistakes
+
+Some things are not authentication but are fine: a long random link made for one job, such as confirming a booking. The conditions are that it expires, it is stored hashed if it grants writes, and it is `noindex` for search engines.
+
+<Mistake
+  title="Treating a client side flag as auth"
+  why="Anyone can write isAdmin true into localStorage, or call setIsAdmin on the page, from the browser console."
+  better="Role and verification should come from the server on every request, and client flags should only be UI hints."
+/>
+
+<Mistake
+  title="Making middleware the only door"
+  why="One matcher mistake or a framework bug can skip the whole middleware and leave pages open."
+  better="Every page, server action and route handler calls its own getCurrentUser."
+/>
+
+<Mistake
+  title="An auth bypass for tests that also works in production"
+  why="Forgetting one env variable opens the bypass in production, and anyone can use anyone's account."
+  better="Log in for real with a seeded test user, and if a bypass exists, make the middleware itself refuse it in production."
+/>
+
+<Mistake
+  title="Inventing your own crypto or session system"
+  why="Details like timing attacks, token rotation and expiry are often missed."
+  better="Use a proven provider or library and only learn its configuration."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Cookies & Headers](/courses/nextjs/cookies-and-headers), [Authentication](/courses/nextjs/authentication), [Secrets Management](/courses/best-practices/secrets-management) |
+| **Alongside** | [Proxy (formerly Middleware)](/courses/nextjs/proxy), [Rate Limiting & Background Jobs](/courses/best-practices/rate-limiting-and-background-jobs) |
+| **After** | [Authorization & Multi-Tenancy](/courses/best-practices/authorization-and-tenancy), [Security Baseline](/courses/best-practices/security-baseline) |
+
+## Final quick revision
+
+| Check | Question |
+| --- | --- |
+| One place | Does only one function resolve the caller? |
+| Fail closed | Does the request stop on an error or a missing secret? |
+| Tokens | Are they made from random bytes and stored as hashes? |
+| Cookie | Are `httpOnly`, `secure`, `sameSite` and `maxAge` set? |
+| Check everywhere | Do pages and handlers check for themselves, not just the proxy? |
+| Enumeration | Does the login response hide whether an account exists? |
+
+<Callout variant="important" title="Remember">
+
+When in doubt in auth, keep the door shut. One user being unable to log in for a short while is a problem, but every route becoming public is a disaster.
+
+</Callout>

@@ -1,0 +1,177 @@
+---
+title: Breathing Room & Transient Locals
+description: Two code readability formatting rules. Blank lines between logic blocks, a blank line before return, and inlining variables that are only used once.
+keywords:
+  - code readability formatting
+  - blank lines between code blocks
+  - inline temporary variable
+  - padding line between statements
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Leave a blank line between logic blocks and before every `return`. If a value is assigned once and used once, do not create a separate variable for it. Inline it.**
+
+</Callout>
+
+These are two small rules that work together:
+
+| Rule | Meaning |
+| --- | --- |
+| **Breathing room** | A function reads as small separate steps, not one dense paragraph |
+| **Blank line before return** | The result of the function always stands out |
+| **No transient locals** | A value used once gets no name, you just use it directly |
+| **When to name** | A value used more than once, an accumulator, or a condition that takes time to understand |
+
+## 2. Why does it matter?
+
+Blank lines are the paragraphs of code. Reading a book without paragraphs is tiring. And pointless variables force the reader to remember every name, even if it never shows up again.
+
+<CompareTable leftTitle="Dense code with extra variables" rightTitle="Code that breathes">
+
+20 lines in one block, you cannot see where steps end | Each step is separate, the eye spots the chunks on its own
+The return hides in the middle | The return is always separate, the result is obvious
+5 names that appear only once | Only the names that are needed
+The reader tracks every variable | Fewer names, less to remember
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Build the blank line habit now | It is the easiest readability win |
+| **Production code** | Enforce with lint and a formatter | People should not have to remember formatting |
+| **Senior level** | Judgement on transient locals | When a name helps and when it is noise comes with experience |
+
+## 4. Bad vs good code
+
+```ts
+async function publish(postId: string, editor: User) {
+  const post = await posts.require(postId);
+  const isOwner = post.authorId === editor.id;
+  const role = editor.role;
+  const isEditor = role === "editor";
+  if (!isOwner && !isEditor) {
+    throw new ForbiddenError("Cannot publish");
+  }
+  const now = new Date();
+  const data = { status: "published", publishedAt: now };
+  const updated = await db.post.update({ where: { id: postId }, data });
+  const url = `/blog/${updated.slug}`;
+  await cache.invalidate(url);
+  return updated;
+}
+```
+
+```ts
+async function publish(postId: string, editor: User) {
+  const post = await posts.require(postId);
+  const canPublish = post.authorId === editor.id || editor.role === "editor";
+
+  if (!canPublish) {
+    throw new ForbiddenError(`User ${editor.id} cannot publish post ${postId}`);
+  }
+
+  const updated = await db.post.update({
+    where: { id: postId },
+    data: { status: "published", publishedAt: new Date() },
+  });
+
+  await cache.invalidate(`/blog/${updated.slug}`);
+
+  return updated;
+}
+```
+
+| What is the difference? | Bad | Good |
+| --- | --- | --- |
+| Blank lines | None, one dense block | Load, check, update, invalidate, return, all separate |
+| `role`, `now`, `data`, `url` | Used once, yet named | Inlined, fewer names for the reader to remember |
+| `isOwner`, `isEditor` | Two half predicates | One complete `canPublish`, the meaning of the condition is in the name |
+| `post`, `updated` | Named, fine | Named, fine, because they are used more than once |
+
+`canPublish` is a **predicate**: without it, the reader would have to decode a condition with `||`. That is why it deserves a name. The name `now` tells you nothing that `new Date()` does not.
+
+## 5. How to apply it
+
+<Flow title="Giving a function room to breathe">
+
+Think of the function in steps: load, check, act, side effect, return
+↓
+A blank line after each step
+↓
+Always a blank line before return
+↓
+Look at each variable: how many times is it used?
+↓
+Used once and the name adds nothing? Inline it
+↓
+A hard condition? Name it as a predicate
+
+</Flow>
+
+A lint config can do this for you:
+
+```json
+{
+  "rules": {
+    "padding-line-between-statements": [
+      "error",
+      { "blankLine": "always", "prev": "*", "next": "return" }
+    ]
+  }
+}
+```
+
+Let a formatter like Prettier handle the rest of the formatting (indentation, quotes, semicolons). People should only make the decisions that carry meaning: where a step ends.
+
+## 6. Exceptions and common mistakes
+
+A one line function that contains only a `return` does not need a blank line above it.
+
+**An honest note:** "no transient locals" is a strict opinion. Many teams and well known refactoring books treat an "explaining variable" as good: break a long expression into a name so it is easier to read. This rule allows exactly that when the name truly explains something (a predicate). What it does not allow is a name like `const data = ...; return data;` that says nothing. Another trade-off: it is easier to inspect a local variable's value in a debugger. When an inline expression gets very long, a name is better.
+
+<Mistake
+  title="Putting everything into a variable first"
+  why="In const result = compute(x); return result; the name result adds nothing, it is just one more line and one more name."
+  better="Write return compute(x) directly."
+/>
+
+<Mistake
+  title="Leaving a hard condition inline"
+  why="An if with a long chain of && and || forces the reader to decode it."
+  better="Give the condition a name like isX or canX, a predicate deserves a name."
+/>
+
+<Mistake
+  title="A blank line after every line"
+  why="If there are empty lines everywhere, no grouping is visible, which is as bad as dense code."
+  better="Add a blank line only when a logical step ends."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Small Functions](/courses/best-practices/small-functions), [Naming Things](/courses/best-practices/naming) |
+| **Alongside** | [Early Returns & Braces](/courses/best-practices/early-returns-and-braces) |
+| **After** | [Constants & Magic Values](/courses/best-practices/constants-and-magic-values), [Refactoring Safely](/courses/best-practices/refactoring-safely) |
+
+## Final quick revision
+
+| Check | Question |
+| --- | --- |
+| Steps | Is there a blank line after each logic step? |
+| Return | Is there a blank line before return? |
+| Transient | Is any variable used once with a name that says nothing? |
+| Predicate | Does the hard condition have a name? |
+| Tooling | Are the formatter and the padding lint rule turned on? |
+
+<Callout variant="important" title="Remember">
+
+A blank line is a full stop, and every name is a burden on the reader. Separate the steps, and add a name only where it explains something.
+
+</Callout>

@@ -1,0 +1,210 @@
+---
+title: Common Vulnerabilities (OWASP)
+description: OWASP top 10 vulnerabilities for web developers, with bad vs good examples of broken access control, SQL injection, XSS, path traversal and fail open errors.
+keywords:
+  - owasp top 10 vulnerabilities
+  - broken access control idor
+  - sql injection prevention
+  - xss react dangerouslysetinnerhtml
+  - path traversal
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Write every endpoint assuming the input is hostile: an authorization check on every resource, every query parameterized, every output encoded for its context, and never any access on error.**
+
+</Callout>
+
+OWASP (Open Worldwide Application Security Project) is a community that looks at data from real breaches and builds a list of the most common web risks. The top part of the 2025 list is this:
+
+| # | Risk | In one line |
+| --- | --- | --- |
+| A01 | Broken Access Control | A user sees or changes data that is not theirs |
+| A02 | Security Misconfiguration | Wrong headers, CORS, default settings |
+| A03 | Software Supply Chain Failures | A dependency or build pipeline is compromised |
+| A04 | Cryptographic Failures | Weak hashing, plain text secrets |
+| A05 | Injection | User input inside SQL, shell or HTML |
+| A10 | Mishandling of Exceptional Conditions | On an error the system opens up or leaks detail |
+
+## 2. Why does it matter?
+
+This is not theoretical. Broken Access Control is number 1 on the list because most breaches come from it, and it is often just one forgotten line.
+
+<Callout variant="note" title="Real pattern">
+
+AI generated code often creates a route but forgets the authentication middleware or the ownership check. The code runs, the tests (if they only cover the success path) pass, and by changing `/api/invoices/124` someone else's invoice opens. Check every generated route handler separately.
+
+</Callout>
+
+<CompareTable leftTitle="Weak code" rightTitle="Safe code">
+
+Checked login, not ownership | Owner or tenant check on every resource
+A variable joined into the SQL string | A parameterized query
+The user's HTML rendered directly | React escaping, or sanitize first
+User input in a file path | Map from an allow-list or a random ID
+next() or success inside catch | Deny and log inside catch
+Stack trace in the error | A generic message, detail in the logs
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Understand injection and access control | They are asked about in interviews and in your first job |
+| **Production code** | In every PR | One missing check becomes a full data leak |
+| **Senior level** | A review checklist and automated scanning | Catching these in every PR the team opens |
+
+## 4. Bad vs good code
+
+### Broken access control (IDOR)
+
+```ts
+export async function GET(request: Request, ctx: { params: Promise<{ id: string }> }) {
+  const user = await requireUser(request);
+  const { id } = await ctx.params;
+  const invoice = await db.invoice.findUnique({ where: { id } });
+  return Response.json(invoice);
+}
+```
+
+The user is logged in, but nobody checked whose invoice it is.
+
+```ts
+export async function GET(request: Request, ctx: { params: Promise<{ id: string }> }) {
+  const user = await requireUser(request);
+  const { id } = await ctx.params;
+  const invoice = await db.invoice.findFirst({ where: { id, ownerId: user.id } });
+
+  if (!invoice) {
+    return Response.json({ error: "not found" }, { status: 404 });
+  }
+
+  return Response.json(invoice);
+}
+```
+
+Someone else's invoice also gets a `404`, so it does not even leak that the ID exists.
+
+### SQL injection
+
+```ts
+const rows = await sql.unsafe(`SELECT * FROM users WHERE email = '${email}'`);
+```
+
+```ts
+const rows = await sql`SELECT * FROM users WHERE email = ${email}`;
+```
+
+A tagged template sends the value to the driver separately, so `' OR 1=1 --` becomes just a strange email, not part of the query.
+
+### XSS
+
+```tsx
+<div dangerouslySetInnerHTML={{ __html: comment.body }} />
+```
+
+```tsx
+<p>{comment.body}</p>
+```
+
+React escapes text by itself. If you really must render HTML, pass it through a trusted sanitizer (like DOMPurify) first.
+
+### Fail open error
+
+```ts
+try {
+  await verifySubscription(user);
+} catch {
+  return next();
+}
+```
+
+The payment provider went down and everyone got premium. On an error, **deny** and log it.
+
+### What is the difference?
+
+| Vulnerability | Bad | Good |
+| --- | --- | --- |
+| IDOR | Fetch by `id` only | Fetch by `id` + `ownerId` |
+| SQL injection | String interpolation | Parameterized query |
+| XSS | Render raw HTML | Escaped text or sanitized HTML |
+| Path traversal | `readFile(req.query.name)` | Look up by allow-list or ID |
+| Exceptional conditions | Allow on error | Deny on error |
+
+## 5. How to apply it
+
+On every new endpoint or PR, ask these questions:
+
+<Flow title="Endpoint security review">
+
+Is this route behind authentication?
+↓
+Was the owner or tenant of every resource checked?
+↓
+Was the input validated with a schema?
+↓
+Is every query parameterized?
+↓
+Is the output encoded for its context (HTML, URL, shell)?
+↓
+What happens on error: deny or allow?
+
+</Flow>
+
+Also remember the patterns you can catch with grep: `eval` or a dynamic `import()` with user input, SQL built by string concatenation, `http://` URLs in production, and `*` in CORS.
+
+## 6. Exceptions and common mistakes
+
+**When the rule does not apply:** public content (like published blog posts) does not need an ownership check. But every route that writes, changes or deletes does, even if it is admin only.
+
+<Mistake
+  title="Authorization only in the UI"
+  why="Hiding a button does not close the API, anyone can call it with curl."
+  better="Do every check on the server, the UI is only a convenience."
+/>
+
+<Mistake
+  title="Returning 403 for a forbidden resource"
+  why="403 reveals that the resource exists, which opens the way to enumeration."
+  better="For another user's resource, return the same 404 you would return if it did not exist."
+/>
+
+<Mistake
+  title="Taking a dynamic column name from the user"
+  why="Column names cannot be parameterized, so injection comes back."
+  better="Keep an allow-list of sort or filter columns and let the user choose only from it."
+/>
+
+<Mistake
+  title="Approving generated code after running only the success path"
+  why="A missing auth check is invisible on the success path."
+  better="Also run the request with another user's token, and write that into a test."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Security Baseline](/courses/best-practices/security-baseline), [Authorization & Multi-Tenancy](/courses/best-practices/authorization-and-tenancy) |
+| **Alongside** | [Query Patterns & Transactions](/courses/best-practices/query-patterns), [Input Validation at the Boundary](/courses/best-practices/input-validation) |
+| **After** | [Dependencies & Supply Chain](/courses/best-practices/dependency-security), [Endpoint Tests First](/courses/best-practices/endpoint-tests-first) |
+
+## Final quick revision
+
+| Check | Yes? |
+| --- | --- |
+| Ownership or tenant check on every resource | |
+| Another user's resource returns 404 | |
+| Every query parameterized | |
+| User HTML sanitized or escaped | |
+| File paths not built from user input | |
+| Deny on error, detail only in logs | |
+
+<Callout variant="important" title="Remember">
+
+"Is logged in" and "has the right to this" are two different questions. Ask both on every request.
+
+</Callout>

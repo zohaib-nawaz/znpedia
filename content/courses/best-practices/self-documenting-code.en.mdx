@@ -1,0 +1,185 @@
+---
+title: Self-Documenting Code (No Comments)
+description: How to write self-documenting code without comments - use names, named functions and constants instead, and learn when a comment is truly needed.
+keywords:
+  - self documenting code comments
+  - code without comments
+  - when to write comments
+  - clean code comments
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Let the code explain itself. Instead of writing a comment to explain it, rename it, extract a function or create a constant.**
+
+</Callout>
+
+The strict version in this course is: **no explanatory comments** in code. No section banners, no docblocks, no "why is this line here" comments. If a line needs explaining, the code is not clear enough yet.
+
+Only a few comments are allowed, the ones meant for machines or that cannot live anywhere else:
+
+| Allowed | Example |
+| --- | --- |
+| Linter or type-checker directive | `// eslint-disable-next-line` |
+| Code generator marker | The header of a generated file |
+| Blocks that generate API docs | Doc comments for OpenAPI, if the tool builds docs from them |
+| SQL migration header | Why this migration exists |
+| An explanation of each key in `.env.example` | What breaks if this variable is missing |
+
+A "why" that must be remembered for a long time (a strange vendor limit, a deliberate decision) goes in the project's decisions document, not in the code.
+
+## 2. Why does it matter?
+
+The biggest problem with comments: **the compiler does not check them**. The code changes, the comment stays, and now it is lying.
+
+<CompareTable leftTitle="Explaining with comments" rightTitle="Explaining with code">
+
+The code changed, the comment stayed old and misleads | A rename changes everywhere, and the compiler checks it
+A bad name and a comment above it, you have to read both | A good name, only one thing to read
+Bad code hides behind a comment | Pressure to clean it up, so the code gets better
+A pile of commented-out code | Dead code is deleted, and the history is in Git
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Comments are fine for notes, but build the habit of improving the name first | Comments are reminders while learning, but start practicing naming now |
+| **Production code** | Follow the team's rule | Stale comments in production cause confusion and bugs |
+| **Senior level** | Decide which comments are allowed | A senior makes a clear list for the team |
+
+## 4. Bad vs good code
+
+```ts
+function check(u: User) {
+  // check if trial is expired (14 days)
+  if (Date.now() - u.createdAt.getTime() > 14 * 24 * 60 * 60 * 1000) {
+    // user is not on a paid plan
+    if (u.plan === "free") {
+      return false;
+    }
+  }
+
+  return true;
+}
+```
+
+```ts
+const TRIAL_LENGTH_MS = 14 * 24 * 60 * 60 * 1000;
+
+function isTrialExpired(user: User) {
+  return Date.now() - user.createdAt.getTime() > TRIAL_LENGTH_MS;
+}
+
+function canAccess(user: User) {
+  if (!isTrialExpired(user)) {
+    return true;
+  }
+
+  return user.plan !== "free";
+}
+```
+
+| What is the difference? | Bad | Good |
+| --- | --- | --- |
+| Function name | `check` says nothing | `canAccess` tells you the answer |
+| Condition | You understand it by reading the comment | `isTrialExpired` speaks for itself |
+| Number | `14` in a comment, a long calculation in the code | `TRIAL_LENGTH_MS` in one place |
+| Risk | If the trial becomes 30 days, the comment stays wrong | Change the constant, and everything is right |
+
+Every comment was a hint about what to extract. The first comment became a **predicate**, and the number became a **constant**.
+
+## 5. How to apply it
+
+<Flow title="When you feel like writing a comment">
+
+Ask: what is the comment explaining?
+↓
+The meaning of a value? Make a named constant
+↓
+The meaning of a condition? Make an isX or hasX predicate
+↓
+What a block does? Make that block a named function
+↓
+A long decision or a why? Write it in the decisions doc or the PR description
+↓
+Delete the comment
+
+</Flow>
+
+| Kind of comment | Better place |
+| --- | --- |
+| "what this does" | The name of the function or variable |
+| "what this number means" | A named constant |
+| "why this condition" | A named predicate |
+| "why we made this decision" | The decisions document |
+| "why this change" | The commit message or PR description |
+| Old code | Delete it, Git history keeps it |
+
+## 6. Exceptions and common mistakes
+
+**An honest note:** "no comments at all" is a strict house rule. Many good teams allow "why" comments, like a workaround for a browser bug or the source of an algorithm. JSDoc is also common in public libraries because editors show it. The trade-off: a strict rule forces you to keep the code clean, but sometimes you have to look somewhere else for a one-line "why". Whatever your team's rule is, "what" comments are useless everywhere.
+
+<Mistake
+  title="A comment that repeats the code"
+  why="A comment like increment i by 1 is just noise, and it goes wrong when the code changes."
+  better="Delete the comment. If the code is not clear on its own, improve the name."
+/>
+
+<Mistake
+  title="Leaving commented-out code behind"
+  why="Nobody knows whether it will come back, and it slowly stops matching the code around it."
+  better="Delete it. If you need it, bring it back from Git history."
+/>
+
+<Mistake
+  title="Organizing a long file with section banners"
+  why="A banner shows the file does several different jobs, which means the file is too big."
+  better="Move each section into its own file or function."
+/>
+
+<Mistake
+  title="Adding a linter directive without a reason"
+  why="eslint-disable is an allowed comment, but it hides the real problem."
+  better="First fix what the rule is complaining about, and use a directive only when there is no other way."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Core Philosophy](/courses/best-practices/core-philosophy) |
+| **Alongside** | [Naming Things](/courses/best-practices/naming), [Constants & Magic Values](/courses/best-practices/constants-and-magic-values) |
+| **After** | [Small Functions](/courses/best-practices/small-functions), [Documentation & Decision Records](/courses/best-practices/documentation-and-decisions) |
+
+<Flow title="Suggested order">
+
+Self-Documenting Code
+↓
+Naming Things
+↓
+Early Returns & Braces
+↓
+Small Functions
+
+</Flow>
+
+## Final quick revision
+
+| Check | Question |
+| --- | --- |
+| Name | Does the function name say what it returns? |
+| Predicate | Does every tricky condition have a name? |
+| Constant | Is any unnamed number or string left? |
+| Dead code | Is there any commented-out code? Delete it |
+| Why | Is the long decision in the decisions doc? |
+| Allowed list | Only directives, generator markers, migration headers, env example |
+
+<Callout variant="important" title="Remember">
+
+Every comment is a question: "can I say this with a name, a function or a constant?" Most of the time the answer is yes.
+
+</Callout>

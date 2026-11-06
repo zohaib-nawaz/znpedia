@@ -1,0 +1,185 @@
+---
+title: Proxy (formerly Middleware)
+description: What the Next.js proxy.ts file is, the replacement for middleware, and how it redirects, rewrites and changes headers before a request, with matcher and the Node runtime.
+keywords:
+  - next.js proxy middleware
+  - proxy.ts next.js 16
+  - next.js middleware to proxy
+  - next.js matcher redirect rewrite
+---
+
+## 1. What is Proxy?
+
+<Callout variant="tip" title="Short definition">
+
+**Proxy is a `proxy.ts` file that runs on every matching request before it reaches the page, and it can redirect, rewrite or change headers.**
+
+</Callout>
+
+In Next.js 16, `middleware.ts` was renamed to `proxy.ts`. The job is the same, but the new name makes it clear that this is a **network boundary** standing in front of your app. The exported function is also named `proxy`.
+
+`proxy.ts` always runs on the **Node.js runtime**. The old `middleware.ts` still exists only for Edge runtime cases, but it is deprecated.
+
+## 2. Why does it matter?
+
+Some decisions must be made before the page renders: which language page to send the user to, which version of an A/B test to show, sending the user to `/login` if they are not logged in.
+
+<CompareTable leftTitle="Checking in every page" rightTitle="One proxy.ts">
+
+Copying redirect logic into every page | Centralized logic in one place
+The page render has already started | Before the request reaches the page
+Setting headers is hard | Can change both request and response headers
+The confusing name middleware.ts | proxy.ts, Node runtime, clear purpose
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Use case | What Proxy does |
+| --- | --- |
+| **Optimistic auth redirect** | Send the user to `/login` if there is no session cookie |
+| **i18n** | Look at `Accept-Language` and redirect to `/ur` or `/en` |
+| **A/B testing** | Rewrite to a different page based on a cookie |
+| **Security headers** | Add a custom header to every response |
+| **Old URLs** | Redirects with complex logic |
+
+For simple, fixed redirects, look at the `redirects` option in `next.config.ts` first. Use Proxy only when you need logic based on request data.
+
+## 4. How does it work?
+
+<Flow title="Proxy flow">
+
+Browser request
+↓
+The matcher checks whether the path matches
+↓
+The proxy function runs
+↓
+NextResponse.next or redirect or rewrite
+↓
+The route renders, or the new URL is served
+
+</Flow>
+
+| Rule | Detail |
+| --- | --- |
+| Location | In the project root, or inside `src`, next to `app` |
+| Count | Only one `proxy.ts` in the whole project |
+| Export | A named `proxy` function or a default export |
+| Runtime | Node.js |
+| Caching | The cache options of `fetch` have no effect in Proxy |
+
+<Callout variant="important" title="Mental model">
+
+**Proxy is a doorman: it decides immediately to let you in, send you elsewhere, or put a label on you. Long work or database queries are not its job.**
+
+</Callout>
+
+## 5. Code example
+
+### Example: auth redirect and a custom header
+
+```ts
+import { NextResponse, type NextRequest } from "next/server";
+
+const protectedPaths = ["/dashboard", "/settings"];
+
+export function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const hasSession = request.cookies.has("session");
+  const isProtected = protectedPaths.some((path) => pathname.startsWith(path));
+
+  if (isProtected && !hasSession) {
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("from", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  if (pathname === "/pricing" && request.cookies.get("ab")?.value === "b") {
+    return NextResponse.rewrite(new URL("/pricing-b", request.url));
+  }
+
+  const response = NextResponse.next();
+  response.headers.set("x-app-version", "16");
+  return response;
+}
+
+export const config = {
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+};
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `export function proxy` | The new name in Next.js 16, it used to be `middleware` |
+| `request.nextUrl.pathname` | The current path |
+| `request.cookies.has("session")` | Only checks that the cookie exists, an optimistic check |
+| `NextResponse.redirect(url)` | The URL in the browser changes |
+| `NextResponse.rewrite(url)` | The URL stays the same, but another page is served behind it |
+| `NextResponse.next()` | Lets the request continue |
+| `config.matcher` | Do not run Proxy on static files and the API |
+
+### Migration: from middleware.ts to proxy.ts
+
+```bash
+npx @next/codemod@canary upgrade latest
+```
+
+The manual way: rename the file from `middleware.ts` to `proxy.ts` and the function from `middleware` to `proxy`. The logic stays the same.
+
+### Interview tip
+
+"Is auth in Proxy enough?" Answer: **no**. Proxy is only for an optimistic check. Real authorization should happen close to the data, in the Data Access Layer, Server Actions and Route Handlers.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Turning Proxy into the whole auth system"
+  why="Proxy only looks at the cookie, and it can be bypassed by calling Server Actions and Route Handlers directly."
+  better="Only redirect in Proxy, and verify the session in the DAL, next to the data."
+/>
+
+<Mistake
+  title="Doing a database query or a slow fetch in Proxy"
+  why="Proxy runs on every matching request and prefetch, so the whole app becomes slow."
+  better="Decide immediately from a cookie or header only, and keep heavy work in the pages."
+/>
+
+<Mistake
+  title="Not setting a matcher"
+  why="Proxy also runs on images, CSS and _next files, doing work for no reason."
+  better="Use the matcher to exclude static assets and paths you do not need."
+/>
+
+<Mistake
+  title="Writing new code in middleware.ts on Next.js 16"
+  why="middleware.ts is deprecated and will be removed in a future version."
+  better="Create proxy.ts and export a function named proxy."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Routing & Pages](/courses/nextjs/routing-and-pages), [What's New in Next.js 16](/courses/nextjs/nextjs-16-whats-new) |
+| **Alongside** | [Cookies & Headers](/courses/nextjs/cookies-and-headers), [Route Handlers (API)](/courses/nextjs/route-handlers) |
+| **After** | [Authentication](/courses/nextjs/authentication), [Internationalization (i18n)](/courses/nextjs/internationalization) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| File | `proxy.ts`, in the root or in `src` |
+| Function | `export function proxy(request)` |
+| Runtime | Node.js |
+| Actions | `next()`, `redirect()`, `rewrite()`, headers |
+| Filter | `export const config = { matcher }` |
+| Auth | Only optimistic, the real check is in the DAL |
+
+<Callout variant="important" title="Remember">
+
+`proxy.ts` is the new name of the old `middleware.ts`. Keep it light and fast: redirects, rewrites and headers. Do database work and real security checks inside the app.
+
+</Callout>

@@ -1,0 +1,167 @@
+---
+title: Definition of Done
+description: A definition of done checklist that says when work is really finished, covering typecheck, tests, migrations, env, docs, screenshots and review.
+keywords:
+  - definition of done checklist
+  - pull request checklist
+  - when is a task done
+  - software quality checklist
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Work is done when every item on a written checklist is true, not just when "it works on my machine".**
+
+</Callout>
+
+A Definition of Done (DoD) is a short list that is the same for the whole team. Every pull request is checked against it. This way "done" means the same thing to everyone.
+
+## 2. Why does it matter?
+
+Without a written list, every developer has their own "done". For one person, done means the feature shows up on screen. For another, it means merged with tests. The difference shows up later as bugs, broken deploys and "who did this?".
+
+<Callout variant="note" title="Real pattern">
+
+A feature was marked "done". On deploy the app crashed because nobody knew about a new env variable, as it was not in `.env.example`. The next day it turned out the migration fails when run a second time, and the generated types were out of date. All three things could have been caught by one checklist.
+
+</Callout>
+
+<CompareTable leftTitle="It worked on my machine" rightTitle="With a definition of done">
+
+Typecheck only seen by the editor | Typecheck, lint and format green in CI
+Success path tested by hand | Tests for success, validation and auth failure
+New env variable kept in memory | Name and a note in .env.example
+Migration ran once | Migration is fine even when run twice
+The reviewer runs the screen themselves | Screenshot or recording in the PR
+Approved it myself | Someone else approved it
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | A short list: typecheck, lint, one test, README | The habit of "finished" is built here |
+| **Production code** | The full list, as checkboxes in the PR template | Every missing item can become a production bug |
+| **Senior level** | Automate the list in CI | What a machine can check should not take human time |
+
+## 4. Bad vs good code
+
+### Bad: PR description
+
+```bash
+added the export feature. done, pls review
+```
+
+The reviewer does not know what was tested, what env is needed, or whether there is a migration.
+
+### Good: PR description
+
+```bash
+add csv export for invoices
+
+why: accountants export invoices by hand every month
+
+how tested:
+  npm run typecheck, lint and tests pass
+  endpoint tests: success, invalid date range (422), invoice of another org (404)
+  migration applied twice locally, second run is a no-op
+  screenshot of the export button attached
+
+new env: EXPORT_BUCKET (exports fail with 503 without it)
+docs: docs/knowledge/exports.md updated
+```
+
+### What is the difference?
+
+| Thing | Bad | Good |
+| --- | --- | --- |
+| Tests | Unknown | Which cases, clearly written |
+| Env | Hidden | The name and what breaks without it |
+| Migration | Maybe | Idempotent, ran twice |
+| Review | The reviewer has to dig | Everything in front of them |
+
+## 5. How to apply it
+
+Keep this checklist as checkboxes in the PR template:
+
+| # | Item | Why |
+| --- | --- | --- |
+| 1 | Typecheck, lint and format pass locally and in CI | Basic bugs and style arguments end |
+| 2 | Success, validation and auth failure tests for every new or changed endpoint | Contract and security are proven |
+| 3 | A unit test for every changed pure function with branching | Edge cases of the logic |
+| 4 | The migration ran twice on a database where it was already applied | No crash on re-run |
+| 5 | Generated database types regenerated and committed | Code and schema match |
+| 6 | New env variable in `.env.example`, with a note | The next deploy does not break |
+| 7 | Docs updated if behaviour changed | Docs do not lie |
+| 8 | A screenshot or short recording for UI changes | The reviewer sees what was built |
+| 9 | Approval from someone other than the author | A second pair of eyes |
+
+<Flow title="The road to done">
+
+Code written
+↓
+Typecheck, lint and tests locally
+↓
+Check migration, types, env and docs
+↓
+Fill in the PR template checklist
+↓
+CI green
+↓
+Approval from someone else
+↓
+Done
+
+</Flow>
+
+## 6. Exceptions and common mistakes
+
+**When the rule does not apply:** an item that does not apply is skipped, but in writing: "no migration", "no UI change". A spike or prototype that will not be merged does not need the full list. But if that code later goes to main, the list applies from that point.
+
+<Mistake
+  title="Ticking a checkbox without running it"
+  why="A checklist only helps when it is true, a false tick gives no safety."
+  better="Leave the item you did not check empty and write the reason."
+/>
+
+<Mistake
+  title="Tests only for the happy path"
+  why="Most bugs and security holes live in failure paths."
+  better="Write validation and auth failure tests for every endpoint too."
+/>
+
+<Mistake
+  title="Making docs a separate ticket"
+  why="That ticket never gets done and the docs go stale."
+  better="Update the docs in the same PR that changes the behaviour."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Introduction](/courses/best-practices/introduction), [When to Learn What](/courses/best-practices/learning-path-and-levels) |
+| **Alongside** | [Testing Pyramid](/courses/best-practices/testing-pyramid), [Pull Requests & Code Review](/courses/best-practices/pull-requests-and-code-review) |
+| **After** | [Safe Migrations](/courses/best-practices/migrations), [Production Readiness Checklist](/courses/best-practices/production-readiness-checklist) |
+
+## Final quick revision
+
+| Check | Yes? |
+| --- | --- |
+| Typecheck, lint, format green | |
+| Endpoint tests for all three paths | |
+| Migration idempotent | |
+| Types regenerated | |
+| `.env.example` updated | |
+| Docs updated | |
+| Screenshot attached | |
+| Someone else's approval | |
+
+<Callout variant="important" title="Remember">
+
+"It works" and "it is done" are different things. Done is what the list says, and the list is the same for everyone.
+
+</Callout>

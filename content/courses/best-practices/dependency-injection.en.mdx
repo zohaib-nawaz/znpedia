@@ -1,0 +1,207 @@
+---
+title: Loose Coupling & Dependency Injection
+description: Dependency injection and loose coupling in TypeScript. Pass dependencies like a mailer, payments and a clock as parameters so code stays testable and easy to change.
+keywords:
+  - dependency injection loose coupling
+  - dependency injection typescript
+  - depend on abstractions
+  - testable code mocks
+  - static factory method
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Do not create outside dependencies (email, payments, the clock, third-party APIs) inside a function. Take them as parameters. And depend on a small type, not a concrete class.**
+
+</Callout>
+
+Dependency injection simply means: whatever the function needs is **handed to it**, and the function does not **go looking for it**. For a class that happens through the constructor, for a plain function through a parameter.
+
+Loose coupling is the result. Your service knows it needs "some mailer" that can `send`. It does not know whether that is SMTP, some vendor, or a test fake.
+
+## 2. Why does it matter?
+
+A real problem: a service had an SMTP transport built right inside it. Running the tests sent emails to real users. Switching vendors meant changing imports in dozens of files. And the "expiring users" test failed at midnight because the code called `new Date()` itself.
+
+<CompareTable leftTitle="Tight coupling" rightTitle="Injected dependencies">
+
+A test sends a real email or charges a real card | A test uses a fake mailer, nothing leaves the machine
+Switching vendors means changing imports in every file | Change the wiring in one place
+A time based test sometimes passes and sometimes fails | Inject a clock, the test sets the time itself
+The service knows every detail of the vendor SDK | The service knows only the small type it needs
+Construction rules repeated at every call site | Construction in one factory, everyone else uses it
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Understand the concept, do not inject everything | Working code first. Injecting the clock and the network is a good first practice |
+| **Production code** | Inject every dependency with side effects: email, payments, storage, AI, the clock | Without this, reliable tests and vendor changes are not possible |
+| **Senior level** | Design boundaries and decide what gets injected and what does not | Too much injection is a burden too. Placing the seam in the right spot is a senior skill |
+
+## 4. Bad vs good code
+
+### Bad: dependency created inside
+
+```ts
+import nodemailer from "nodemailer";
+
+export async function remindExpiring(users: User[]) {
+  const transport = nodemailer.createTransport(process.env.SMTP_URL);
+  const soon = users.filter((user) => user.expiresAt.getTime() - Date.now() < 86_400_000);
+
+  for (const user of soon) {
+    await transport.sendMail({ to: user.email, subject: "Plan expiring" });
+  }
+
+  return soon.length;
+}
+```
+
+Testing this function means a real SMTP server and real time. Neither is in your control.
+
+### Good: dependencies as parameters
+
+```ts
+export type MailMessage = {
+  to: string;
+  subject: string;
+};
+
+export type Mailer = {
+  send: (message: MailMessage) => Promise<void>;
+};
+
+export type Clock = {
+  now: () => Date;
+};
+
+export type ReminderDeps = {
+  mailer: Mailer;
+  clock: Clock;
+};
+```
+
+```ts
+import { EXPIRY_SUBJECT, EXPIRY_WINDOW_MS, type ReminderDeps } from "./reminders.types";
+
+export async function remindExpiring({ mailer, clock }: ReminderDeps, users: User[]) {
+  const soon = users.filter(
+    (user) => user.expiresAt.getTime() - clock.now().getTime() < EXPIRY_WINDOW_MS,
+  );
+
+  await Promise.all(soon.map((user) => mailer.send({ to: user.email, subject: EXPIRY_SUBJECT })));
+
+  return soon.length;
+}
+```
+
+Now the test can pass fakes:
+
+```ts
+import { expect, test } from "vitest";
+
+test("reminds only users expiring within a day", async () => {
+  const sent: MailMessage[] = [];
+  const mailer: Mailer = { send: async (message) => { sent.push(message); } };
+  const clock: Clock = { now: () => new Date("2026-01-01T00:00:00Z") };
+
+  const count = await remindExpiring({ mailer, clock }, [soonUser, laterUser]);
+
+  expect(count).toBe(1);
+  expect(sent[0].to).toBe(soonUser.email);
+});
+```
+
+The real mailer is built in just one place, like `SmtpMailer.make()`, which reads the env and builds the transport. The cron route passes that in. `new` is not scattered across call sites, so if a construction rule changes, it changes in only one place.
+
+### What is the difference?
+
+| Thing | Bad code | Good code |
+| --- | --- | --- |
+| Mailer | `createTransport` inside | A `Mailer` type, handed in from outside |
+| Time | `Date.now()` directly | `clock.now()`, fixed in tests |
+| Test | A real email, flaky time | A fake mailer, a fixed clock |
+| Vendor change | Open the function and edit it | A new `Mailer` implementation, the function stays the same |
+
+## 5. How to apply it
+
+<Flow title="Steps to inject a dependency">
+
+Spot the dependency with side effects: network, email, payments, time
+↓
+Make a small type with only the methods you need
+↓
+Have the function or class take it as a parameter
+↓
+Build the real implementation at the edge: route, cron, script
+↓
+In tests, pass a fake or in-memory version
+
+</Flow>
+
+The place where all the dependencies are connected is called the "composition root". In Next.js it is usually a route handler or a small factory function. Never inside a service.
+
+## 6. Exceptions and common mistakes
+
+Not everything needs to be injected. Pure helper functions, constants and formatting can be imported directly. They have no side effects, and using the real ones in tests is fine.
+
+Teams differ a lot here. Some frameworks provide an IoC container that wires dependencies for you. Many JavaScript teams use module mocking in tests (`vi.mock`) instead of injection. Mocking needs less code, but tests get tied to file paths and break on refactors. Parameter injection takes a little more typing, but it is clear and independent of any framework.
+
+<Mistake
+  title="Copying the whole vendor SDK interface to make an abstraction"
+  why="The abstraction still has the vendor's shape, so if the vendor changes the type has to change too."
+  better="Put only the methods your service needs in the type, in your own words."
+/>
+
+<Mistake
+  title="Injecting every tiny thing"
+  why="The function parameters get long and the wiring becomes a burden of its own, for no benefit."
+  better="Inject only side effects, time and outside systems. Import pure logic directly."
+/>
+
+<Mistake
+  title="Importing a global singleton inside a service"
+  why="It looks like dependency injection but it is really hidden coupling, hard to replace in tests."
+  better="Create the singleton at the edge and pass it to the service as a parameter."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Higher-Order Functions](/courses/javascript/higher-order-functions), [Service Layer & Thin Controllers](/courses/best-practices/service-layer) |
+| **Alongside** | [Separation of Concerns](/courses/best-practices/separation-of-concerns), [DRY Without Tight Coupling](/courses/best-practices/dry-without-coupling) |
+| **After** | [Testing Pyramid](/courses/best-practices/testing-pyramid), [Endpoint Tests First](/courses/best-practices/endpoint-tests-first) |
+
+<Flow title="Suggested order">
+
+Service Layer
+↓
+Separation of Concerns
+↓
+Loose Coupling & Dependency Injection
+↓
+Testing Pyramid
+
+</Flow>
+
+## Final quick revision
+
+| Check | Yes / No |
+| --- | --- |
+| Building an SMTP, payment or SDK client inside a service | No |
+| A small type of your own for each dependency | Yes |
+| Time from `clock`, not `Date.now()` directly | Yes |
+| Real implementations connected at the edge | Yes |
+| Injecting pure helpers too | No, not needed |
+
+<Callout variant="important" title="Remember">
+
+Give the function what it needs, and do not let it go looking. Then tests never touch the real world, and switching a vendor becomes a one line job.
+
+</Callout>

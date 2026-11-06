@@ -1,0 +1,212 @@
+---
+title: Security Baseline
+description: A web security checklist with headers, hashed tokens, timing safe comparison, fail closed auth, a CORS allow-list and the minimum standard for uploads.
+keywords:
+  - web security checklist headers
+  - security headers nextjs csp
+  - timing safe compare
+  - fail closed authentication
+  - cors allow list
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Every repo completes a minimum security checklist: secrets kept out, tokens hashed, auth that fails closed, security headers on, a CORS allow-list, and validation of every input at the boundary.**
+
+</Callout>
+
+Baseline does not mean "the best possible security". It means the **floor** that no project goes below. Advanced things come later, but this list applies from day one.
+
+This chapter is a checklist. Each item has its own deeper chapter, like [Secrets Management](/courses/best-practices/secrets-management) and [Input Validation at the Boundary](/courses/best-practices/input-validation).
+
+## 2. Why does it matter?
+
+Security breaches usually do not come from fancy hacks, they come from forgotten basics. An audit often finds that every item is broken in some repo, so treat the baseline as a checklist, not an aspiration.
+
+<Callout variant="note" title="Real incident">
+
+A cron endpoint checked a secret like this: if `CRON_SECRET` is set, compare the header. In a new environment the variable was never set. The check was silently skipped and the endpoint stayed open to the whole world. This is called **failing open**.
+
+</Callout>
+
+<CompareTable leftTitle="Without a baseline" rightTitle="With a baseline">
+
+Request allowed when the secret is missing | 503 when the secret is missing, nothing allowed
+Session tokens stored in plain text in the database | Only the hash is stored, so a leak is useless
+Secret compared with === | Timing safe comparison
+Any website can call the API with credentials | CORS allows only our own origins
+Stack trace and SQL in the error | The caller gets only the needed message, details go to logs
+Upload name and type are the user's choice | Magic bytes check, size cap, random key
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Secrets, validation and fail closed at least | These same habits carry into production later |
+| **Production code** | The whole list | One weak item is a door into the whole system |
+| **Senior level** | Put the list into CI and templates | Every new repo gets the baseline automatically, nobody has to remember |
+
+## 4. Bad vs good code
+
+### Bad: fail open and a direct comparison
+
+```ts
+export async function GET(request: Request) {
+  const secret = process.env.CRON_SECRET;
+  if (secret && request.headers.get("authorization") !== `Bearer ${secret}`) {
+    return new Response("unauthorized", { status: 401 });
+  }
+  await sendDailyEmails();
+  return Response.json({ ok: true });
+}
+```
+
+Two problems: if the secret is missing the check is skipped entirely, and `!==` stops at the first mismatch, which makes it possible to guess the secret through timing.
+
+### Good: fail closed and timing safe
+
+```ts
+import { createHash, timingSafeEqual } from "node:crypto";
+
+function digest(value: string) {
+  return createHash("sha256").update(value).digest();
+}
+
+function safeEqual(received: string, expected: string) {
+  return timingSafeEqual(digest(received), digest(expected));
+}
+
+export async function GET(request: Request) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) {
+    return new Response("not configured", { status: 503 });
+  }
+
+  const header = request.headers.get("authorization") ?? "";
+  if (!safeEqual(header, `Bearer ${secret}`)) {
+    return new Response("unauthorized", { status: 401 });
+  }
+
+  await sendDailyEmails();
+  return Response.json({ ok: true });
+}
+```
+
+Hashing both values makes their lengths equal, which is a requirement of `timingSafeEqual`.
+
+### Security headers (Next.js)
+
+```ts
+import type { NextConfig } from "next";
+
+const securityHeaders = [
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
+  { key: "Content-Security-Policy", value: "default-src 'self'; frame-ancestors 'none'" },
+];
+
+const nextConfig: NextConfig = {
+  async headers() {
+    return [{ source: "/:path*", headers: securityHeaders }];
+  },
+};
+
+export default nextConfig;
+```
+
+### What is the difference?
+
+| Thing | Bad | Good |
+| --- | --- | --- |
+| Missing secret | Endpoint open | 503, nothing runs |
+| Comparison | `!==`, timing leak | `timingSafeEqual` after hashing |
+| Headers | Browser defaults | Clickjacking, sniffing and referrer leaks closed |
+
+## 5. How to apply it
+
+This checklist applies to every repo:
+
+| Area | Minimum |
+| --- | --- |
+| **Secrets** | Nothing committed, `.env.example` present, scanner on |
+| **Tokens** | Session tokens, login codes, magic links and API keys stored hashed, only the hash compared |
+| **Comparisons** | Every shared secret checked with `timingSafeEqual` |
+| **Auth** | Fail closed: deny if a secret or config is missing |
+| **Test bypass** | Refused in production, checked in middleware, and covered by a test |
+| **Headers** | CSP, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, frame protection, HSTS |
+| **CORS** | An explicit origin allow-list, never "every origin + credentials" |
+| **Input** | Schema validation at every boundary, no interpolation into SQL, shell or HTML |
+| **Uploads** | Magic bytes check, size cap, random key, served through an opaque proxy route |
+| **Errors** | Little for the caller, detail in the logs |
+| **Logging** | Scrub secrets and personal data, no URLs with query strings in production |
+
+<Flow title="If you find a leak or an auth bypass">
+
+Stop feature work
+↓
+Rotate or fix it
+↓
+Tell the team the same day: what, when, what was rotated
+
+</Flow>
+
+## 6. Exceptions and common mistakes
+
+**When the rule does not apply:** public, read-only endpoints (like a list of blog posts) do not need auth, but they still need validation, rate limiting and headers. In CSP you may have to keep `'unsafe-inline'` at first. Treat that as a step toward the goal, and move toward nonces.
+
+<Mistake
+  title="Reflecting every origin in CORS and allowing credentials"
+  why="This lets any website call your API with the user's cookies."
+  better="Keep an explicit list of allowed origins and allow credentials only for those."
+/>
+
+<Mistake
+  title="Recognizing an upload by its file extension"
+  why="The user can change the extension and send a script disguised as an image."
+  better="Check the file's first bytes (magic bytes), apply a size cap, and store it under a random name."
+/>
+
+<Mistake
+  title="A test bypass token that also works in production"
+  why="This is a backdoor with a friendly name."
+  better="Have the middleware refuse it in production, and prove that with a unit test."
+/>
+
+<Mistake
+  title="Giving the user a raw bucket URL"
+  why="If the URL is shared or guessed, the file is open forever and the access check is bypassed."
+  better="Serve it through a proxy route that checks access on every request."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Secrets Management](/courses/best-practices/secrets-management), [Input Validation at the Boundary](/courses/best-practices/input-validation) |
+| **Alongside** | [Authentication Patterns](/courses/best-practices/authentication), [Error Handling & Error Envelope](/courses/best-practices/error-handling-and-envelope) |
+| **After** | [Common Vulnerabilities (OWASP)](/courses/best-practices/common-vulnerabilities), [Dependencies & Supply Chain](/courses/best-practices/dependency-security) |
+
+## Final quick revision
+
+| Check | Yes? |
+| --- | --- |
+| Tokens hashed, only the hash compared | |
+| Shared secrets checked with `timingSafeEqual` | |
+| 503 on missing config, never allow | |
+| Security headers set | |
+| CORS has an explicit allow-list | |
+| Uploads: magic bytes, size cap, random key | |
+| No internal detail in errors | |
+
+<Callout variant="important" title="Remember">
+
+The baseline is the floor, not the roof. Anything that authenticates should always **deny** when in doubt, never allow.
+
+</Callout>

@@ -1,0 +1,198 @@
+---
+title: Data Fetching
+description: Next.js data fetching in Server Components with async/await, fetch, databases and Suspense, plus the Next.js 16 rules you need to know.
+keywords:
+  - next.js data fetching
+  - next.js fetch server components
+  - async server component
+  - next.js suspense streaming
+---
+
+## 1. What is data fetching?
+
+<Callout variant="tip" title="Short definition">
+
+**In Next.js, data fetching means getting data from an API or a database on the server (inside a Server Component) and rendering it together with the UI.**
+
+</Callout>
+
+In the App Router, every component is a **Server Component** by default. A Server Component can be `async`, so you can write `await fetch()` or `await db.query()` directly. You do not need `useEffect` or any loading state workaround.
+
+Remember one important rule in Next.js 16: **`fetch` is not cached by default.** Every request gets fresh data. If you want caching, you opt in yourself (with `"use cache"`).
+
+## 2. Why does it matter?
+
+In older React apps, data was fetched in the browser. The page arrived empty first, then a spinner, then the data. This hurt SEO and risked exposing API keys.
+
+<CompareTable leftTitle="Client side fetching (the old way)" rightTitle="Server Component fetching">
+
+Empty HTML first, then data | HTML arrives with the data
+useEffect and useState boilerplate | Plain async/await
+API key can reach the browser | Secrets stay on the server
+Every client sends its own request | The server is close to the database, so it is fast
+Weak SEO | Search engines get the full content
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Use case | Where the data comes from |
+| --- | --- |
+| **Blog list** | `fetch` from a CMS API |
+| **Product page** | A Prisma or Drizzle query to the database |
+| **Dashboard** | User specific data, using cookies |
+| **Weather widget** | A third party API, fresh on every request |
+| **Search results** | A query based on `searchParams` |
+
+## 4. How does it work?
+
+A request arrives, the Server Component runs on the server, the data is `await`ed, and the finished HTML is streamed to the browser.
+
+<Flow title="Data fetching flow on the server">
+
+Browser request
+↓
+Next.js server
+↓
+async Server Component
+↓
+await fetch or database query
+↓
+HTML + RSC payload
+↓
+UI in the browser
+
+</Flow>
+
+If a component needs slow data, wrap it in `<Suspense>`. The rest of the page shows immediately and the slow part is **streamed** in later.
+
+<Callout variant="important" title="Mental model">
+
+**Fetch data where it is used. Put slow parts in Suspense so the rest of the page does not wait.**
+
+</Callout>
+
+## 5. Code example
+
+### Example 1: fetch in a Server Component
+
+```tsx
+type Post = { id: number; title: string };
+
+export default async function PostsPage() {
+  const res = await fetch("https://api.example.com/posts");
+  const posts: Post[] = await res.json();
+
+  return (
+    <ul>
+      {posts.map((post) => (
+        <li key={post.id}>{post.title}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+### Example 2: streaming with Suspense and parallel fetching
+
+```tsx
+import { Suspense } from "react";
+
+async function getUser(id: string) {
+  const res = await fetch(`https://api.example.com/users/${id}`);
+  return res.json();
+}
+
+async function getOrders(id: string) {
+  const res = await fetch(`https://api.example.com/users/${id}/orders`);
+  return res.json();
+}
+
+async function Orders({ userId }: { userId: string }) {
+  const [user, orders] = await Promise.all([getUser(userId), getOrders(userId)]);
+
+  return (
+    <section>
+      <h2>Orders for {user.name}</h2>
+      <p>Total orders: {orders.length}</p>
+    </section>
+  );
+}
+
+export default async function Page({ params }: PageProps<"/users/[id]">) {
+  const { id } = await params;
+
+  return (
+    <main>
+      <h1>User profile</h1>
+      <Suspense fallback={<p>Loading orders...</p>}>
+        <Orders userId={id} />
+      </Suspense>
+    </main>
+  );
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `async function PostsPage` | A Server Component that can `await` directly |
+| `await fetch(...)` | Fresh data on every request, no cache by default |
+| `Promise.all([...])` | Both requests run together, so there is no waterfall |
+| `await params` | In Next.js 16, `params` is a Promise |
+| `<Suspense fallback>` | The fallback shows until the orders arrive, and the rest of the page renders immediately |
+
+### Interview tip
+
+If you are asked "Is fetch cached in Next.js 16?", the answer is: **No**, it runs on every request by default. For caching, you use the `"use cache"` directive with `cacheComponents: true`.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Fetching data with useEffect in a Server Component"
+  why="Hooks do not run in a Server Component, and client fetching hurts both SEO and speed."
+  better="Make the component async and write await fetch or a database query directly."
+/>
+
+<Mistake
+  title="Creating a waterfall by awaiting one after another"
+  why="Each request waits for the previous one, and the page becomes very slow."
+  better="Run independent requests together inside Promise.all."
+/>
+
+<Mistake
+  title="Assuming fetch caches itself"
+  why="In Next.js 16, fetch is uncached by default. The old Next.js 14 behavior is gone."
+  better="If you need caching, use the use cache directive and cacheLife."
+/>
+
+<Mistake
+  title="Blocking the whole page because of one slow component"
+  why="The user sees nothing until the slow data arrives."
+  better="Wrap the slow component in Suspense so the rest of the UI streams first."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Server & Client Components](/courses/nextjs/server-and-client-components), [Streaming & Suspense](/courses/nextjs/streaming-and-suspense), [Dynamic Routes](/courses/nextjs/dynamic-routes) |
+| **Alongside** | [Loading, Error & Not Found UI](/courses/nextjs/loading-and-error-ui) |
+| **After** | [Cache Components & use cache](/courses/nextjs/cache-components), [Server Actions](/courses/nextjs/server-actions), [Database Integration](/courses/nextjs/database-integration) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Where to fetch | In Server Components, with async/await |
+| Default caching | `fetch` is not cached by default |
+| Parallel requests | `Promise.all` |
+| Slow data | Stream it inside `<Suspense>` |
+| Route params | `await params` |
+
+<Callout variant="important" title="Remember">
+
+In Next.js 16, data fetching is **server first** and **fresh by default**. For speed, stream with Suspense, and for caching, opt in yourself with `"use cache"`.
+
+</Callout>

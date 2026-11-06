@@ -1,0 +1,201 @@
+---
+title: "Loading, Error & Not Found UI"
+description: "Next.js loading, error and not-found files: build an instant loading state with loading.tsx, an error boundary with error.tsx and a 404 page with notFound()."
+keywords:
+  - next.js loading error not-found
+  - next.js loading.tsx
+  - next.js error.tsx
+  - next.js not-found page
+  - next.js global-error
+---
+
+## 1. What are loading, error and not found UI?
+
+<Callout variant="tip" title="Short definition">
+
+**`loading.tsx`, `error.tsx` and `not-found.tsx` are special files that automatically add a loading state, an error fallback and a 404 UI to a route segment.**
+
+</Callout>
+
+Instead of writing `isLoading` and `try catch` by hand in every page, you put these files in the segment folder. Next.js turns them into React **Suspense** and **Error Boundary** wrappers.
+
+## 2. Why does it matter?
+
+<CompareTable leftTitle="Without special files" rightTitle="With special files">
+
+Blank screen until the data arrives | loading.tsx shows a skeleton right away
+One error crashes the whole app | error.tsx gives a fallback to only that segment
+Empty page on a wrong ID | notFound() gives a proper 404 UI and status
+Loading code in every page | One file covers the whole segment
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| File | When it appears |
+| --- | --- |
+| `loading.tsx` | While the page data is loading |
+| `error.tsx` | When an unexpected error happens while rendering the segment |
+| `not-found.tsx` | When `notFound()` is called or no URL matches |
+| `global-error.tsx` | When the root layout itself fails |
+
+Real examples: a skeleton for a product page, a "Try again" button when a dashboard widget fails, and a 404 for a deleted blog post.
+
+## 4. How does it work?
+
+Next.js wraps the files of a segment in this order:
+
+<Flow title="Component hierarchy of a segment">
+
+layout.tsx
+   ↓
+template.tsx
+   ↓
+error.tsx (Error Boundary)
+   ↓
+loading.tsx (Suspense fallback)
+   ↓
+not-found.tsx
+   ↓
+page.tsx
+
+</Flow>
+
+Two things follow from this:
+
+- `error.tsx` does **not catch errors from the layout of the same segment**, because the layout sits above it. The `error.tsx` of the parent segment catches them.
+- While `loading.tsx` is showing, the layout stays interactive, so the user can still use the navbar and sidebar.
+
+<Callout variant="important" title="Mental model">
+
+**loading = Suspense fallback, error = Error Boundary, notFound() = throwing a 404.**
+
+</Callout>
+
+## 5. Code example
+
+### loading.tsx
+
+```tsx
+export default function Loading() {
+  return <div className="animate-pulse h-40 rounded bg-gray-200" />;
+}
+```
+
+### error.tsx
+
+```tsx
+"use client";
+
+import { useEffect } from "react";
+
+export default function Error({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  useEffect(() => {
+    console.error(error);
+  }, [error]);
+
+  return (
+    <div>
+      <h2>Something went wrong</h2>
+      <button onClick={() => reset()}>Try again</button>
+    </div>
+  );
+}
+```
+
+### notFound() and not-found.tsx
+
+```tsx
+import { notFound } from "next/navigation";
+
+export default async function ProductPage({ params }: PageProps<"/products/[id]">) {
+  const { id } = await params;
+  const res = await fetch(`https://api.example.com/products/${id}`);
+  if (res.status === 404) notFound();
+  const product = await res.json();
+  return <h1>{product.name}</h1>;
+}
+```
+
+```tsx
+import Link from "next/link";
+
+export default function NotFound() {
+  return (
+    <div>
+      <h2>Product not found</h2>
+      <Link href="/products">View all products</Link>
+    </div>
+  );
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `loading.tsx` | Wraps the page in Suspense and shows a skeleton until the data arrives |
+| `"use client"` in `error.tsx` | Error boundaries must be Client Components |
+| `error.digest` | A hash of the server error, used to match it with the server logs |
+| `reset()` | Clears the error state and renders the segment again |
+| `notFound()` | Stops rendering and shows the nearest `not-found.tsx` |
+
+<Callout variant="tip" title="Newer 16.x versions">
+
+Since Next.js 16.3, `error.tsx` also receives a `retry` prop, which fetches the segment data again and re-renders it. The docs now recommend `retry` in most cases, because `reset` only clears the state.
+
+</Callout>
+
+### Interview tip
+
+"Who catches an error from the root layout?" `app/global-error.tsx`, and it must contain its own `html` and `body` tags because it replaces the root layout.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Forgetting use client in error.tsx"
+  why="An error boundary must be a Client Component, otherwise you get a build error."
+  better="Write use client on the first line of error.tsx and global-error.tsx."
+/>
+
+<Mistake
+  title="Showing error.message to the user in production"
+  why="In production, the message of a server error is generic so that sensitive details do not leak."
+  better="Show the user a friendly message and use the digest to find the real error in the server logs."
+/>
+
+<Mistake
+  title="Expecting the error.tsx in the same folder to catch a layout error"
+  why="error.tsx sits inside the layout of its own segment, not above it."
+  better="Put error.tsx in the parent segment for layout errors, and use global-error.tsx for the root."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Routing & Pages](/courses/nextjs/routing-and-pages), [React error boundaries](/courses/react/error-boundaries), [Suspense](/courses/react/suspense-and-lazy) |
+| **Alongside** | [Dynamic Routes](/courses/nextjs/dynamic-routes), [Layouts & Templates](/courses/nextjs/layouts-and-templates) |
+| **After** | [Streaming & Suspense](/courses/nextjs/streaming-and-suspense), [Data Fetching](/courses/nextjs/data-fetching) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `loading.tsx` | Suspense fallback, an instant loading state |
+| `error.tsx` | A Client Component Error Boundary |
+| `not-found.tsx` | Shown on `notFound()` or an unmatched URL |
+| `global-error.tsx` | Errors from the root layout, with its own `html` and `body` |
+| Recovery | `reset()`, and `retry()` in 16.3+ |
+
+<Callout variant="important" title="Remember">
+
+Every segment can have its own **loading, error and 404** UI, and Next.js wraps them in Suspense and Error Boundary for you.
+
+</Callout>

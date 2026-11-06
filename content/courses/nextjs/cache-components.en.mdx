@@ -1,0 +1,205 @@
+---
+title: Cache Components & use cache
+description: Learn the new Next.js use cache and Cache Components model, and how to cache pages, components and functions with cacheLife and cacheTag.
+keywords:
+  - next.js use cache cache components
+  - use cache directive
+  - next.js cachelife
+  - next.js cachetag
+  - partial prerendering
+---
+
+## 1. What are Cache Components?
+
+<Callout variant="tip" title="Short definition">
+
+**Cache Components is the opt-in caching model of Next.js 16, where you add the `"use cache"` directive to cache the result of a page, a component or a function.**
+
+</Callout>
+
+In Next.js 16, everything is **dynamic** by default, which means it runs on every request. For the parts you want to cache, you write `"use cache"` yourself. The compiler builds the **cache key** automatically from the arguments and captured values.
+
+This model also completes **Partial Prerendering (PPR)**: the static and cached part of a page becomes a **static shell**, and the dynamic part streams in inside `<Suspense>`.
+
+## 2. Why does it matter?
+
+In the old App Router, caching was implicit. `fetch` cached itself, and developers were confused about why they saw stale data.
+
+<CompareTable leftTitle="Old implicit caching" rightTitle="Cache Components">
+
+fetch cached itself | Nothing is cached unless you say so
+A jungle of route segment configs | One directive: use cache
+The whole route is static or dynamic | Static, cached and dynamic parts in one page
+Hard to understand the cache key | The compiler builds the key from arguments
+A revalidate number for expiry | cacheLife profiles like hours, days, max
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Use case | What to cache | Profile |
+| --- | --- | --- |
+| **Blog posts list** | A component or data function | `hours` or `max` |
+| **Product catalog** | The `getProducts()` function | `hours` |
+| **CMS pages** | The whole page, with `cacheTag` | `max` |
+| **Exchange rates** | A data function | `minutes` |
+| **User cart** | Do not cache, stream it in Suspense | None |
+
+## 4. How does it work?
+
+<Flow title="use cache flow">
+
+cacheComponents true in next.config.ts
+↓
+use cache in a function or component
+↓
+A cache key is built from the arguments
+↓
+The first time, the result is computed and stored
+↓
+On the next request, the result comes from the cache
+↓
+It refreshes according to cacheLife
+
+</Flow>
+
+`"use cache"` can be used at three levels:
+
+| Level | How | Effect |
+| --- | --- | --- |
+| **File** | `"use cache"` on the first line of the file | All exported functions in the file are cached |
+| **Component** | The first line of the component body | The rendered output of the component is cached |
+| **Function** | The first line of an async function body | The return value of the function is cached |
+
+<Callout variant="important" title="Mental model">
+
+**Default: everything is fresh. Where you need speed: `"use cache"` + `cacheLife`. Where the data is user specific: stream it in `<Suspense>`.**
+
+</Callout>
+
+## 5. Code example
+
+### Step 1: enable the config
+
+```ts
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  cacheComponents: true,
+};
+
+export default nextConfig;
+```
+
+### Step 2: cache a data function and a component
+
+```tsx
+import { Suspense } from "react";
+import { cookies } from "next/headers";
+import { cacheLife, cacheTag } from "next/cache";
+
+async function getProducts() {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("products");
+
+  const res = await fetch("https://api.example.com/products");
+  return res.json() as Promise<{ id: string; name: string }[]>;
+}
+
+async function ProductList() {
+  const products = await getProducts();
+
+  return (
+    <ul>
+      {products.map((product) => (
+        <li key={product.id}>{product.name}</li>
+      ))}
+    </ul>
+  );
+}
+
+async function CartCount() {
+  const cartId = (await cookies()).get("cart")?.value;
+  return <p>Cart: {cartId ? "has items" : "empty"}</p>;
+}
+
+export default function ShopPage() {
+  return (
+    <main>
+      <h1>Shop</h1>
+      <ProductList />
+      <Suspense fallback={<p>Loading cart...</p>}>
+        <CartCount />
+      </Suspense>
+    </main>
+  );
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `cacheComponents: true` | Turns on the new caching model |
+| `"use cache"` | The result of `getProducts` is cached |
+| `cacheLife("hours")` | How long the result stays fresh, a built-in profile |
+| `cacheTag("products")` | A tag you can use later to invalidate on demand |
+| `<h1>` and `ProductList` | Part of the static shell, available immediately |
+| `CartCount` | `cookies()` is runtime data, so it streams inside Suspense |
+
+The built-in `cacheLife` profiles are `seconds`, `minutes`, `hours`, `days`, `weeks` and `max`. If you do not give a profile, `default` is used. You can also pass an object: `cacheLife({ stale: 300, revalidate: 3600, expire: 86400 })`.
+
+### Interview tip
+
+You cannot read `cookies()` or `headers()` directly inside `"use cache"`. Read the runtime value outside and pass it to the cached function as an argument, and the value itself becomes part of the cache key.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Writing use cache without enabling cacheComponents"
+  why="The directive belongs to the new model, and without the config flag it does not work and gives a build error."
+  better="Set cacheComponents to true in next.config.ts, then add use cache."
+/>
+
+<Mistake
+  title="Reading cookies or headers inside use cache"
+  why="A cached result is shared between all users, so runtime data is not allowed inside."
+  better="Read the cookie value outside and pass it to the cached function as an argument."
+/>
+
+<Mistake
+  title="Putting user specific data in a shared cache"
+  why="One user's data could be shown to another user, which is a security bug."
+  better="Keep personal data uncached inside Suspense, or make the user id part of the cache key."
+/>
+
+<Mistake
+  title="Adding use cache everywhere without cacheLife"
+  why="The default profile is applied, and it may not suit your data."
+  better="Set the right cacheLife profile with every use cache."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Data Fetching](/courses/nextjs/data-fetching), [Streaming & Suspense](/courses/nextjs/streaming-and-suspense), [Rendering Strategies](/courses/nextjs/rendering-strategies) |
+| **Alongside** | [next.config & Turbopack](/courses/nextjs/next-config-and-turbopack) |
+| **After** | [Revalidation](/courses/nextjs/revalidation), [Server Actions](/courses/nextjs/server-actions), [Performance](/courses/nextjs/performance) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| How to enable | `cacheComponents: true` in `next.config.ts` |
+| How to cache | `"use cache"` at file, component or function level |
+| For how long | `cacheLife("hours")` or a custom object |
+| Tag | `cacheTag("products")` for on-demand invalidation |
+| Runtime data | Stream it in `<Suspense>`, outside the cache |
+
+<Callout variant="important" title="Remember">
+
+In Next.js 16, caching is **explicit**. Nothing is cached on its own. Add `"use cache"`, set its lifetime with `cacheLife`, and keep a way to invalidate it later with `cacheTag`.
+
+</Callout>

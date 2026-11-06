@@ -1,0 +1,194 @@
+---
+title: Constants & Magic Values
+description: Replace magic numbers with named constants. Keep status strings, limits and keys in const objects and union types, with TypeScript examples.
+keywords:
+  - magic numbers named constants
+  - magic strings typescript
+  - as const object typescript
+  - avoid hardcoded values
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**No unnamed number or string in your code whose meaning the reader has to guess. Name statuses, limits, keys and durations, and keep a value that appears in several files in one place.**
+
+</Callout>
+
+A **magic value** is a literal that appears in code out of nowhere and does not explain itself: `if (attempts > 5)`, `status === "pnd"`, `setTimeout(fn, 86400000)`. The reader wonders: why 5? What is "pnd"? How long is that number?
+
+| Kind | Example | Better |
+| --- | --- | --- |
+| Limit | `5` | `MAX_LOGIN_ATTEMPTS` |
+| Duration | `86400000` | `ONE_DAY_MS` |
+| Status string | `"pending"` in every file | `ORDER_STATUS.pending` or a union type |
+| Storage key | `localStorage.getItem("tkn")` | `STORAGE_KEYS.token` |
+| Route | `"/dashboard/settings"` | `ROUTES.settings` |
+
+## 2. Why does it matter?
+
+Magic values have two costs: **the meaning is hidden**, and **they are hard to change**. If the limit must go from 5 to 10, you search for every `5` and wonder which one belongs to login and which to something else.
+
+<CompareTable leftTitle="Magic values" rightTitle="Named constants">
+
+A typo like pendng instead of pending gives no error, the bug hides | TypeScript reports the typo right away
+What 5 means is a guess | MAX_LOGIN_ATTEMPTS explains itself
+Changing a limit means searching the whole repo | Change one constant
+Different values in two files, the UI and the API disagree | One source, one answer
+A new status is added, some places do not handle it | A Record type shows where it is missing
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Important | An easy habit that saves you from typo bugs |
+| **Production code** | Statuses, limits and keys are always named | Repeated literals are the most common drift bug |
+| **Senior level** | Design where constants live | A module's constants next to its types, shared ones in one place |
+
+## 4. Bad vs good code
+
+```ts
+async function login(email: string, password: string) {
+  const user = await users.byEmail(email);
+
+  if (user.failedAttempts >= 5) {
+    throw new Error("locked");
+  }
+
+  if (user.status === "suspnded") {
+    throw new Error("suspended");
+  }
+
+  localStorage.setItem("tkn", await auth.token(user, password));
+  setTimeout(logout, 1800000);
+}
+```
+
+```ts
+export const MAX_LOGIN_ATTEMPTS = 5;
+export const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+
+export const USER_STATUS = {
+  active: "active",
+  suspended: "suspended",
+} as const;
+
+export type UserStatus = (typeof USER_STATUS)[keyof typeof USER_STATUS];
+
+export const STORAGE_KEYS = {
+  token: "auth_token",
+} as const;
+```
+
+```ts
+async function login(email: string, password: string) {
+  const user = await users.byEmail(email);
+
+  if (user.failedAttempts >= MAX_LOGIN_ATTEMPTS) {
+    throw new LockedError(user.id);
+  }
+
+  if (user.status === USER_STATUS.suspended) {
+    throw new SuspendedError(user.id);
+  }
+
+  localStorage.setItem(STORAGE_KEYS.token, await auth.token(user, password));
+  setTimeout(logout, SESSION_TIMEOUT_MS);
+}
+```
+
+| What is the difference? | Bad | Good |
+| --- | --- | --- |
+| `5` | What is it? | `MAX_LOGIN_ATTEMPTS` |
+| `"suspnded"` | A typo that never matches, so a suspended user can log in | `USER_STATUS.suspended`, a typo is a compile error |
+| `1800000` | Count the zeros | `30 * 60 * 1000`, reads as 30 minutes |
+| `"tkn"` | Can be spelled differently in every file | One key, one place |
+
+The typo in the first version is a **security bug**: a suspended user can log in, and no error appears.
+
+### A typed accessor, not a magic key
+
+```ts
+const theme = store.get("thme");
+```
+
+```ts
+const theme = settings.theme();
+```
+
+When the key sits behind a typed function, writing the wrong key is simply impossible.
+
+## 5. How to apply it
+
+<Flow title="When you see a literal">
+
+You spot a number or string in the code
+↓
+Is its meaning clear without thinking?
+↓
+No: give it a name
+↓
+Is it part of a set, like statuses? Use an as const object or a union type
+↓
+Does it appear in several files? Put it in the module's types or constants file
+↓
+Write durations as a calculation, like 30 * 60 * 1000
+
+</Flow>
+
+## 6. Exceptions and common mistakes
+
+Not every literal is magic. `0`, `1`, an empty string, `index + 1`, or `array.length === 0` all have an obvious meaning. Example values in test files (`"test@example.com"`) are fine too.
+
+It is also good to keep text shown to users in one place (needed for translation), but making a constant for every button label is not necessary in a small project.
+
+<Mistake
+  title="Naming a constant after its value"
+  why="FIVE = 5 or SECONDS_60 explains nothing, and if the value changes tomorrow the name will lie."
+  better="Name it after the purpose, like MAX_LOGIN_ATTEMPTS, not the value."
+/>
+
+<Mistake
+  title="One constants.ts holding the constants of the whole app"
+  why="Every module's values end up in one file, the file gets huge and everyone edits it."
+  better="Keep each constant next to the module that uses it, and only truly shared ones in a shared file."
+/>
+
+<Mistake
+  title="Mixing TypeScript enums and string unions"
+  why="With an enum in one place and a string in another, comparisons and imports get confusing."
+  better="Pick one pattern for the repo, like an as const object plus a derived union type."
+/>
+
+<Mistake
+  title="Keeping a status as an untyped string"
+  why="status: string accepts any typo."
+  better="Give status a union type so only valid values are allowed."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Variables](/courses/javascript/variables), [Self-Documenting Code](/courses/best-practices/self-documenting-code) |
+| **Alongside** | [Naming Things](/courses/best-practices/naming), [DRY Without Tight Coupling](/courses/best-practices/dry-without-coupling) |
+| **After** | [Strict Typing](/courses/best-practices/strict-typing), [Types Beside Logic](/courses/best-practices/types-beside-logic), [Design Tokens & UI Consistency](/courses/best-practices/design-tokens-and-ui) |
+
+## Final quick revision
+
+| Check | Question |
+| --- | --- |
+| Meaning | Is the meaning of every number and string clear? |
+| Name | Does the constant name describe the purpose, not the value? |
+| Set | Are statuses an as const object or a union type? |
+| One place | Is a repeated value defined in only one place? |
+| Keys | Are storage and state keys behind a typed accessor? |
+
+<Callout variant="important" title="Remember">
+
+Every magic value is a question the reader will ask. Give it a name and write the answer into the code itself.
+
+</Callout>

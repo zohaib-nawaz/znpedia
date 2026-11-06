@@ -1,0 +1,181 @@
+---
+title: Type Conversion
+description: Understand JavaScript type conversion and coercion, Number, String, Boolean, parseInt and the strange results of implicit conversion, with examples.
+keywords:
+  - javascript type conversion coercion
+  - implicit vs explicit conversion
+  - javascript number string conversion
+  - parseint vs number
+---
+
+## 1. What is type conversion?
+
+<Callout variant="tip" title="Short definition">
+
+**Type conversion means changing a value of one type into another type, like turning the string "42" into the number 42.**
+
+</Callout>
+
+It happens in two ways:
+
+| Kind | Who does it | Example |
+| --- | --- | --- |
+| **Explicit conversion** | You, on purpose | `Number("42")` |
+| **Implicit conversion (coercion)** | JavaScript itself, during an operation | `"5" * 2` |
+
+## 2. Why does it matter?
+
+Input fields, URL params and `localStorage` always give you a **string**. If you add them thinking they are numbers, the result of `"10" + "5"` is `"105"`, not `15`.
+
+<CompareTable leftTitle="Relying on coercion" rightTitle="Explicit conversion">
+
+You have to guess the result | The result is clear and predictable
+Adding prices gives text like 105 | Convert to a number first, get the right total
+Bugs stay hidden | Check for NaN and know right away
+The reader gets confused | The intent is written in the code
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Situation | Conversion |
+| --- | --- |
+| **Age or price from a form input** | `Number(input.value)` |
+| **Page number from the URL** | `Number(params.get("page"))` |
+| **16 from the CSS value "16px"** | `parseInt("16px", 10)` |
+| **Showing a number as text** | `String(total)` or a template literal |
+| **Checking whether a value exists** | `Boolean(value)` |
+
+## 4. How does it work?
+
+JavaScript does only three conversions: **to string**, **to number**, **to boolean**.
+
+<Flow title="Coercion based on the operator">
+
+See the operation
+     ↓
+Plus and one side is a string, join as strings
+     ↓
+Minus, multiply, divide, turn into numbers
+     ↓
+if or logical operators, turn into a boolean
+
+</Flow>
+
+Some rules for number conversion:
+
+| Value | `Number(value)` |
+| --- | --- |
+| `"42"` | `42` |
+| `" 12 "` | `12` (spaces ignored) |
+| `""` | `0` |
+| `"12px"` | `NaN` |
+| `true` / `false` | `1` / `0` |
+| `null` | `0` |
+| `undefined` | `NaN` |
+
+<Callout variant="important" title="Mental model">
+
+**If `+` sees a string, it joins (concatenation). All the other math operators always try to make numbers.**
+
+</Callout>
+
+## 5. Code example
+
+Explicit conversion:
+
+```js
+const ageInput = "25";
+const age = Number(ageInput);
+console.log(age + 1);
+
+console.log(String(99));
+console.log(Boolean("hello"));
+console.log(Boolean(""));
+```
+
+Output: `26`, `"99"`, `true`, `false`.
+
+`Number()` vs `parseInt()` / `parseFloat()`:
+
+```js
+console.log(Number("12px"));
+console.log(parseInt("12px", 10));
+console.log(parseFloat("3.75kg"));
+console.log(Number.isNaN(Number("abc")));
+```
+
+Output: `NaN`, `12`, `3.75`, `true`.
+
+Results of implicit coercion:
+
+```js
+console.log("5" + 1);
+console.log("5" - 1);
+console.log("4" * "2");
+console.log(true + 1);
+console.log(null + 1);
+console.log(undefined + 1);
+```
+
+Output: `"51"`, `4`, `8`, `2`, `1`, `NaN`.
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `Number("25")` | Gives a number if the whole string is a valid number |
+| `parseInt("12px", 10)` | Reads as much number as it finds from the start, in base 10 |
+| `parseFloat` | For numbers with decimals |
+| `"5" + 1` | It sees a string, so it joins: `"51"` |
+| `"5" - 1` | Minus works only on numbers, so `"5"` became a number |
+| `Number.isNaN()` | The right way to check whether a value is `NaN` |
+
+### Interview tip
+
+Why is `[] + []` equal to `""` (an empty string) and `[] + {}` equal to `"[object Object]"`? The plus operator first turns both objects into primitives (strings). An empty array becomes an empty string and an object becomes `"[object Object]"`. This question tests your understanding of coercion.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Adding an input value directly"
+  why="input.value is always a string, so adding 10 and 5 gives 105."
+  better="Convert first with Number() or input.valueAsNumber, then do the calculation."
+/>
+
+<Mistake
+  title="Writing parseInt without a radix"
+  why="In some formats the base can be guessed wrong, and the intent of the code is not clear."
+  better="Always write parseInt(value, 10), or use Number() for a whole string."
+/>
+
+<Mistake
+  title="Checking NaN with value === NaN"
+  why="NaN is not equal to anything, not even itself, so this check always gives false."
+  better="Use Number.isNaN(value)."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Data Types](/courses/javascript/data-types) |
+| **After this** | [Operators](/courses/javascript/operators), [Truthy, Falsy & Equality](/courses/javascript/truthy-falsy-and-equality) |
+| **Related** | [Numbers & Math](/courses/javascript/numbers-and-math), [Forms & Validation](/courses/javascript/forms-and-validation) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Explicit | `Number()`, `String()`, `Boolean()` |
+| Implicit | JavaScript converts by itself during operators |
+| `+` and a string | Always joins strings |
+| `-`, `*`, `/` | Try to make numbers |
+| `parseInt` | Reads the leading number, pass radix 10 |
+| `NaN` check | `Number.isNaN()` |
+
+<Callout variant="important" title="Remember">
+
+User input is always a string. **Convert explicitly before calculating** and do not rely on coercion.
+
+</Callout>

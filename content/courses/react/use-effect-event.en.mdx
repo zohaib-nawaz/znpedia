@@ -1,0 +1,168 @@
+---
+title: useEffectEvent
+description: Learn how the React useEffectEvent hook (stable in React 19.2) reads the latest props and state inside an Effect without re-running the Effect.
+keywords:
+  - react useeffectevent
+  - useeffectevent react 19.2
+  - effect event react
+  - useeffect dependencies problem
+---
+
+## 1. What is useEffectEvent?
+
+<Callout variant="tip" title="Short definition">
+
+**`useEffectEvent` is a hook that creates a function inside an Effect that always sees the latest props and state, without becoming a dependency of the Effect.**
+
+</Callout>
+
+Sometimes part of the logic inside an Effect is **reactive** (when it changes, the Effect should run again) and part is **non-reactive** (you only need its latest value, and a change should not restart the Effect).
+
+`useEffectEvent` separates that non-reactive part from the Effect. It became stable in React 19.2.
+
+## 2. Why does it matter?
+
+Imagine a chat room component. The connection depends on `roomId`. When it connects, you show a notification that uses `theme`.
+
+<CompareTable leftTitle="useEffect only" rightTitle="With useEffectEvent">
+
+You have to put theme in the deps | theme is read inside the Effect Event
+Change the theme and the chat reconnects | Change the theme and nothing reconnects
+You are tempted to silence the linter warning | The linter is happy, and the deps are exactly right
+Fear of stale values | You always get the latest theme
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Situation | Reactive part | What goes in the Effect Event |
+| --- | --- | --- |
+| Chat connection | `roomId` | A notification that uses `theme` |
+| Page visit analytics | `url` | Logging `cartCount` |
+| Timer or interval | Setting up the interval | A state update using the latest `step` |
+| Event listener | Attaching the listener | A handler that reads the latest props |
+
+## 4. How does it work?
+
+<Flow title="Separating reactive from non-reactive">
+
+The Effect depends only on reactive values
+↓
+Non-reactive logic goes into useEffectEvent
+↓
+The Effect calls the Effect Event from the inside
+↓
+The Effect Event gets the latest props and state on every call
+↓
+The Effect re-runs only when a reactive value changes
+
+</Flow>
+
+Think of an Effect Event like an event handler, except it fires **from inside an Effect** instead of from a user click.
+
+## 5. Code example
+
+### Chat room notification
+
+```tsx
+import { useEffect, useEffectEvent } from "react";
+import { createConnection } from "./chat";
+import { showNotification } from "./notifications";
+
+export function ChatRoom({ roomId, theme }: { roomId: string; theme: string }) {
+  const onConnected = useEffectEvent(() => {
+    showNotification("Connected!", theme);
+  });
+
+  useEffect(() => {
+    const connection = createConnection(roomId);
+    connection.on("connected", () => {
+      onConnected();
+    });
+    connection.connect();
+    return () => connection.disconnect();
+  }, [roomId]);
+
+  return <h1>Room: {roomId}</h1>;
+}
+```
+
+### Analytics with the latest value
+
+```tsx
+import { useEffect, useEffectEvent } from "react";
+import { logVisit } from "./analytics";
+
+export function Page({ url, cartCount }: { url: string; cartCount: number }) {
+  const onVisit = useEffectEvent((visitedUrl: string) => {
+    logVisit(visitedUrl, cartCount);
+  });
+
+  useEffect(() => {
+    onVisit(url);
+  }, [url]);
+
+  return <main>{url}</main>;
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `useEffectEvent(() => ...)` | Creates the non-reactive function |
+| Reading `theme` inside | Always the latest theme, with no dependency |
+| Deps `[roomId]` | Reconnect only when the room changes |
+| `onVisit(url)` | The reactive value is passed as an argument, which makes the intent clear |
+| `cartCount` | It is only read, so a change does not log again |
+
+## 6. Common mistakes
+
+<Mistake
+  title="Putting the Effect Event in the dependency array"
+  why="An Effect Event is non-reactive on purpose, so it does not belong in the deps."
+  better="Keep only reactive values in the deps. The latest version of eslint-plugin-react-hooks understands this on its own."
+/>
+
+<Mistake
+  title="Calling an Effect Event from render or an event handler"
+  why="It is built to be called only from inside Effects, and calling it elsewhere breaks the rules."
+  better="For events like clicks, write a normal event handler function."
+/>
+
+<Mistake
+  title="Passing an Effect Event to a child component or another hook"
+  why="An Effect Event is limited to the Effects of its own component, and passing it around makes behavior unpredictable."
+  better="Declare it in the same component whose Effect calls it."
+/>
+
+<Mistake
+  title="Using it to silence every dependency warning"
+  why="If the logic is truly reactive, moving it into an Effect Event causes a bug, because updates are missed."
+  better="Keep only the logic whose changes should not restart the Effect."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [useEffect](/courses/react/use-effect), [Handling Events](/courses/react/events), [Rules of Hooks](/courses/react/rules-of-hooks) |
+| **Alongside** | [Custom Hooks](/courses/react/custom-hooks), [useRef](/courses/react/use-ref) |
+| **After** | [useTransition & useDeferredValue](/courses/react/use-transition), [React Compiler](/courses/react/react-compiler) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| What it is | A function for non-reactive logic inside an Effect |
+| Version | Stable in React 19.2 |
+| Import | `import { useEffectEvent } from "react"` |
+| Latest values | The latest props and state on every call |
+| Deps | An Effect Event does not go in the deps |
+| Where to call it | Only from inside Effects |
+
+<Callout variant="important" title="Remember">
+
+Ask: "When this value changes, should the Effect run again?" If yes, it is a dependency. If no, put that logic in **`useEffectEvent`**.
+
+</Callout>

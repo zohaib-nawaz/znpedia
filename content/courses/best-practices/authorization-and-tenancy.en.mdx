@@ -1,0 +1,215 @@
+---
+title: Authorization & Multi-Tenancy
+description: Authorization for multi tenant apps with RBAC. Check on the server for every request and resource, take the tenant id from the session, and avoid IDOR data leaks.
+keywords:
+  - authorization multi tenant rbac
+  - idor vulnerability
+  - row level security postgres
+  - role based access control
+  - tenant isolation
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**On every request, for every resource, the server checks that this caller is allowed to touch it. The tenant id and the role come from the session or the database, never from the request body or the URL.**
+
+</Callout>
+
+Authentication tells you "who you are". Authorization tells you "what you can do". Multi-tenancy means one app and one database hold the data of many companies (tenants), and they must never see each other's data.
+
+## 2. Why does it matter?
+
+The most common bug is called **IDOR** (Insecure Direct Object Reference). A user opens their own invoice: `/api/invoices/1042`. They change the URL to `1043` and another company's invoice opens. There was a login check, but no ownership check.
+
+Another case: a dashboard took the tenant id from the query string, `?tenantId=7`. Someone changed it to `8` and saw another company's whole dataset. A third case: a profile update did `update(body)`, and a user sent `role: "admin"` in the body and became an admin.
+
+<CompareTable leftTitle="Login check only" rightTitle="Check on every resource">
+
+Change the id and anyone's record opens | Tenant or owner filter in the query, otherwise 404
+Tenant id from the URL or body | Tenant id from the session or host
+Role can be set from the body | Role only from the database or a verified token
+Admin routes guarded one by one | One guard on the whole admin prefix
+401 when signed in but refused | 403 when refused, 401 when login is missing
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Learning ownership checks is essential | This is the first security bug in every CRUD app |
+| **Production code** | Required | One missing filter leaks the whole customer list |
+| **Senior level** | Choose and document the tenancy model | Code filters or database policies, the team must know which |
+
+When to learn it: after [Authentication Patterns](/courses/best-practices/authentication), once the app holds data for more than one user.
+
+## 4. Bad vs good code
+
+### Bad: login check, no ownership
+
+```ts
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id } = await params;
+  const tenantId = new URL(request.url).searchParams.get("tenantId");
+  const invoice = await db.query("select * from invoices where id = $1", [id]);
+
+  return NextResponse.json({ invoice: invoice.rows[0], tenantId });
+}
+```
+
+Any signed in user can read any invoice just by typing its id.
+
+### Good: tenant from the session, filter in the data layer
+
+File `lib/invoices/invoices.queries.ts`:
+
+```ts
+export async function findInvoiceForTenant(tenantId: string, invoiceId: string) {
+  const result = await pool.query<InvoiceRow>(
+    "select id, number, total, status from invoices where tenant_id = $1 and id = $2",
+    [tenantId, invoiceId],
+  );
+
+  return result.rows.at(0);
+}
+```
+
+Handler:
+
+```ts
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const membership = await getCurrentMembership();
+  if (!membership) {
+    return NextResponse.json({ error: INVOICE_MESSAGES.unauthorized }, { status: 401 });
+  }
+
+  const { id } = await params;
+  const invoice = await findInvoiceForTenant(membership.tenantId, id);
+  if (!invoice) {
+    return NextResponse.json({ error: INVOICE_MESSAGES.notFound }, { status: 404 });
+  }
+
+  return NextResponse.json({ invoice: toInvoice(invoice) });
+}
+```
+
+For roles, one closed enum, in one file:
+
+```ts
+export const ROLES = ["owner", "admin", "member"] as const;
+export type Role = (typeof ROLES)[number];
+
+export function canManageBilling(role: Role) {
+  return role === "owner" || role === "admin";
+}
+```
+
+If you use Postgres Row Level Security (RLS), the database applies the filter itself:
+
+```sql
+alter table invoices enable row level security;
+
+create policy invoices_select_own_tenant on invoices
+  for select
+  using (tenant_id in (select tenant_id from memberships where user_id = auth.uid()));
+```
+
+### What is the difference?
+
+| Thing | Bad code | Good code |
+| --- | --- | --- |
+| Tenant | From the query string | From the session membership |
+| Query filter | Only `id` | Both `tenant_id` and `id` |
+| Someone else's record | Opens | 404 |
+| Where the query lives | In the handler | In the data layer |
+| Response | The whole row | A `toInvoice` mapper |
+
+## 5. How to apply it
+
+<Flow title="Layers of authorization">
+
+Resolve the caller (401 if missing)
+↓
+Take the role and tenant from the session or database
+↓
+Check that the action is allowed (403 if not)
+↓
+Add the tenant or owner filter to the query
+↓
+If no record is found, return 404
+
+</Flow>
+
+There are two tenancy models. Write down in the app's docs which one is used:
+
+| Model | How | Condition |
+| --- | --- | --- |
+| Filter in code | The server's privileged connection, `tenant_id` in every query | All queries live only in the data layer, and a query outside it is a review blocker |
+| Row Level Security | Policies on every table, queries run with the user's token | A policy on every table, and the admin key only in webhooks and jobs |
+
+A few more rules:
+
+- Put admin routes under one prefix and guard the whole group, so a new route cannot forget the guard.
+- Admin actions that change customer data go into an audit table: who, what, when.
+- Check and increment a quota in one statement: `update ... where used < limit`.
+- Authorize realtime channels at subscribe time, and make sure broadcasts carry no other tenant's data.
+
+## 6. Exceptions and common mistakes
+
+Sometimes returning 404 instead of 403 is better so an attacker cannot tell that the record exists, like in the example above. Do this on purpose and as a team decision. Public data, such as blog posts, needs no ownership check, but draft posts do.
+
+<Mistake
+  title="Checking only at the start of the route"
+  why="The user is logged in, but the record belongs to someone else, and the check gets forgotten a line later."
+  better="Add the owner or tenant filter to the query every time you load a resource."
+/>
+
+<Mistake
+  title="Keeping the role list in two files"
+  why="A new role is added in one file but not the other, and a permission check quietly becomes wrong."
+  better="One closed enum of roles in one file, and an enum or CHECK constraint in the database too."
+/>
+
+<Mistake
+  title="A permissions table the server never checks"
+  why="The UI hides buttons but the API call still goes through, so it is only decoration."
+  better="Enforce every permission that exists on the server, or remove it."
+/>
+
+<Mistake
+  title="Using a database client with the admin key in user requests"
+  why="RLS policies are bypassed and a single bug exposes the data of every tenant."
+  better="Keep the privileged client in a server only module and use it only in webhooks or admin jobs."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Authentication Patterns](/courses/best-practices/authentication), [Dynamic Routes](/courses/nextjs/dynamic-routes), [Database Integration](/courses/nextjs/database-integration) |
+| **Alongside** | [Query Patterns & Transactions](/courses/best-practices/query-patterns), [Input Validation at the Boundary](/courses/best-practices/input-validation) |
+| **After** | [Common Vulnerabilities (OWASP)](/courses/best-practices/common-vulnerabilities), [Endpoint Tests First](/courses/best-practices/endpoint-tests-first) |
+
+## Final quick revision
+
+| Check | Question |
+| --- | --- |
+| Every resource | Does the query have a tenant or owner filter? |
+| Tenant source | Does the tenant id come from the session or host? |
+| Role | Does the role ever come from the body or a client flag? |
+| Status | Missing login is 401, refused is 403? |
+| Admin | Is there one guard on the admin group, and an audit log? |
+| Tenancy model | Do the docs say filter or RLS? |
+
+<Callout variant="important" title="Remember">
+
+The login check is the front door, and the ownership check is the lock on every room. Ask every query: "does this row really belong to this caller?"
+
+</Callout>

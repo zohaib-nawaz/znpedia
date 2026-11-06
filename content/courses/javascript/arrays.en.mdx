@@ -1,0 +1,198 @@
+---
+title: Arrays
+description: Learn JavaScript array basics, including creating arrays, index access, at(), push, pop, includes, loops, and non-mutating methods like toSorted.
+keywords:
+  - javascript arrays
+  - javascript array push pop
+  - javascript array at method
+  - toSorted toReversed
+---
+
+## 1. What are arrays?
+
+<Callout variant="tip" title="Short definition">
+
+**An array is an ordered list that stores many values in one variable, each with an index.**
+
+</Callout>
+
+Every item in an array has a number called an **index**, and the index starts at `0`. An array can hold numbers, strings, objects, and even other arrays.
+
+In JavaScript, an array is actually a special kind of object, which is why `typeof []` returns `"object"`. To check for an array, use `Array.isArray()`.
+
+## 2. Why does it matter?
+
+If you have 50 products, creating 50 separate variables is impossible. An array keeps the whole list under one name.
+
+<CompareTable leftTitle="Separate variables" rightTitle="One array">
+
+product1, product2, product3 | products list
+Hard to keep count | length tells you
+Cannot run a loop | Loop over every item with for of
+New item = new variable | Add a new item with push
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Area | What the array holds |
+| --- | --- |
+| **E-commerce** | Cart items, product list |
+| **Social apps** | Posts, comments, notifications |
+| **Forms** | Selected checkboxes, uploaded files |
+| **APIs** | JSON lists coming from the server |
+| **React** | Rendering a list with `items.map(...)` |
+
+## 4. How does it work?
+
+An array keeps values in a line. `length` is always one more than the last index.
+
+<Flow title="Array structure">
+
+const fruits = apple, banana, mango
+↓
+Index 0 = apple, 1 = banana, 2 = mango
+↓
+length = 3
+↓
+Last item = index length minus 1, or at(-1)
+
+</Flow>
+
+### Mutating vs non-mutating
+
+Some methods **change the original array**, while others return a **new array**. This difference matters a lot in React and state management.
+
+| Task | Changes the original (mutating) | New array (ES2023+) |
+| --- | --- | --- |
+| Sort | `sort()` | `toSorted()` |
+| Reverse | `reverse()` | `toReversed()` |
+| Remove / insert | `splice()` | `toSpliced()` |
+| Replace one index | `arr[i] = x` | `with(i, x)` |
+
+<Callout variant="important" title="Mental model">
+
+**An array is a row of numbered boxes. Index starts at 0, and `length` is the number of boxes.**
+
+</Callout>
+
+## 5. Code example
+
+### Creating, reading, and changing
+
+```js
+const cart = ["shirt", "shoes"];
+
+cart.push("cap");
+cart.unshift("watch");
+console.log(cart);
+
+console.log(cart[0]);
+console.log(cart.at(-1));
+console.log(cart.length);
+
+const removed = cart.pop();
+console.log(removed, cart.includes("shoes"), cart.indexOf("shirt"));
+
+for (const item of cart) {
+  console.log(item);
+}
+```
+
+### Non-mutating methods
+
+```js
+const scores = [72, 95, 40];
+
+const sorted = scores.toSorted((a, b) => b - a);
+const updated = scores.with(1, 99);
+
+console.log(scores);
+console.log(sorted);
+console.log(updated);
+
+const ids = Array.from({ length: 3 }, (_, i) => i + 1);
+console.log(ids, Array.isArray(ids));
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `push` / `pop` | Add / remove at the end |
+| `unshift` / `shift` | Add / remove at the start |
+| `cart.at(-1)` | The last item, supports negative indexes |
+| `includes` / `indexOf` | Whether an item exists, and at which index |
+| `for...of` | Loop directly over each value |
+| `toSorted((a, b) => b - a)` | A new array, largest to smallest, `scores` stays the same |
+| `with(1, 99)` | A new array with index 1 replaced |
+| `Array.from(...)` | Generated `[1, 2, 3]` |
+
+### Interview tip
+
+`const` does not freeze an array. After `const cart = []`, `cart.push()` still works. You just cannot assign `cart = []` again.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Thinking the index starts at 1"
+  why="The first item is at index 0, and arr[arr.length] is always undefined."
+  better="Use arr[0] for the first item, and arr.at(-1) or arr[arr.length - 1] for the last."
+/>
+
+<Mistake
+  title="Sorting numbers with sort() and no compare function"
+  why="By default, sort converts values to strings before comparing, so [10, 9, 1].sort() gives [1, 10, 9]."
+  better="Pass a compare function: toSorted((a, b) => a - b)."
+/>
+
+<Mistake
+  title="Mutating a React state array directly"
+  why="push or sort keeps the same array reference, so React may miss the re-render."
+  better="Create a new array with [...items, newItem], toSorted(), toSpliced(), or with()."
+/>
+
+<Mistake
+  title="Using typeof to check for an array"
+  why="typeof [] also returns object, so you cannot tell an array from an object."
+  better="Use Array.isArray(value)."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Data Types](/courses/javascript/data-types), [Loops](/courses/javascript/loops) |
+| **Alongside** | [Objects](/courses/javascript/objects), [Destructuring](/courses/javascript/destructuring) |
+| **After** | [Array Methods: map, filter, reduce](/courses/javascript/array-methods), [Spread & Rest](/courses/javascript/spread-and-rest), [Map & Set](/courses/javascript/map-and-set) |
+
+<Flow title="Suggested order">
+
+Loops
+↓
+Arrays
+↓
+Array Methods
+↓
+Objects
+↓
+Destructuring
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Index | Starts at `0` |
+| Last item | `arr.at(-1)` |
+| Add / remove | `push`, `pop`, `shift`, `unshift` |
+| Search | `includes`, `indexOf` |
+| Safe copies | `toSorted`, `toReversed`, `toSpliced`, `with` |
+| Array check | `Array.isArray()` |
+
+<Callout variant="important" title="Remember">
+
+The index starts at `0`. Where the original data must not change, use non-mutating approaches like `toSorted`, `with`, and spread.
+
+</Callout>

@@ -1,0 +1,208 @@
+---
+title: "Styling: CSS Modules & Tailwind"
+description: Set up Next.js Tailwind CSS and CSS Modules, learn global CSS, and see how Tailwind v4 differs from scoped styles, with App Router examples.
+keywords:
+  - next.js tailwind css modules
+  - tailwind css v4 next.js
+  - css modules next.js
+  - global css next.js
+---
+
+## 1. What is styling?
+
+<Callout variant="tip" title="Short definition">
+
+**Styling in Next.js means giving your components CSS, mostly through Tailwind CSS utility classes and CSS Modules.**
+
+</Callout>
+
+Next.js supports several approaches: Global CSS, CSS Modules, Tailwind CSS, Sass and CSS-in-JS. In this chapter we look at the two most common ones.
+
+- **Tailwind CSS v4**: small utility classes like `flex`, `p-4` and `text-xl` written directly in `className`.
+- **CSS Modules**: a `.module.css` file whose classes are scoped to the component that imports it.
+
+## 2. Why does it matter?
+
+With plain global CSS, every class is shared across the whole app. In a large app, if the name `.button` is used in two places, the styles clash and the bug is hard to find.
+
+<CompareTable leftTitle="Global CSS only" rightTitle="Tailwind + CSS Modules">
+
+Every class is global across the app | Classes are scoped to a component or are utility based
+Name collisions are common | CSS Modules generate unique class names
+Unused CSS stays in the bundle | Tailwind only generates the classes you use
+Design values differ from file to file | Tailwind theme keeps spacing and colors consistent
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Situation | Better choice |
+| --- | --- |
+| Layout, spacing, colors, responsive design | Tailwind utility classes |
+| Complex animation or very specific CSS | CSS Module |
+| Reset, fonts, CSS variables, base styles | `app/globals.css` (Global CSS) |
+| CSS from a third-party library | Import in the root layout |
+
+This is also the Next.js team's recommendation: do most of your styling with Tailwind, and use CSS Modules where utilities are not enough.
+
+## 4. How does it work?
+
+Tailwind v4 runs as a PostCSS plugin. You import Tailwind in `globals.css`, and at build time Tailwind scans your files and generates only the classes you actually used.
+
+<Flow title="Tailwind v4 flow">
+
+@tailwindcss/postcss in postcss.config.mjs
+↓
+@import "tailwindcss" in globals.css
+↓
+Root layout imports globals.css
+↓
+The build scans which classes are used
+↓
+A small, minified CSS file goes to the browser
+
+</Flow>
+
+In CSS Modules, a `.card` class becomes something like `page_card__x7a2b` after the build. That is why a class with the same name in two different files never clashes.
+
+## 5. Code example
+
+### Tailwind CSS v4 setup
+
+```bash
+npm install -D tailwindcss @tailwindcss/postcss
+```
+
+```js
+export default {
+  plugins: {
+    "@tailwindcss/postcss": {},
+  },
+};
+```
+
+The code above goes in `postcss.config.mjs`. Now in `app/globals.css`:
+
+```css
+@import "tailwindcss";
+
+@theme {
+  --color-brand: #0f766e;
+}
+```
+
+```tsx
+import "./globals.css";
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body className="bg-white text-slate-900">{children}</body>
+    </html>
+  );
+}
+```
+
+Now you can use utility classes in any component:
+
+```tsx
+export default function Hero() {
+  return (
+    <section className="mx-auto max-w-3xl px-4 py-16 text-center">
+      <h1 className="text-4xl font-bold text-brand md:text-5xl">ZnPedia</h1>
+    </section>
+  );
+}
+```
+
+### CSS Module example
+
+```css
+.card {
+  border-radius: 12px;
+  padding: 24px;
+  transition: transform 200ms ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+}
+```
+
+```tsx
+import styles from "./card.module.css";
+
+export function Card({ title }: { title: string }) {
+  return <article className={styles.card}>{title}</article>;
+}
+```
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `@tailwindcss/postcss` | The PostCSS plugin for Tailwind v4, no separate `tailwind.config.js` needed |
+| `@import "tailwindcss"` | Loads Tailwind's base, components and utilities |
+| `@theme` | Design tokens inside CSS itself, `--color-brand` creates the `text-brand` class |
+| `card.module.css` | The `.module.css` extension is what makes the file a CSS Module |
+| `styles.card` | A reference to the generated unique class name |
+
+<Callout variant="note" title="With Server Components">
+
+Tailwind and CSS Modules both work in Server Components with no extra setup, because they turn into plain CSS at build time. Runtime CSS-in-JS libraries often need `"use client"`.
+
+</Callout>
+
+## 6. Common mistakes
+
+<Mistake
+  title="Copying a Tailwind v3 setup into v4"
+  why="In v4, the @tailwind base, components, utilities directives and the old tailwindcss PostCSS plugin do not work, so the styles never load."
+  better="Install the @tailwindcss/postcss package and write only @import tailwindcss in globals.css."
+/>
+
+<Mistake
+  title="Importing global CSS in every component"
+  why="Global styles are not removed on navigation, so the CSS of different pages can clash with each other."
+  better="Import global CSS only in the root layout, and use a CSS Module or Tailwind for component-specific styles."
+/>
+
+<Mistake
+  title="Building dynamic class names by joining strings"
+  why="Tailwind scans files as plain text, so a class built from bg- plus a variable is invisible to it and the CSS is never generated."
+  better="Write full class names, for example bg-teal-600 if isActive, otherwise bg-slate-200, so the scanner can find them."
+/>
+
+<Mistake
+  title="Accessing a kebab-case class with dot syntax in a CSS Module"
+  why="styles.my-card becomes a minus operator in JavaScript and you get undefined."
+  better="Name the class in camelCase like myCard, or use bracket syntax."
+/>
+
+### Interview tip
+
+If you are asked "How do CSS Modules prevent naming collisions?", the answer is: at build time every class gets a unique name based on the file path and a hash, and the imported object maps the original name to the generated name.
+
+## 7. What to learn before and after
+
+| Stage | Chapters |
+| --- | --- |
+| Before | [Layouts & Templates](/courses/nextjs/layouts-and-templates), [Server & Client Components](/courses/nextjs/server-and-client-components) |
+| Alongside | [Font Optimization](/courses/nextjs/font-optimization), [Image Optimization](/courses/nextjs/image-optimization) |
+| After | [Performance & Core Web Vitals](/courses/nextjs/performance) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Tailwind v4 install | `tailwindcss` and `@tailwindcss/postcss` |
+| CSS entry | `@import "tailwindcss"` in `globals.css` |
+| Theme tokens | `@theme` block inside CSS |
+| Scoped CSS | `.module.css` file and `styles.className` |
+| Global CSS | Import only in the root layout |
+
+<Callout variant="important" title="Remember">
+
+Do most of your styling with Tailwind utilities, keep CSS Modules for special and complex CSS, and limit global CSS to things that are truly global.
+
+</Callout>

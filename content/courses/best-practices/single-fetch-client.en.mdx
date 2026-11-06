@@ -1,0 +1,207 @@
+---
+title: One Fetch Client
+description: Build one API client wrapper on top of fetch that handles auth, headers, response parsing and errors, so components never call fetch directly.
+keywords:
+  - api client wrapper fetch
+  - typed fetch wrapper typescript
+  - centralized api client
+  - handle 401 frontend
+  - fetch error handling
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Every call from the frontend to the backend goes through one client function. It adds auth, sets headers, parses the response and turns errors into one typed result. Components never call `fetch` directly.**
+
+</Callout>
+
+`fetch` is a low level tool. On every call you have to remember the `Content-Type` header, `JSON.stringify`, the `res.ok` check, how to parse the error body, and what to do on a 401. A client wrapper writes all of this once.
+
+## 2. Why does it matter?
+
+`fetch` does **not throw** on 404 or 500. It only throws when the network fails. A developer who does not know this writes `await res.json()` and renders the error body as if it were data.
+
+Now imagine 30 components each doing their own `fetch`. The session expires. Some components send the user to login, some show an empty list, some crash. Later you need a new header on every request, and you have to change 30 files and miss one.
+
+<CompareTable leftTitle="Every component has its own fetch" rightTitle="One client">
+
+res.ok is checked sometimes and skipped other times | Every response is checked in one place
+Each screen behaves differently on 401 | One path on 401: clear state and sign in
+A new header means editing 30 files | A new header is one line
+The error shape is guessed differently everywhere | Every call returns a typed result
+URLs and JSON noise inside the component | The component just calls listProjects()
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Good to have, a small wrapper is enough | The benefit shows up after two or three calls |
+| **Production code** | Required | Auth and error handling should have exactly one implementation |
+| **Senior level** | Design the client and the retry policy | When to retry, when not to, timeouts, tracing headers |
+
+When to learn it: right after you understand the [Fetch API](/courses/javascript/fetch-api) and [Async / Await](/courses/javascript/async-await).
+
+## 4. Bad vs good code
+
+### Bad: fetch inside the component
+
+```tsx
+"use client";
+
+import { useEffect, useState } from "react";
+
+export function ProjectList() {
+  const [projects, setProjects] = useState([]);
+
+  useEffect(() => {
+    fetch("/api/projects")
+      .then((res) => res.json())
+      .then((data) => setProjects(data.projects));
+  }, []);
+
+  return <ul>{projects.map((p: any) => <li key={p.id}>{p.name}</li>)}</ul>;
+}
+```
+
+There is no `res.ok` check, so on an error `data.projects` is undefined and `map` crashes. The type is `any`. There is no plan for 401.
+
+### Good: one client, typed functions
+
+File `lib/api/client.ts`:
+
+```ts
+import type { ApiResult, RequestOptions } from "./client.types";
+
+export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<ApiResult<T>> {
+  const response = await fetch(path, {
+    method: options.method ?? "GET",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(options.body),
+    credentials: "same-origin",
+  });
+
+  if (response.status === 401) {
+    window.location.assign("/sign-in");
+    return { ok: false, status: 401, error: "Unauthorized" };
+  }
+
+  if (!response.ok) {
+    const failure: { error: string } = await response.json();
+    return { ok: false, status: response.status, error: failure.error };
+  }
+
+  return { ok: true, data: (await response.json()) as T };
+}
+```
+
+File `lib/api/client.types.ts`:
+
+```ts
+export type RequestOptions = {
+  method?: "GET" | "POST" | "PATCH" | "DELETE";
+  body?: unknown;
+};
+
+export type ApiResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; status: number; error: string };
+```
+
+A small typed function for each endpoint, taking its types from the contract:
+
+```ts
+export function listProjects() {
+  return apiRequest<ListProjectsResponse>("/api/projects");
+}
+```
+
+The component now just uses it, and handles both outcomes cleanly:
+
+```tsx
+const result = await listProjects();
+if (!result.ok) {
+  setError(result.error);
+  return;
+}
+setProjects(result.data.projects);
+```
+
+### What is the difference?
+
+| Thing | Bad code | Good code |
+| --- | --- | --- |
+| `res.ok` | Forgotten | Checked once in the client |
+| Types | `any` | `ApiResult<ListProjectsResponse>` |
+| 401 | Nothing | Send to sign in, no retry |
+| Error | Crash | `{ ok: false, error }` that the UI can show |
+| Change | Every component | Only `client.ts` |
+
+`as T` is fine here because this is our own API, tied to a [shared contract](/courses/best-practices/shared-api-contracts). If the response comes from a third party API, parse it with Zod.
+
+## 5. How to apply it
+
+<Flow title="Steps to build the client">
+
+One apiRequest function in lib/api/client.ts
+↓
+Auth, headers and timeout live here
+↓
+Turn the response into an ok or error result
+↓
+A typed function per endpoint, using the contract types
+↓
+Components only call these functions
+
+</Flow>
+
+Add a lint rule that forbids `fetch` in components, so the rule enforces itself.
+
+## 6. Exceptions and common mistakes
+
+Next.js Server Components do not need to `fetch` their own API. They can call the service function directly, like `await listProjectsForUser(user.id)`. The client wrapper is for components that run in the browser, or for a mobile app. Third party SDKs (payments, maps) bring their own client, so you do not need to wrap them.
+
+<Mistake
+  title="Assuming fetch will throw on an error"
+  why="fetch resolves on 404 and 500 too, so the error body becomes data and ends up in the UI."
+  better="Check response.ok in the client and return the error as a separate result."
+/>
+
+<Mistake
+  title="Retrying the request on 401"
+  why="With an expired session this turns into a retry loop and puts useless load on the server."
+  better="On 401, clear local state and send the user to sign in."
+/>
+
+<Mistake
+  title="Keeping the token in localStorage and attaching it by hand everywhere"
+  why="Every component needs to know about the token, and localStorage can be read through XSS."
+  better="Use an httpOnly cookie on the web and let the client only handle the credentials setting."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Fetch API](/courses/javascript/fetch-api), [Async / Await](/courses/javascript/async-await), [Error Handling & Error Envelope](/courses/best-practices/error-handling-and-envelope) |
+| **Alongside** | [Shared API Contracts](/courses/best-practices/shared-api-contracts), [Separation of Concerns](/courses/best-practices/separation-of-concerns) |
+| **After** | [Authentication Patterns](/courses/best-practices/authentication), [React Component Practices](/courses/best-practices/react-component-practices) |
+
+## Final quick revision
+
+| Check | Question |
+| --- | --- |
+| One client | Do all backend calls go through `apiRequest`? |
+| `res.ok` | Does every non 2xx response become an error result? |
+| Typed | Does every call get its return type from the contract? |
+| 401 | Is there one path for 401, with no retry? |
+| Components | Is there a direct `fetch` in any component? |
+
+<Callout variant="important" title="Remember">
+
+Lock every messy network detail into one file. Components should only know that `listProjects()` either gives data or gives a clear error.
+
+</Callout>

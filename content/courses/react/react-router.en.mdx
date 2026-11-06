@@ -1,0 +1,192 @@
+---
+title: Routing with React Router
+description: React Router v7 for beginners. Learn BrowserRouter, Routes, Link, nested routes, Outlet and useParams to build pages in a single page app.
+keywords:
+  - react router
+  - react router v7
+  - react router dom routes
+  - useparams usenavigate
+---
+
+## 1. What is Routing with React Router?
+
+<Callout variant="tip" title="Short definition">
+
+**React Router is a library that shows the right component for the URL, without reloading the whole page.**
+
+</Callout>
+
+A single page app (SPA) has only one HTML page. React Router reads the browser URL and decides which component to render at `/about` and which at `/products/5`.
+
+In version 7 everything is imported from one package, `react-router`. The old `react-router-dom` package now only re-exports it. In this chapter we cover **declarative mode**, which is the simplest for a React app built with Vite.
+
+## 2. Why does it matter?
+
+Without a router you would have to read `window.location` yourself, show pages with `if` conditions, and handle the back button.
+
+<CompareTable leftTitle="Without a router" rightTitle="With React Router">
+
+A full page reload on every link | Client-side navigation, instant
+Keeping the URL and UI in sync by hand | The URL is the source of truth for the UI
+You handle the back button yourself | Browser history works automatically
+Getting a dynamic id is hard | useParams gives it directly
+Layout copied into every page | Nested routes and Outlet
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Use case | Feature |
+| --- | --- |
+| **Multi-page SPA** | `Routes` and `Route` |
+| **Product detail page** | The dynamic segment `:id` and `useParams` |
+| **Dashboard layout** | Nested routes and `Outlet` |
+| **Redirect after login** | `useNavigate` or `Navigate` |
+| **Active menu item** | `NavLink` |
+| **404 page** | `path="*"` |
+
+## 4. How does it work?
+
+`BrowserRouter` listens to the browser history. `Routes` looks through all its `Route` children for the one that best matches the current URL, and renders only its `element`.
+
+<Flow title="From a Link click to the new page">
+
+The user clicks a Link
+↓
+The URL changes, the page does not reload
+↓
+Routes matches the current URL
+↓
+The parent route's layout renders
++
+The child route renders in place of Outlet
+
+</Flow>
+
+## 5. Code example
+
+### Setup
+
+```bash
+npm install react-router
+```
+
+### Example 1: Routes, layout and a dynamic page
+
+```jsx
+import { createRoot } from "react-dom/client";
+import { BrowserRouter, Routes, Route, NavLink, Outlet } from "react-router";
+import Home from "./Home";
+import Products from "./Products";
+import ProductDetail from "./ProductDetail";
+
+function Layout() {
+  return (
+    <div>
+      <nav>
+        <NavLink to="/">Home</NavLink>
+        <NavLink to="/products">Products</NavLink>
+      </nav>
+      <Outlet />
+    </div>
+  );
+}
+
+createRoot(document.getElementById("root")).render(
+  <BrowserRouter>
+    <Routes>
+      <Route element={<Layout />}>
+        <Route index element={<Home />} />
+        <Route path="products" element={<Products />} />
+        <Route path="products/:id" element={<ProductDetail />} />
+        <Route path="*" element={<p>Page not found</p>} />
+      </Route>
+    </Routes>
+  </BrowserRouter>
+);
+```
+
+### Example 2: useParams and useNavigate
+
+```jsx
+import { useParams, useNavigate } from "react-router";
+
+export default function ProductDetail() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+
+  return (
+    <section>
+      <h1>Product number {id}</h1>
+      <button onClick={() => navigate("/products")}>Back to the list</button>
+    </section>
+  );
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `BrowserRouter` | Connects the app to the browser URL and history |
+| `Route element={<Layout />}` | A layout route with no `path`, all children go inside it |
+| `index` | Shown at the parent's exact URL (`/`) |
+| `products/:id` | `:id` is the dynamic part, available through `useParams` |
+| `Outlet` | The child route renders here |
+| `NavLink` | Adds an `active` class to the active link automatically |
+| `path="*"` | The 404 UI when nothing matches |
+
+### Interview tip
+
+React Router v7 has three modes: **declarative** (`BrowserRouter`), **data** (loaders and actions with `createBrowserRouter`), and **framework** (Vite plugin, file-based routes, SSR). Saying that you pick the mode based on what the project needs is a strong point in an interview.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Using an a tag for navigation"
+  why="A normal anchor tag reloads the whole page and the app's state is lost."
+  better="Use Link or NavLink for pages inside the app, and the a tag for outside websites."
+/>
+
+<Mistake
+  title="Creating a nested route but forgetting Outlet"
+  why="The parent renders but there is no place for the child, so the child page looks empty."
+  better="Put an Outlet in each layout route's component, where the child should appear."
+/>
+
+<Mistake
+  title="Calling navigate() during render"
+  why="Render should be pure, and a side effect causes warnings and loops."
+  better="Call navigate() in an event handler, or return the Navigate component from render."
+/>
+
+<Mistake
+  title="Treating a useParams value as a number"
+  why="URL params are always strings, so comparisons and math go wrong."
+  better="Convert with Number(id) when needed and handle invalid values."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Setup with Vite](/courses/react/setup-with-vite), [Components](/courses/react/components), [Children & Composition](/courses/react/children-and-composition) |
+| **Alongside** | [Suspense & lazy()](/courses/react/suspense-and-lazy), [Data Fetching](/courses/react/data-fetching) |
+| **After** | [Next.js Routing & Pages](/courses/nextjs/routing-and-pages), [Dynamic Routes](/courses/nextjs/dynamic-routes) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Package | `react-router` (v7) |
+| Setup | `Routes` and `Route` inside `BrowserRouter` |
+| Links | `Link` and `NavLink`, no page reload |
+| Dynamic | `:id` and `useParams()` |
+| Layout | Nested `Route` and `Outlet` |
+| Navigating from code | `useNavigate()` |
+
+<Callout variant="important" title="Remember">
+
+In React Router, **the URL is the source of truth for the UI**. Use nested routes and `Outlet` for layouts, `:param` for dynamic pages, and always use `Link` for navigation inside the app.
+
+</Callout>

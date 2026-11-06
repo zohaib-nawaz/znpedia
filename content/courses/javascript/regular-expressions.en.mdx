@@ -1,0 +1,179 @@
+---
+title: Regular Expressions
+description: Learn what JavaScript regex is, how patterns and flags work, and how to use test, match and replace, with email and phone validation examples.
+keywords:
+  - javascript regex
+  - regular expressions
+  - regex test match replace
+  - regex flags javascript
+---
+
+## 1. What are regular expressions?
+
+<Callout variant="tip" title="Short definition">
+
+**A regular expression (regex) is a pattern used to find, check or replace a specific shape inside text.**
+
+</Callout>
+
+In JavaScript you can create a regex in two ways: a literal `/abc/i` or the constructor `new RegExp("abc", "i")`. The literal is more common, and the constructor is for when you need to build the pattern at runtime.
+
+## 2. Why do they matter?
+
+Imagine you need to check that a string has only 4 to 6 digits. Without regex, you would have to write loops, `if` statements and character checks. Regex does this in one line.
+
+<CompareTable leftTitle="Manual string code" rightTitle="With regex">
+
+A loop and an if on every character | One pattern describes the whole rule
+A new rule means a new function | Change the pattern a little
+Finding all matches is a lot of work | All matches at once with the g flag
+Split and join to replace | replace or replaceAll in one call
+
+</CompareTable>
+
+## 3. Where are they used?
+
+| Use case | Example |
+| --- | --- |
+| **Form validation** | Check email, phone, postal code |
+| **Search** | Find a word in text, ignoring case |
+| **Cleanup** | Remove extra spaces, build a slug |
+| **Parsing** | Pull parts out of log lines or dates |
+| **Editors** | VS Code find and replace supports regex |
+
+## 4. How do they work?
+
+The regex engine reads the string from left to right and tries to match the pattern at every position.
+
+<Flow title="Regex matching flow">
+
+Create the pattern and flags
+↓
+Call a method on the string
+↓
+The engine tries a match from each position
+↓
+If it matches you get a result, otherwise null or false
+
+</Flow>
+
+### Common building blocks
+
+| Pattern | Meaning |
+| --- | --- |
+| `\d` | Any digit from 0 to 9 |
+| `\w` | Letter, digit or underscore |
+| `\s` | Space, tab, newline |
+| `.` | Any character except a newline |
+| `[abc]` | One of a, b or c |
+| `^` and `$` | Start and end of the string |
+| `+`, `*`, `?` | One or more, zero or more, optional |
+| `{2,4}` | 2 to 4 times |
+| `a\|b` | a or b |
+| `( )` | A group, captures the value |
+
+### Flags
+
+| Flag | Job |
+| --- | --- |
+| `g` | All matches, not just the first |
+| `i` | Case-insensitive |
+| `m` | Multiline, `^` and `$` work on every line |
+| `u` | Unicode support (emoji, Urdu text) |
+
+## 5. Code example
+
+### test, match and replace
+
+```js
+const phone = /^03\d{2}-?\d{7}$/;
+console.log(phone.test("0300-1234567"));
+console.log(phone.test("12345"));
+
+const text = "Order 12 and order 45 have shipped";
+console.log(text.match(/\d+/g));
+
+const slug = "  Learn JS   Regex  ".trim().toLowerCase().replace(/\s+/g, "-");
+console.log(slug);
+```
+
+### Named groups and matchAll
+
+```js
+const datePattern = /(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})/;
+const result = "2026-11-01".match(datePattern);
+console.log(result.groups.year, result.groups.month);
+
+const log = "user=ali id=7, user=sara id=9";
+for (const m of log.matchAll(/user=(\w+) id=(\d+)/g)) {
+  console.log(m[1], m[2]);
+}
+```
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `^03\d{2}` | The string starts with 03, then 2 digits |
+| `-?` | The dash is optional |
+| `\d{7}$` | Exactly 7 digits at the end |
+| `.test()` | Returns true or false |
+| `.match(/\d+/g)` | An array of all the numbers: `["12", "45"]` |
+| `\s+` with `g` | Replaces every group of spaces with a dash |
+| `(?<year>...)` | A named group, available as `result.groups.year` |
+| `matchAll` | With the `g` flag, gives every match and its groups |
+
+### Interview tip
+
+A regex with the `g` flag remembers `lastIndex`. If you call `.test()` again and again on the same regex, the results keep changing. Do not use the `g` flag for validation.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Forgetting ^ and $ in a validation pattern"
+  why="Without anchors, the pattern matches anywhere in the string, so even abc12345xyz passes."
+  better="To check the whole string, start the pattern with ^ and end it with $."
+/>
+
+<Mistake
+  title="Not escaping special characters"
+  why="A dot means any character, so a pattern like /1.5/ also matches 125."
+  better="Use a backslash for a literal dot, like /1\.5/."
+/>
+
+<Mistake
+  title="Writing a single backslash in new RegExp"
+  why="Inside a string, the backslash is itself an escape character, so \d becomes just d."
+  better="Write a double backslash in the constructor, or use a regex literal wherever possible."
+/>
+
+<Mistake
+  title="Trying to write a perfect regex for things like email"
+  why="A very complex pattern is hard to read and maintain, and it still does not cover every case."
+  better="Do a basic check with a simple pattern, and do the real verification on the server or with a confirmation email."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Strings & Template Literals](/courses/javascript/strings), [Conditionals](/courses/javascript/conditionals) |
+| **Alongside** | [Forms & Validation](/courses/javascript/forms-and-validation) |
+| **After** | [Debounce & Throttle](/courses/javascript/debounce-and-throttle), [React Forms](/courses/react/forms) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Regex | A pattern for text |
+| How to create | `/pattern/flags` or `new RegExp()` |
+| Check | `.test()` returns true or false |
+| Extract | `.match()`, `.matchAll()` |
+| Replace | `.replace()`, `.replaceAll()` |
+| Anchors | `^` and `$` for the whole string |
+
+<Callout variant="important" title="Remember">
+
+Keep your regex **short and readable**. Use anchors for validation, and the `g` flag only when you need all the matches.
+
+</Callout>

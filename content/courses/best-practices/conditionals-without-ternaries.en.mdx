@@ -1,0 +1,203 @@
+---
+title: Conditionals Without Ternaries
+description: Avoid nested ternaries for readability. Keep JSX conditions clean with if, early returns and render functions instead of ternaries and &&.
+keywords:
+  - avoid nested ternary readability
+  - ternary operator best practice
+  - conditional rendering react clean
+  - render function pattern
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Write `if` / `else` or an early return instead of `cond ? a : b`. In JSX, use neither a ternary nor `cond && <X />`. Every conditional piece of UI is a small render function that you call with `{renderX()}`.**
+
+</Callout>
+
+This is one of the strictest house rules in this course. First, understand what it asks for:
+
+| Place | Rule |
+| --- | --- |
+| Normal code | `if` / `else` or an early return |
+| Choosing a value | A lookup object or a small function |
+| JSX | A function like `renderBanner()` with a braced guard inside |
+
+## 2. Why does it matter?
+
+A single ternary often looks fine. The trouble starts when it grows: a nested ternary, a long condition inside JSX, and the hidden bug of `&&`.
+
+<CompareTable leftTitle="Ternary and && in JSX" rightTitle="if and render functions">
+
+To read a nested ternary you have to build a table in your head | Each case has its own line and its own guard
+With count && Badge, if count is 0, a 0 appears on screen | A clear boolean in the guard, no hidden 0
+An 80-line JSX return block with conditions in the middle | A short return block, every part has a name
+Adding a case makes the ternary deeper | A new case is just one more if
+Hard to stop on one branch of a ternary in the debugger | Every branch has its own line, so breakpoints are easy
+
+</CompareTable>
+
+The `&&` bug is real:
+
+```tsx
+<div>{cart.items.length && <CartBadge />}</div>
+```
+
+When the cart is empty, the result of `0 && ...` is `0`, and React writes `0` on the screen.
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Avoid nested ternaries completely, a simple ternary is acceptable | First make the habit of `if` and early return solid |
+| **Production code** | Follow the team's rule, and never use a number with `&&` | The `0` render bug and nested ternaries are the most common readability problems |
+| **Senior level** | Decide how strict the team will be | A clear rule ends arguments in review |
+
+## 4. Bad vs good code
+
+```tsx
+export function OrderStatus({ order }: { order: Order }) {
+  return (
+    <div>
+      {order.refunds.length && <RefundNote />}
+      {order.status === "paid"
+        ? order.shippedAt
+          ? <Shipped at={order.shippedAt} />
+          : <Preparing />
+        : order.status === "failed"
+          ? <PaymentFailed />
+          : <Pending />}
+    </div>
+  );
+}
+```
+
+```tsx
+export function OrderStatus({ order }: { order: Order }) {
+  const renderRefundNote = () => {
+    if (order.refunds.length === 0) {
+      return null;
+    }
+
+    return <RefundNote />;
+  };
+
+  const renderState = () => {
+    if (order.status === "failed") {
+      return <PaymentFailed />;
+    }
+
+    if (order.status !== "paid") {
+      return <Pending />;
+    }
+
+    if (!order.shippedAt) {
+      return <Preparing />;
+    }
+
+    return <Shipped at={order.shippedAt} />;
+  };
+
+  return (
+    <div>
+      {renderRefundNote()}
+      {renderState()}
+    </div>
+  );
+}
+```
+
+| What is the difference? | Bad | Good |
+| --- | --- | --- |
+| `0` bug | A `0` shows up when there are no refunds | A clear `=== 0` guard |
+| Reading | A 3-level nested ternary | Guards in a straight line from top to bottom |
+| Return block | Logic and UI mixed | Only two named calls |
+| A new status | The ternary gets deeper | One new `if` |
+
+### A lookup for choosing a value
+
+```ts
+const STATUS_LABEL: Record<OrderStatus, string> = {
+  pending: "Pending",
+  paid: "Paid",
+  failed: "Payment failed",
+};
+
+const label = STATUS_LABEL[order.status];
+```
+
+Because of `Record`, if you add a new status, TypeScript itself tells you the label is missing.
+
+## 5. How to apply it
+
+<Flow title="Steps to remove a ternary">
+
+Find the ternary or &&
+↓
+Normal code? Change it to if/else or an early return
+↓
+A value mapping? Make a lookup object
+↓
+JSX? Make a renderX function
+↓
+Inside the function, a guard with braces, return null
+↓
+In the return block, only call renderX()
+
+</Flow>
+
+## 6. Exceptions and common mistakes
+
+**An honest note:** most teams allow a simple ternary and `&&`. The React docs themselves show `isLoggedIn ? <A /> : <B />`. What almost everyone agrees on: **do not write nested ternaries**, and do not put a number on the left side of `&&`. "No ternaries at all" is a strict house opinion. The benefit: every condition has the same shape, there is no `0` bug, and JSX always stays short. The cost: 5 lines even for a tiny condition. A team that keeps this rule prefers consistency over short files.
+
+If the render functions get too big, turn them into separate components. Render functions are for small conditions, not for whole sub-screens.
+
+<Mistake
+  title="&& with a number in JSX"
+  why="0 is falsy but React renders it as text, so a 0 appears on the screen."
+  better="Make a clear boolean, like a length === 0 guard, or use a render function."
+/>
+
+<Mistake
+  title="Nested ternary"
+  why="The reader has to hold every level's condition in their head, which raises the chance of a mistake."
+  better="Write a straight list of ifs and early returns."
+/>
+
+<Mistake
+  title="Big JSX and state inside a render function"
+  why="The render function turns into a hidden component, which makes re-rendering and testing harder."
+  better="Move the big part into its own component file and pass props."
+/>
+
+<Mistake
+  title="A long if/else chain instead of a ternary when it is really a mapping"
+  why="Five ifs just to choose one string is noise."
+  better="Use a lookup object typed with Record."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Early Returns & Braces](/courses/best-practices/early-returns-and-braces), [Conditional Rendering](/courses/react/conditional-rendering) |
+| **Alongside** | [Small Functions](/courses/best-practices/small-functions) |
+| **After** | [File Size & Organization](/courses/best-practices/file-size-and-organization), [React Component Practices](/courses/best-practices/react-component-practices) |
+
+## Final quick revision
+
+| Check | Question |
+| --- | --- |
+| Nested ternary | Any at all? Remove it right away |
+| && in JSX | Could the left side be a number? |
+| Render function | Does every conditional piece of UI have a name? |
+| Guard | Does the guard return null with braces? |
+| Mapping | Would a lookup object be better? |
+| Team rule | Is a simple ternary allowed or not, the same across the whole repo |
+
+<Callout variant="important" title="Remember">
+
+Give a condition a name and its own line. The return block should hold only what shows the shape of the screen, not decisions.
+
+</Callout>

@@ -1,0 +1,194 @@
+---
+title: Server Actions
+description: What Next.js server actions are and how the use server directive runs forms and mutations on the server, with auth checks and revalidation.
+keywords:
+  - next.js server actions
+  - use server directive
+  - next.js form action
+  - server functions react
+---
+
+## 1. What are Server Actions?
+
+<Callout variant="tip" title="Short definition">
+
+**A Server Action is an async function that always runs on the server because of the `"use server"` directive, and you can call it directly from a form or a button.**
+
+</Callout>
+
+Before, to save data you would create an API route and then call `fetch("/api/...")` from the client. With Server Actions you just write a function, and Next.js creates a secure POST endpoint for it automatically.
+
+In React's terms these are called **Server Functions**. When they are used for a form `action` or a mutation, Next.js calls them Server Actions.
+
+## 2. Why does it matter?
+
+<CompareTable leftTitle="API route + client fetch" rightTitle="Server Action">
+
+A separate API file and separate client code | One function, called straight from the form
+Build and parse a JSON body | FormData arrives automatically
+Loading state by hand | useActionState gives you pending
+The form does not work before JavaScript loads | Progressive enhancement, it submits even without JS
+Cache refresh is separate | updateTag or revalidatePath in the same function
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Use case | What the action does |
+| --- | --- |
+| **Create post** | Inserts a row in the database, then redirects |
+| **Like button** | Updates the count, then calls `updateTag` |
+| **Profile settings** | Validates and saves the form data |
+| **Delete item** | Checks auth, deletes, refreshes the list |
+| **Logout** | Deletes the session cookie |
+
+## 4. How does it work?
+
+<Flow title="Server Action flow">
+
+The user submits the form
+↓
+The browser sends a POST request
+↓
+Next.js finds the right Server Action
+↓
+The action runs on the server
+↓
+Database update + cache invalidation
+↓
+The updated UI comes back in a single round trip
+
+</Flow>
+
+You can write `"use server"` in two places:
+
+| Place | Effect |
+| --- | --- |
+| The first line of a file | All exports of the file become Server Actions, and Client Components can import them |
+| The first line of an async function body | Only that function is a Server Action, inline inside a Server Component |
+
+<Callout variant="important" title="Mental model">
+
+**A Server Action is a public endpoint. Anyone can call it, so always do auth and validation inside it.**
+
+</Callout>
+
+## 5. Code example
+
+### Example 1: the actions file
+
+```ts
+"use server";
+
+import { updateTag } from "next/cache";
+import { redirect } from "next/navigation";
+import { db } from "@/lib/db";
+import { verifySession } from "@/lib/dal";
+
+export async function createTodo(formData: FormData) {
+  const session = await verifySession();
+  const title = String(formData.get("title") ?? "").trim();
+
+  if (!title) {
+    return;
+  }
+
+  await db.todo.create({ data: { title, userId: session.userId } });
+  updateTag("todos");
+  redirect("/todos");
+}
+
+export async function deleteTodo(id: string) {
+  const session = await verifySession();
+  await db.todo.delete({ where: { id, userId: session.userId } });
+  updateTag("todos");
+}
+```
+
+### Example 2: calling it from a form and a button
+
+```tsx
+import { createTodo, deleteTodo } from "./actions";
+
+export default function TodoPage() {
+  return (
+    <main>
+      <form action={createTodo}>
+        <input name="title" placeholder="New task" required />
+        <button type="submit">Add</button>
+      </form>
+
+      <form action={deleteTodo.bind(null, "todo_123")}>
+        <button type="submit">Delete</button>
+      </form>
+    </main>
+  );
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `"use server"` at the top of the file | All exported functions are Server Actions |
+| `verifySession()` | Identifies the user first in every action |
+| `formData.get("title")` | Gets the value using the input's `name` attribute |
+| `updateTag("todos")` | The user immediately sees the new list |
+| `redirect("/todos")` | Sends the user to another page after the work is done |
+| `deleteTodo.bind(null, id)` | A way to pass an extra argument |
+
+To show the pending state and validation errors, you use `useActionState`. The details are in the [Forms & Validation](/courses/nextjs/forms-and-validation) chapter.
+
+### Interview tip
+
+The right answer to "Why are Server Actions secure?" is: they are **not** secure by themselves. Every action is a POST endpoint, so authentication, authorization and input validation are needed inside it.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Not checking auth inside the action"
+  why="Even if the button is hidden in the UI, anyone can build a request and call the action."
+  better="Verify the session at the start of every action and check ownership."
+/>
+
+<Mistake
+  title="Putting FormData in the database without validation"
+  why="The user can send anything, so wrong or dangerous data gets saved."
+  better="Build a schema with a library like Zod and use safeParse."
+/>
+
+<Mistake
+  title="Using a Server Action to read data"
+  why="Actions are for mutations, they run one after another and are not cached."
+  better="Read data in Server Components and use actions only for writing."
+/>
+
+<Mistake
+  title="Putting redirect inside try catch"
+  why="redirect throws a special error, the catch block swallows it and the redirect does not happen."
+  better="Call redirect outside try catch, after the work is complete."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Server & Client Components](/courses/nextjs/server-and-client-components), [Data Fetching](/courses/nextjs/data-fetching) |
+| **Alongside** | [Revalidation](/courses/nextjs/revalidation), [Cookies & Headers](/courses/nextjs/cookies-and-headers) |
+| **After** | [Forms & Validation](/courses/nextjs/forms-and-validation), [Authentication](/courses/nextjs/authentication), [Database Integration](/courses/nextjs/database-integration) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Directive | `"use server"` at file or function level |
+| How to call | `<form action={fn}>` or from an event handler |
+| Input | `FormData` |
+| Security | Auth + validation in every action |
+| Follow-up work | `updateTag`, `revalidatePath`, `redirect` |
+
+<Callout variant="important" title="Remember">
+
+A Server Action looks like a function but is really a **public POST endpoint**. It is perfect for mutations, but always with auth and validation.
+
+</Callout>

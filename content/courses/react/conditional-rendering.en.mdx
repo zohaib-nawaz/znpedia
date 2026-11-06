@@ -1,0 +1,155 @@
+---
+title: Conditional Rendering
+description: Learn React conditional rendering with if, the ternary and the && operator to show or hide UI, plus the 0 bug and returning null.
+keywords:
+  - react conditional rendering
+  - react ternary operator jsx
+  - react && operator
+  - show hide component react
+---
+
+## 1. What is conditional rendering?
+
+<Callout variant="tip" title="Short definition">
+
+**Conditional rendering means showing different JSX depending on a condition, or showing nothing at all.**
+
+</Callout>
+
+React has no special syntax for this. You use normal JavaScript: `if`, the ternary `? :` and logical `&&`.
+
+## 2. Why does it matter?
+
+A real UI is never the same all the time. If the user is logged in, show a profile, otherwise show a login button. While data is loading, show a spinner.
+
+<CompareTable leftTitle="Without conditions" rightTitle="With conditional rendering">
+
+Everything is always on the screen | Only the relevant UI is shown
+You have to hide things with CSS | The element never enters the DOM
+Loading and error states are ignored | Every state gets its own UI
+The user gets confused | Clear and correct feedback
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Situation | What to show |
+| --- | --- |
+| **Auth** | Logged in: avatar, otherwise a Login button |
+| **Data fetch** | A loading spinner, an error message or the data |
+| **Empty list** | A "No items" message |
+| **Badges** | An unread count only when it is above 0 |
+| **Permissions** | The Delete button only for admins |
+
+## 4. How does it work?
+
+JSX is also a JavaScript value. You can store it in a variable, return it from a function and choose it with conditions.
+
+<Flow title="Deciding during render">
+
+The component renders
+↓
+State or props are checked
+↓
+The JSX is chosen based on the condition
+↓
+If it is null or false, nothing is rendered
+↓
+The chosen UI appears on the screen
+
+</Flow>
+
+| Approach | When to use it |
+| --- | --- |
+| `if` / early `return` | The whole component shows different UI |
+| `cond ? a : b` | One of two options |
+| `cond && a` | Show it or show nothing |
+| `return null` | The component renders nothing |
+
+## 5. Code example
+
+### Early return
+
+```jsx
+function Profile({ user, isLoading }) {
+  if (isLoading) {
+    return <p>Loading...</p>;
+  }
+
+  if (!user) {
+    return <button>Login</button>;
+  }
+
+  return <h2>Welcome, {user.name}</h2>;
+}
+```
+
+### Ternary and &&
+
+```jsx
+function Inbox({ messages, isOnline }) {
+  return (
+    <div>
+      <span>{isOnline ? "Online" : "Offline"}</span>
+      {messages.length > 0 && <p>{messages.length} new messages</p>}
+    </div>
+  );
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `if (isLoading) return` | Handle special cases first, so the rest of the code stays clean |
+| `isOnline ? "Online" : "Offline"` | One of two values |
+| `messages.length > 0 && ...` | The paragraph renders only if the condition is true |
+| `null`, `false`, `undefined` | React does not render these |
+
+## 6. Common mistakes
+
+<Mistake
+  title="Putting a number directly on the left of &&, like messages.length && ..."
+  why="If the length is 0, React shows 0 as text on the screen, because 0 is a valid value to render."
+  better="Always make it a boolean: messages.length > 0 && ... or use a ternary."
+/>
+
+<Mistake
+  title="Writing an if statement inside JSX"
+  why="Only expressions work inside JSX curly braces. An if statement is a syntax error."
+  better="Write the if before the return, or use a ternary or && inside the JSX."
+/>
+
+<Mistake
+  title="Using too many nested ternaries"
+  why="Code like a ? b : c ? d : e is hard to read and hard to debug."
+  better="Move the logic into a variable or small components, or use early returns."
+/>
+
+### Interview tip
+
+If you are asked what a component should return to render nothing, the answer is `null`. The component function still runs, it just produces empty output.
+
+## 7. What to learn before and after
+
+| Stage | Chapters |
+| --- | --- |
+| **Before** | [JSX](/courses/react/jsx), [State with useState](/courses/react/state) |
+| **After** | [Lists & Keys](/courses/react/lists-and-keys), [Suspense & lazy()](/courses/react/suspense-and-lazy) |
+| **Related** | [Error Boundaries](/courses/react/error-boundaries) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Special syntax | None, just plain JavaScript |
+| Two options | Ternary `? :` |
+| Show or not | `&&` (the left side must be a boolean) |
+| A completely different UI | Early `return` |
+| Nothing | `return null` |
+
+<Callout variant="important" title="Remember">
+
+Put a **boolean** on the left of `&&`, not a number. Otherwise a lone `0` will show up on the screen.
+
+</Callout>

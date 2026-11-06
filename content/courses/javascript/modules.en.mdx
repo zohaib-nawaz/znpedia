@@ -1,0 +1,175 @@
+---
+title: "Modules: import & export"
+description: Learn JavaScript modules with import and export, the difference between named and default exports, and how to split your code into files.
+keywords:
+  - javascript modules import export
+  - es modules
+  - named vs default export
+  - dynamic import javascript
+---
+
+## 1. What are modules?
+
+<Callout variant="tip" title="Short definition">
+
+**A module is a JavaScript file that `export`s its own code and `import`s code from other files.**
+
+</Callout>
+
+Every module has its own scope. A variable or function you do not `export` is not visible outside the file. This system is called **ES Modules (ESM)**, and it is built into both the browser and Node.js.
+
+## 2. Why do they matter?
+
+In the old days, all code lived in one huge file or in many `script` tags. Every variable was global, and names clashed with each other.
+
+<CompareTable leftTitle="Without modules" rightTitle="With modules">
+
+All variables in the global scope | Every file has its own scope
+You had to remember the order of script tags | import states the dependency itself
+One huge file, hard to maintain | Small files, each with one job
+Names clash with each other | Only what you export is shared
+
+</CompareTable>
+
+## 3. Where are they used?
+
+| Place | Example |
+| --- | --- |
+| **React / Next.js apps** | Each component in its own file, `import Button from "./Button"` |
+| **Utility functions** | Export `formatPrice` from `utils/format.js` |
+| **npm packages** | `import { z } from "zod"` |
+| **Node.js backend** | Routes and services with `"type": "module"` |
+| **Code splitting** | Load heavy code later with `import()` |
+
+## 4. How do they work?
+
+When the browser or a bundler loads a module, it first reads all the `import` statements and builds a **dependency graph**. Then each module runs **only once**, no matter how many files import it.
+
+<Flow title="Module loading flow">
+
+main.js is loaded
+↓
+The import statements are read
+↓
+math.js and api.js are loaded
+↓
+Each module is executed once
+↓
+The exported values reach main.js
+
+</Flow>
+
+There are two kinds of exports:
+
+| Type | How many per file | Import syntax |
+| --- | --- | --- |
+| **Named export** | As many as you like | `import { add } from "./math.js"` |
+| **Default export** | Only one | `import anyName from "./math.js"` |
+
+## 5. Code example
+
+### Named and default exports
+
+```js
+// math.js
+export const PI = 3.14159;
+
+export function add(a, b) {
+  return a + b;
+}
+
+export default function multiply(a, b) {
+  return a * b;
+}
+```
+
+```js
+// main.js
+import multiply, { add, PI } from "./math.js";
+import * as math from "./math.js";
+
+console.log(add(2, 3));
+console.log(multiply(4, 5));
+console.log(math.PI);
+```
+
+### Renaming and dynamic import
+
+```js
+import { add as sum } from "./math.js";
+
+button.addEventListener("click", async () => {
+  const { formatReport } = await import("./report.js");
+  console.log(formatReport(sum(1, 2)));
+});
+```
+
+To run a module in the browser, you need `type="module"` on the script tag:
+
+```html
+<script type="module" src="./main.js"></script>
+```
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `export const PI` | A named export, imported under the same name |
+| `export default` | The main export of the file, and you can give it any name when importing |
+| `import * as math` | All named exports in one object |
+| `add as sum` | Rename while importing |
+| `await import()` | Dynamic import, the file loads only when needed and it returns a Promise |
+
+### Interview tip
+
+Interviewers often ask the difference between ES Modules and CommonJS. Short answer: ESM uses `import` / `export` and is static (build tools can do tree shaking), while CommonJS uses `require` / `module.exports` and runs at runtime. ESM is the standard in new projects.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Importing a named export without curly braces"
+  why="import add from ./math.js looks for the default export, so named add is not found and you get undefined or an error."
+  better="Use curly braces for a named export, like import { add } from ./math.js."
+/>
+
+<Mistake
+  title="Forgetting type module in the browser"
+  why="In a normal script, the import statement gives a syntax error."
+  better="Add type=module to the script tag, or use a bundler like Vite."
+/>
+
+<Mistake
+  title="Leaving out the extension in Node.js"
+  why="In native ESM, Node does not guess the extension of a relative path, so you get a module not found error."
+  better="Write the full path in Node ESM, like ./math.js. Bundlers like Vite work even without the extension."
+/>
+
+<Mistake
+  title="Using only default exports in every file"
+  why="Each import can use a different name, and the editor's auto import and refactoring get weaker."
+  better="Named exports are better for utilities. Keep default exports for one main thing."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Functions](/courses/javascript/functions), [Scope & Hoisting](/courses/javascript/scope-and-hoisting), [Objects](/courses/javascript/objects) |
+| **Alongside** | [Destructuring](/courses/javascript/destructuring), [Async / Await](/courses/javascript/async-await) |
+| **After** | [npm & Packages](/courses/javascript/npm-and-packages), [React Setup with Vite](/courses/react/setup-with-vite) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Module | A file with its own scope that exports and imports |
+| Named export | Many per file, imported with curly braces |
+| Default export | One per file, imported under any name |
+| Dynamic import | `import()` returns a Promise, for lazy loading |
+| Browser | `type="module"` is required |
+
+<Callout variant="important" title="Remember">
+
+Every module runs **only once**, and only what you **export** leaves the file.
+
+</Callout>

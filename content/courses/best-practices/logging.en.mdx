@@ -1,0 +1,205 @@
+---
+title: Logging
+description: Logging best practices with PII in mind. Use one logger, structured lines, a request id and a scope prefix, and never log passwords, tokens or personal data.
+keywords:
+  - logging best practices pii
+  - structured logging node
+  - pino redact
+  - request id logging
+  - sensitive data in logs
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Use one logger across the whole app. Every line is structured and carries the request id, route, status and duration, and secrets or personal data are scrubbed before they are written.**
+
+</Callout>
+
+Logs are the diary that acts as your eyes in production. When a report of something broken comes in, you cannot attach a debugger, you can only read the logs. Good logs answer your question. Bad logs are either silent or become a data leak themselves.
+
+## 2. Why does it matter?
+
+A developer wrote `console.log("login", body)` for debugging and never removed it. Now every login password sits in the logs in plain text, and the logs go to a third party service where the whole team and the vendor can read them.
+
+Another case: a magic link token was in the URL query string, and the request logger wrote the full URL. Anyone with log access could open anyone's account.
+
+A third case: a user says "my payment failed". The logs have thousands of lines but no request id, so there is no way to tell which line was theirs.
+
+<CompareTable leftTitle="Scattered console.log" rightTitle="One structured logger">
+
+Passwords and tokens in plain text in logs | Sensitive keys are redacted automatically
+Full URL including the query string | Only the path, no query string
+No way to tell which line belongs to which request | A request id on every line
+Both console and logger, every error twice | One logger, one line
+Free text, hard to search | JSON fields, easy to filter and alert on
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | `console.error` is fine, but never log secrets | The habit is formed here |
+| **Production code** | Required | Logs are both the only way to debug and a big privacy risk |
+| **Senior level** | Decide the logger, scrubber and retention policy | What gets logged, how long it stays, who has access |
+
+When to learn it: the first time you deploy an app and have to read production logs to understand an error.
+
+## 4. Bad vs good code
+
+### Bad: log whatever you get
+
+```ts
+export async function POST(request: Request) {
+  const body = await request.json();
+  console.log("request received", request.url, request.headers, body);
+
+  try {
+    return Response.json(await resetPassword(body));
+  } catch (error) {
+    console.log(error);
+    logger.error(error);
+    throw error;
+  }
+}
+```
+
+The headers hold the cookie and authorization token, the body holds the new password, and the URL holds the reset token. The error is logged in two places and no line has a request id.
+
+### Good: one logger, with redaction
+
+File `lib/logger/logger.ts`, with pino:
+
+```ts
+import pino from "pino";
+
+import { SENSITIVE_PATHS } from "./logger.types";
+
+export const logger = pino({
+  level: process.env.LOG_LEVEL ?? "info",
+  redact: { paths: SENSITIVE_PATHS, censor: "[REDACTED]" },
+});
+```
+
+File `lib/logger/logger.types.ts`:
+
+```ts
+export const SENSITIVE_PATHS = [
+  "password",
+  "*.password",
+  "token",
+  "*.token",
+  "headers.authorization",
+  "headers.cookie",
+  "email",
+  "*.email",
+];
+```
+
+One line per request, written when it finishes:
+
+```ts
+export function logRequest(entry: RequestLogEntry) {
+  logger.info(
+    {
+      requestId: entry.requestId,
+      route: new URL(entry.url).pathname,
+      status: entry.status,
+      durationMs: entry.durationMs,
+    },
+    "request completed",
+  );
+}
+```
+
+Errors in one place, with a scope:
+
+```ts
+logger.error({ err: error, requestId, scope: "password-reset" }, "[password-reset] reset failed");
+```
+
+Also write a small unit test for the scrubber that checks `password` and `authorization` become `[REDACTED]` in the output. Otherwise someone will remove a key from the list and nobody will notice.
+
+### What is the difference?
+
+| Thing | Bad code | Good code |
+| --- | --- | --- |
+| Logger | Both `console.log` and a logger | Only one logger |
+| Secrets | Body, headers and URL all in plain text | A `redact` list, with a test |
+| URL | With the query string | Only the `pathname` |
+| Context | Nothing | `requestId`, `route`, `status`, `durationMs` |
+| Error | Logged twice | Once, with a `[scope]` |
+
+## 5. How to apply it
+
+<Flow title="Logging setup">
+
+Create one logger module
+↓
+One list of sensitive keys and redaction
+↓
+Give every request an id and write one line when it finishes
+↓
+Log errors in one place, with a scope prefix
+↓
+Unit test the scrubber and ban console.log in lint
+
+</Flow>
+
+What the levels simply mean:
+
+| Level | When |
+| --- | --- |
+| `error` | Something broke and someone should look |
+| `warn` | Odd, but the app is running, like a retry happened |
+| `info` | An important event, like a request completed or a job finished |
+| `debug` | Only for local use or short term troubleshooting |
+
+## 6. Exceptions and common mistakes
+
+Debugging with `console.log` in local development is perfectly fine, just remove it before you commit. Logging a user id is usually fine because it is not personal data by itself, but never log email, phone, address, identity numbers or payment details.
+
+<Mistake
+  title="Logging the whole request body or headers"
+  why="Passwords, cookies and tokens end up in the logs, and anyone with log access can use them."
+  better="Log only chosen fields and keep a redaction list of sensitive keys."
+/>
+
+<Mistake
+  title="Logging the full URL in production"
+  why="Query strings hold reset tokens, search terms and sometimes emails."
+  better="Log only the pathname, and if a query param is needed, log it by name, separately."
+/>
+
+<Mistake
+  title="Logging the error at every layer"
+  why="One problem becomes five lines, alerts get noisy and it is hard to find the real cause."
+  better="Log the error where it turns into a response or a job failure, and just propagate it everywhere else."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Debugging JavaScript](/courses/javascript/debugging), [Error Handling & Error Envelope](/courses/best-practices/error-handling-and-envelope) |
+| **Alongside** | [Secrets Management](/courses/best-practices/secrets-management), [Rate Limiting & Background Jobs](/courses/best-practices/rate-limiting-and-background-jobs) |
+| **After** | [Security Baseline](/courses/best-practices/security-baseline), [Production Readiness Checklist](/courses/best-practices/production-readiness-checklist) |
+
+## Final quick revision
+
+| Check | Question |
+| --- | --- |
+| One logger | Are `console` and a logger both running by accident? |
+| Redaction | Is there a list of sensitive keys, and a test for it? |
+| URL | Is the query string being logged? |
+| Context | Does every request line have id, route, status and duration? |
+| Errors | Is every error logged exactly once, with a scope? |
+| Personal data | Are email, phone and identity numbers kept out of the logs? |
+
+<Callout variant="important" title="Remember">
+
+Write every log line as if a stranger could get hold of it tomorrow. It should help them understand the problem, but it should not reveal any user's secret.
+
+</Callout>

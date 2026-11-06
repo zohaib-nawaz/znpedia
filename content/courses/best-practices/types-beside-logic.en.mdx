@@ -1,0 +1,202 @@
+---
+title: Types Beside Logic
+description: A practical way to organize TypeScript types. Give each module a .types.ts file for its types, constants and messages, and keep the logic separate.
+keywords:
+  - typescript types file organization
+  - types.ts file convention
+  - colocate types with module
+  - typescript project organization
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Put each module's logic in `posts.ts`, and its types, constants and user-facing messages in the neighboring `posts.types.ts`. Both live in one folder named after the module.**
+
+</Callout>
+
+The logic file only does work: functions, queries, calculations. It does not declare its own types, it imports them from `posts.types.ts`.
+
+```bash
+src/lib/posts/posts.ts
+src/lib/posts/posts.types.ts
+```
+
+This is "beside, not inside". Types live **next to** the logic (not in a separate global folder), but not **inside** the logic file.
+
+## 2. Why does it matter?
+
+A real problem: a client component only needed `MAX_TITLE_LENGTH`. The developer imported it from `posts.ts`. But `posts.ts` also imports the database client and secret keys, so the bundler started pulling all the server code into the browser bundle and the build broke. It is even worse if a module with secrets reaches the client by accident.
+
+A `.types.ts` file has no runtime dependencies, so the server, the client, tests and scripts can all import it safely.
+
+<CompareTable leftTitle="Types inside the logic file" rightTitle="Types beside the logic">
+
+Getting one constant means importing the whole server module | A light types file is imported, with no side effects
+Scrolling a 300 line file to find a type | Each module's contract sits in one small file
+The same error message string written in three places | One message constant, used by the route and the test
+A global types folder becomes a dumping ground | Each type sits next to its module, the owner is clear
+Delete a module and its old types stay behind | Delete the folder and the types go with it
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | A good habit, but not required in a project with one or two files | Learn to write types first. Start splitting once a file passes 100 lines |
+| **Production code** | A must for every `src/lib` module and every component | Safe sharing between client and server, and each module's contract at a glance |
+| **Senior level** | Enforce the convention in lint and review | With two conventions in one folder, imports turn into guesswork |
+
+## 4. Bad vs good code
+
+### Bad: everything in one file
+
+```ts
+import { db } from "@/lib/db";
+
+export const MAX_TITLE_LENGTH = 120;
+
+export type Post = {
+  id: string;
+  title: string;
+  status: "draft" | "published";
+};
+
+export async function publish(id: string): Promise<Post> {
+  const post = await db.post.findUnique({ where: { id } });
+
+  if (!post) {
+    throw new Error("Post not found");
+  }
+
+  return db.post.update({ where: { id }, data: { status: "published" } });
+}
+```
+
+### Good: types beside logic
+
+```ts
+export const MAX_TITLE_LENGTH = 120;
+
+export const POST_NOT_FOUND = "Post not found";
+
+export type PostStatus = "draft" | "published";
+
+export type Post = {
+  id: string;
+  title: string;
+  status: PostStatus;
+};
+```
+
+The file above is `src/lib/posts/posts.types.ts`. Now the logic file:
+
+```ts
+import { db } from "@/lib/db";
+
+import { POST_NOT_FOUND, type Post } from "./posts.types";
+
+export async function publish(id: string): Promise<Post> {
+  const post = await db.post.findUnique({ where: { id } });
+
+  if (!post) {
+    throw new Error(POST_NOT_FOUND);
+  }
+
+  return db.post.update({ where: { id }, data: { status: "published" } });
+}
+```
+
+A client component can now take `MAX_TITLE_LENGTH` from `@/lib/posts/posts.types` without touching the database client.
+
+### What is the difference?
+
+| Thing | Bad code | Good code |
+| --- | --- | --- |
+| Importing a constant | Pulls in the whole server module | Only the light types file |
+| Error message | A literal string, repeated everywhere | The `POST_NOT_FOUND` constant, one source |
+| Logic file | Types and logic mixed | Logic only |
+| Test | Copies the message string | Imports the same constant |
+
+## 5. How to apply it
+
+<Flow title="When creating a new module">
+
+Create a folder named after the module, like src/lib/posts
+↓
+Put types, constants and messages in posts.types.ts
+↓
+Put only logic in posts.ts, importing the types
+↓
+If there are many pure helpers, add posts.library.ts
+↓
+Clients and tests take constants only from the types file
+
+</Flow>
+
+The same pattern works for components: `src/components/PostCard/PostCard.tsx` and `PostCard.types.ts` holding the props type.
+
+What goes in `.types.ts`: `type`, `interface`, const objects that act like enums, limits, status values, user-facing error messages. What does not go in: any function that does work, any import that has side effects.
+
+## 6. Exceptions and common mistakes
+
+Many teams write types at the top of the same file, and in small modules that works fine. Some teams keep one global `types/` folder. The trade-off: same-file types are quick at first, but trouble starts when a client needs a constant from a server module. In a global folder, ownership gets lost. The strict rule in this course: every module has its own `.types.ts`, from the start.
+
+Database row types are not written by hand. They come from a generated file and `.types.ts` derives from them.
+
+<Mistake
+  title="Creating one big types.ts at the root"
+  why="Every module's types pile up in one file, it grows from a hundred lines to a thousand and nobody owns it."
+  better="Keep each module's own module.types.ts inside that module's folder."
+/>
+
+<Mistake
+  title="Putting logic or side effects in the types file"
+  why="Then the types file gets heavy too, and importing it on the client becomes risky again."
+  better="Only types, constants and messages in the types file. Use a separate library file for pure helper functions."
+/>
+
+<Mistake
+  title="Writing the same type in two places"
+  why="A field changes in one place and stays old in the other, and the drift quietly turns into a bug."
+  better="One type in one place. Everything else imports it or derives from it with Pick and Omit."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Strict Typing](/courses/best-practices/strict-typing), [Constants & Magic Values](/courses/best-practices/constants-and-magic-values) |
+| **Alongside** | [File Size & Organization](/courses/best-practices/file-size-and-organization), [Project Structure](/courses/best-practices/project-structure) |
+| **After** | [Generated Database Types](/courses/best-practices/generated-types), [Shared API Contracts](/courses/best-practices/shared-api-contracts) |
+
+<Flow title="Suggested order">
+
+Strict Typing
+↓
+Types Beside Logic
+↓
+Project Structure
+↓
+Shared API Contracts
+
+</Flow>
+
+## Final quick revision
+
+| Check | Yes / No |
+| --- | --- |
+| Each module has its own folder | Yes |
+| `module.types.ts` beside the logic | Yes |
+| `type` declarations in the logic file | No |
+| Error messages in constants | Yes |
+| Runtime side effects in the types file | No |
+| The client takes constants only from the types file | Yes |
+
+<Callout variant="important" title="Remember">
+
+Keep types beside the logic, not inside it. A light `.types.ts` file is safe to import anywhere, and the logic file only does the work it was made for.
+
+</Callout>

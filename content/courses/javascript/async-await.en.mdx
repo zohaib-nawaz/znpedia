@@ -1,0 +1,190 @@
+---
+title: Async / Await
+description: Learn JavaScript async await to write promises as straightforward, readable code, with try catch, parallel await, and top-level await.
+keywords:
+  - javascript async await
+  - await promise.all
+  - top level await
+---
+
+## 1. What is async / await?
+
+<Callout variant="tip" title="Short definition">
+
+**async / await is syntax on top of promises that makes async code read as straightforwardly as sync code.**
+
+</Callout>
+
+An `async` function always returns a promise. By writing `await` inside it, you wait for a promise to settle, and the result lands directly in a variable.
+
+`await` pauses only that function, not the whole program. The rest of the page and code keeps running.
+
+## 2. Why does it matter?
+
+Long `.then` chains get hard to read, especially when there are conditions and loops. async / await lets you write the same logic straight from top to bottom.
+
+<CompareTable leftTitle="then chain" rightTitle="async / await">
+
+A then inside a then | Straight lines from top to bottom
+Hard to carry variables from one step to the next | Normal const variables
+catch is a separate method | The familiar try catch
+Async with loops is hard | await inside for...of is easy
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Place | Example |
+| --- | --- |
+| **API calls** | `const res = await fetch(url)` |
+| **Form submit** | Making the submit handler `async` to send data |
+| **Node.js scripts** | Reading files, database queries |
+| **Next.js / React Server Components** | Fetching data in `async` components |
+| **ES modules** | Top-level `await` for loading config |
+
+## 4. How does it work?
+
+<Flow title="What happens at await">
+
+The async function starts running
+↓
+At await it gets a promise
+↓
+The function pauses, control goes back to the caller
+↓
+The promise settles
+↓
+The rest of the function resumes as a microtask
+
+</Flow>
+
+<Callout variant="important" title="Mental model">
+
+**`await` = "stop here until the promise has a result", but only in this function.**
+
+</Callout>
+
+| If the promise is | What `await` does |
+| --- | --- |
+| Fulfilled | Returns the value |
+| Rejected | Throws the error, which `try / catch` catches |
+
+## 5. Code example
+
+### Basic async function with try catch
+
+```js
+async function loadUser(id) {
+  try {
+    const res = await fetch(`https://jsonplaceholder.typicode.com/users/${id}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const user = await res.json();
+    return user.name;
+  } catch (error) {
+    console.error("Load failed:", error.message);
+    return null;
+  } finally {
+    console.log("Request finished");
+  }
+}
+
+const name = await loadUser(1);
+console.log(name);
+```
+
+### Sequential vs parallel
+
+```js
+const slowA = () => new Promise((r) => setTimeout(() => r("A"), 1000));
+const slowB = () => new Promise((r) => setTimeout(() => r("B"), 1000));
+
+async function sequential() {
+  const a = await slowA();
+  const b = await slowB();
+  return [a, b];
+}
+
+async function parallel() {
+  const [a, b] = await Promise.all([slowA(), slowB()]);
+  return [a, b];
+}
+```
+
+### How does the code work?
+
+| Line | What is happening |
+| --- | --- |
+| `async function loadUser` | The function now returns a promise |
+| `await fetch(...)` | The function waited until the response arrived |
+| `if (!res.ok) throw` | Turned the HTTP error into a real error |
+| `catch (error)` | A network or thrown error lands here |
+| `sequential()` | About 2 seconds, one after the other |
+| `parallel()` | About 1 second, both together |
+
+### Interview tip
+
+A value returned from an `async` function is also wrapped in a promise. So the result of `loadUser(1)` is a `Promise`, not a string, and it needs `await` or `.then`.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Forgetting await"
+  why="The variable gets a pending Promise instead of the data, and user.name is undefined."
+  better="Put await in front of every call that returns a promise when you need the result."
+/>
+
+<Mistake
+  title="await inside forEach"
+  why="forEach does not wait for an async callback, and the code moves on."
+  better="Use a for...of loop if you need order, or Promise.all with map if you want parallel."
+/>
+
+<Mistake
+  title="Writing independent awaits in a line"
+  why="Every request waits for the previous one, and the page gets slow."
+  better="Run tasks that do not depend on each other inside Promise.all."
+/>
+
+<Mistake
+  title="await without try catch"
+  why="A rejected promise becomes an unhandled error."
+  better="Keep await inside try catch, or add a catch on the caller."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Promises](/courses/javascript/promises), [Event Loop](/courses/javascript/event-loop) |
+| **After** | [Fetch API](/courses/javascript/fetch-api), [Error Handling](/courses/javascript/error-handling), [Modules](/courses/javascript/modules) |
+
+<Flow title="Suggested order">
+
+Callbacks
+↓
+Promises
+↓
+Async Await
+↓
+Fetch API
+↓
+Error Handling
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `async` | The function always returns a promise |
+| `await` | Extracts the promise's result, pauses only that function |
+| Errors | A rejected promise becomes a `throw`, catch it with `try / catch` |
+| Parallel | `await Promise.all([...])` |
+| Loops | await with `for...of`, not with `forEach` |
+| Top-level await | Works in ES modules without a function |
+
+<Callout variant="important" title="Remember">
+
+async / await **is still promises**, just a cleaner way to write them. Use `try / catch` for errors and `Promise.all` for speed.
+
+</Callout>

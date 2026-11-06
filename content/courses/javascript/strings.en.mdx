@@ -1,0 +1,170 @@
+---
+title: Strings & Template Literals
+description: Learn JavaScript strings with template literals, backticks, interpolation and key string methods like slice, includes and trim.
+keywords:
+  - javascript strings template literals
+  - javascript string methods
+  - template literals interpolation
+  - javascript slice split trim
+---
+
+## 1. What are strings?
+
+<Callout variant="tip" title="Short definition">
+
+**A string is a text value, and a template literal is a string written with backticks that lets you put variables and expressions directly inside.**
+
+</Callout>
+
+JavaScript has three ways to write a string:
+
+| Syntax | Example | Note |
+| --- | --- | --- |
+| Single quotes | `'Hello'` | Simple text |
+| Double quotes | `"Hello"` | Simple text, same behavior |
+| Backticks | `` `Hello ${name}` `` | Template literal, interpolation and multi line |
+
+## 2. Why does it matter?
+
+In old code you had to join text and variables with `+`. In long strings it was hard to manage quotes and spaces. Template literals made this much cleaner.
+
+<CompareTable leftTitle="Old concatenation" rightTitle="Template literal">
+
+A plus and quotes for every variable | A dollar sign and braces put the variable right in
+Forgetting spaces is common | The text is written the way it will look
+Backslash n for multi line | A new line directly inside backticks
+Long strings are hard to read | An HTML snippet or message is easy to see
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Real use | String feature |
+| --- | --- |
+| **Welcome message** | Template literal: `` `Welcome, ${user.name}` `` |
+| **Search filter** | `includes()`, `toLowerCase()` |
+| **Cleaning form input** | `trim()` |
+| **Splitting CSV or tags** | `split(",")` |
+| **Formatting an order ID** | `padStart(6, "0")` |
+| **Making a URL slug** | `toLowerCase()`, `replaceAll(" ", "-")` |
+
+## 4. How does it work?
+
+A string is a sequence of characters. Every character has an **index** that starts at `0`.
+
+<Flow title="Index model">
+
+String: "Lahore"
+     ↓
+L=0, a=1, h=2, o=3, r=4, e=5
+     ↓
+length = 6, last index = 5
+     ↓
+at(-1) gives the last character "e"
+
+</Flow>
+
+Strings are **immutable**. Every method returns a **new string** and the original stays the same.
+
+<Callout variant="important" title="Mental model">
+
+**String methods never change the original. If you want the result, save it in a variable.**
+
+</Callout>
+
+## 5. Code example
+
+Template literals:
+
+```js
+const name = "Usman";
+const items = 3;
+const price = 450;
+
+const message = `Hello ${name}! You have ${items} items in your cart.
+Total: Rs ${items * price}`;
+
+console.log(message);
+```
+
+Any expression can go inside `${...}`, like a calculation or a function call.
+
+Common methods:
+
+```js
+const raw = "  JavaScript Is Easy To Learn  ";
+const text = raw.trim();
+
+console.log(text.length);
+console.log(text.toLowerCase());
+console.log(text.includes("Easy"));
+console.log(text.startsWith("Java"));
+console.log(text.slice(0, 10));
+console.log(text.split(" "));
+console.log(text.replaceAll(" ", "-"));
+console.log(text.at(-1));
+console.log("7".padStart(4, "0"));
+```
+
+Output: `27`, `"javascript is easy to learn"`, `true`, `true`, `"JavaScript"`, `["JavaScript", "Is", "Easy", "To", "Learn"]`, `"JavaScript-Is-Easy-To-Learn"`, `"n"`, `"0007"`.
+
+### How does the code work?
+
+| Method | Job |
+| --- | --- |
+| `trim()` | Removes spaces from the start and end |
+| `length` | The number of characters (a property, not a method) |
+| `includes()` | Whether the text is inside, `true` / `false` |
+| `slice(0, 10)` | The part from index 0 to 9, the end is not included |
+| `split(" ")` | Breaks the string into an array |
+| `replaceAll()` | Replaces every match |
+| `at(-1)` | A character counted from the back with a negative index |
+| `padStart(4, "0")` | Adds `"0"` at the start to make the length 4 |
+
+### Interview tip
+
+"How do you reverse a string?" The common answer: `[...str].reverse().join("")`. Spread is better than `split("")` because characters like emoji are separated correctly.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Expecting a method to change the original"
+  why="Strings are immutable. Writing name.toUpperCase() does not change name itself."
+  better="Save the result: const upper = name.toUpperCase()."
+/>
+
+<Mistake
+  title="Using normal quotes for a template literal"
+  why="In single or double quotes, the dollar sign and braces are printed as plain text and the value does not appear."
+  better="Always use backticks for interpolation."
+/>
+
+<Mistake
+  title="Searching without thinking about case"
+  why="includes() is case sensitive, so a search for 'Lahore' does not match 'lahore'."
+  better="Apply toLowerCase() to both sides before comparing."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Data Types](/courses/javascript/data-types), [Operators](/courses/javascript/operators) |
+| **After this** | [Numbers & Math](/courses/javascript/numbers-and-math), [Conditionals](/courses/javascript/conditionals) |
+| **Further on** | [Array Methods](/courses/javascript/array-methods), [Regular Expressions](/courses/javascript/regular-expressions) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Three syntaxes | Single quotes, double quotes and backticks |
+| Template literal | Backticks + `${expression}` |
+| Index | Starts at `0`, `at(-1)` is the last |
+| Immutable | Methods return a new string |
+| Key methods | `trim`, `includes`, `slice`, `split`, `replaceAll` |
+
+<Callout variant="important" title="Remember">
+
+To put a variable inside text, use a **template literal**. And remember, string methods always return a **new string**.
+
+</Callout>

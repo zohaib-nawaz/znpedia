@@ -1,0 +1,189 @@
+---
+title: "Performance: Measure First"
+description: Avoid premature optimization and find the real bottleneck with profiling, focusing on algorithms, data structures and N+1 queries before micro tricks.
+keywords:
+  - premature optimization profiling
+  - measure before optimizing
+  - big o data structures
+  - react profiler devtools
+  - explain analyze slow query
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Optimize only when there is a measurable problem, and first measure where the time is actually going. Do not optimize by guessing.**
+
+</Callout>
+
+Performance work has three steps: **measure**, **fix the biggest thing**, **measure again**. Most of the gain comes from changing an algorithm, data structure or database query, not from small micro tricks.
+
+## 2. Why does it matter?
+
+Developers' guesses about "where is it slow" are often wrong. Optimization done by guessing makes the code harder to read and the real problem stays where it was.
+
+<Callout variant="note" title="Real pattern">
+
+A dashboard was slow. A developer spent two days adding `useMemo` and `React.memo` to every component. The page still took 4 seconds. Opening the Network tab showed that one API was running 50 queries (N+1). One join brought the page down to 400ms, and the memo code was left behind as useless complexity.
+
+</Callout>
+
+<CompareTable leftTitle="Optimize by guessing" rightTitle="Measure first">
+
+Add memo wherever you are suspicious | The profiler tells you where the time goes
+Harder code, unknown gain | Before and after numbers in front of you
+Micro tricks, like changing the loop style | Changing the algorithm or the query
+A little bit everywhere | The biggest bottleneck first
+A complex design from day one | Simple first, optimize when needed
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Write simple, readable code, do not optimize | Correct first, fast later |
+| **Production code** | When a user or a metric shows slowness, then measure | Time goes where the gain is |
+| **Senior level** | Set budgets and monitoring, like Core Web Vitals | The team sees the problem before users do |
+
+One thing at every level: do not write an obviously wrong algorithm from the start (like a lookup using a loop inside a loop). Measure first does not mean being careless.
+
+## 4. Bad vs good code
+
+### Bad: lookup inside a loop
+
+```ts
+function attachAuthors(posts: Post[], users: User[]) {
+  return posts.map((post) => ({
+    ...post,
+    author: users.find((user) => user.id === post.authorId),
+  }));
+}
+```
+
+With 5,000 posts and 5,000 users, this is 25 million comparisons: O(n x m).
+
+### Good: the right data structure
+
+```ts
+function attachAuthors(posts: Post[], users: User[]) {
+  const usersById = new Map(users.map((user) => [user.id, user]));
+
+  return posts.map((post) => ({
+    ...post,
+    author: usersById.get(post.authorId),
+  }));
+}
+```
+
+With a `Map` every lookup is O(1), and the total work is O(n + m).
+
+### Bad: N+1 query
+
+```ts
+const posts = await db.post.findMany();
+for (const post of posts) {
+  post.author = await db.user.findUnique({ where: { id: post.authorId } });
+}
+```
+
+### Good: one query
+
+```ts
+const posts = await db.post.findMany({ include: { author: true } });
+```
+
+### How to measure first?
+
+```ts
+const start = performance.now();
+const result = attachAuthors(posts, users);
+console.log(`attachAuthors: ${(performance.now() - start).toFixed(1)}ms`);
+```
+
+```bash
+EXPLAIN ANALYZE SELECT * FROM posts WHERE author_id = 42;
+```
+
+### What is the difference?
+
+| Thing | Bad | Good |
+| --- | --- | --- |
+| Lookup | `Array.find` in a loop | A `Map` built once |
+| Database | A separate query for every row | One query with a join |
+| Decision | A guess | A number |
+
+## 5. How to apply it
+
+<Flow title="How to fix performance">
+
+Write the problem as a number (page 4s, API 2s)
+↓
+Profile: browser, React Profiler, server timing, EXPLAIN
+↓
+Pick the biggest bottleneck
+↓
+Change the algorithm, query or data structure
+↓
+Measure again
+↓
+If there is no gain, revert the change
+
+</Flow>
+
+| Where it is slow | Tool |
+| --- | --- |
+| **Page load** | Lighthouse, Core Web Vitals, Network tab |
+| **React render** | React DevTools Profiler |
+| **JavaScript** | Browser Performance tab, `performance.now()` |
+| **Database** | `EXPLAIN ANALYZE`, slow query log |
+| **Server** | Request timing logs |
+
+Take care of resources too: pool database connections, close files and streams, and clear timers and listeners when the work is done. A leak is a performance bug as well.
+
+## 6. Exceptions and common mistakes
+
+**When the rule does not apply:** when the design itself depends on scale (like an index on a table with millions of rows, or a known O(n x n) algorithm on a hot path), make the right choice up front. That is not premature optimization, it is basic engineering.
+
+<Mistake
+  title="useMemo and React.memo on every component"
+  why="Every memo has its own cost and makes the code harder to read, and the gain is often zero."
+  better="Catch the slow render with the Profiler and add memo only there, or fix the component structure."
+/>
+
+<Mistake
+  title="Micro optimization, like for loop vs map"
+  why="The real time goes into the network and the database, not the loop style."
+  better="Look at the network and queries first, then the algorithm."
+/>
+
+<Mistake
+  title="Optimizing and not measuring again"
+  why="You cannot tell whether the change helped or hurt."
+  better="Write the before and after numbers in the PR description."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Query Patterns & Transactions](/courses/best-practices/query-patterns), [Refactoring Safely](/courses/best-practices/refactoring-safely) |
+| **Alongside** | [React.memo & Performance](/courses/react/memo-and-performance), [useMemo & useCallback](/courses/react/use-memo-and-use-callback) |
+| **After** | [Performance & Core Web Vitals](/courses/nextjs/performance), [Production Readiness Checklist](/courses/best-practices/production-readiness-checklist) |
+
+## Final quick revision
+
+| Check | Yes? |
+| --- | --- |
+| Problem written as a number | |
+| Bottleneck found with a profiler | |
+| Algorithm or query first, micro tricks later | |
+| Measured again after the change | |
+| Change reverted if there was no gain | |
+
+<Callout variant="important" title="Remember">
+
+Correct first, then simple, then fast, and fast only where the numbers say so.
+
+</Callout>

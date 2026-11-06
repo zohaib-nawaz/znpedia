@@ -1,0 +1,236 @@
+---
+title: Rate Limiting & Background Jobs
+description: Rate limiting and background jobs. Limit email, SMS, AI and login endpoints, keep long work within timeouts and use idempotency keys for side effects.
+keywords:
+  - rate limiting background jobs
+  - api rate limit nextjs
+  - idempotency key
+  - cron job security
+  - retry-after header
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**An endpoint that sends email or SMS, spends AI tokens, or accepts a password or code is always rate limited. Long work runs inside a timeout or in a background job, and every side effect has an idempotency key.**
+
+</Callout>
+
+A rate limit means "no more than this many requests in this much time". A background job is work that runs outside the user's request, like cleaning old sessions at night or sending emails from a cron.
+
+Idempotency means that if the same job runs twice, the effect happens only once. If the email job runs twice, the user still gets just one email.
+
+## 2. Why does it matter?
+
+Three real stories that happen often:
+
+- **SMS pumping:** the OTP endpoint had no limit. Bots sent thousands of OTPs to expensive international numbers and a big bill arrived overnight.
+- **AI bill:** the chatbot endpoint was public, and someone wrote a script that called it in a loop. By morning the monthly budget was gone.
+- **Brute force:** with no limit on login, millions of passwords were tried against one email.
+
+On the background side: a cron job failed halfway, ran again, and half the users received the newsletter twice.
+
+<CompareTable leftTitle="No limit, no idempotency" rightTitle="With the rule">
+
+A bot sends OTPs all night | A limit per IP and per phone, then 429
+In memory limiter, each server instance counts separately | Redis or database store, all instances share one count
+If the store is down the limit disappears | In production, if the store is down the endpoint refuses requests
+If cron runs again the email goes out again | A row with the idempotency key is not inserted twice
+A long AI call is cut off by the platform timeout | Our own timeout, with a quota refund
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Understand the concept | If you deploy publicly, bots arrive within a day |
+| **Production code** | Required on endpoints that touch money or credentials | The loss here is directly a bill or a hacked account |
+| **Senior level** | Decide limits, quotas and job design | Which limit on which key, and the policy for retries and refunds |
+
+When to learn it: before your first public deploy, especially if the app uses email, SMS or an AI API.
+
+## 4. Bad vs good code
+
+### Bad: no limit, no timeout
+
+```ts
+const attempts = new Map<string, number>();
+
+export async function POST(request: Request) {
+  const { phone } = await request.json();
+  const ip = request.headers.get("x-forwarded-for") ?? "unknown";
+
+  attempts.set(ip, (attempts.get(ip) ?? 0) + 1);
+
+  await sendOtpSms(phone);
+
+  return Response.json({ sent: true });
+}
+```
+
+The Map lives in only one server process, on serverless each instance starts a new count, and it is never even checked. There is no limit on the phone number.
+
+### Good: persistent store, two keys, 429
+
+File `lib/rate-limit/rate-limit.ts`, with Upstash Ratelimit:
+
+```ts
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
+
+const redis = Redis.fromEnv();
+
+export const otpByIp = new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(10, "1 h"), prefix: "otp:ip" });
+export const otpByPhone = new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(3, "1 h"), prefix: "otp:phone" });
+```
+
+Handler:
+
+```ts
+export async function POST(request: Request) {
+  const ip = getClientIp(request);
+  const ipLimit = await otpByIp.limit(ip);
+  if (!ipLimit.success) {
+    return tooManyRequests(ipLimit.reset);
+  }
+
+  const parsed = sendOtpSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: OTP_MESSAGES.invalidInput }, { status: 422 });
+  }
+
+  const phoneLimit = await otpByPhone.limit(hashIdentity(parsed.data.phone));
+  if (!phoneLimit.success) {
+    return tooManyRequests(phoneLimit.reset);
+  }
+
+  await sendOtp(parsed.data.phone);
+
+  return NextResponse.json({ sent: true });
+}
+
+function tooManyRequests(resetAt: number) {
+  const retryAfterSeconds = Math.ceil((resetAt - Date.now()) / 1000);
+
+  return NextResponse.json(
+    { error: OTP_MESSAGES.rateLimited },
+    { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } },
+  );
+}
+```
+
+The phone is hashed before it becomes a key, so personal data does not sit in Redis in plain text.
+
+### Idempotent background job
+
+```sql
+create table if not exists digest_emails (
+  id bigint generated always as identity primary key,
+  idempotency_key text not null,
+  user_id uuid not null references users (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  constraint digest_emails_idempotency_key_key unique (idempotency_key)
+);
+```
+
+```ts
+export async function sendWeeklyDigest(userId: string, weekStart: string) {
+  const claimed = await pool.query(
+    "insert into digest_emails (idempotency_key, user_id) values ($1, $2) on conflict (idempotency_key) do nothing returning id",
+    [`digest:${userId}:${weekStart}`, userId],
+  );
+  if (claimed.rowCount === 0) {
+    return;
+  }
+
+  await sendDigestEmail(userId);
+}
+```
+
+If the job runs again, the row already exists, the insert does nothing, and the email is not sent again.
+
+### What is the difference?
+
+| Thing | Bad code | Good code |
+| --- | --- | --- |
+| Store | Process memory | Redis, shared by all instances |
+| Keys | Only IP, and not even checked | Both IP and hashed phone |
+| Response | Always 200 | 429 with `Retry-After` |
+| Running again | Sends again | Skipped because of the idempotency key |
+
+## 5. How to apply it
+
+<Flow title="The path for an expensive endpoint">
+
+Identify the caller and the IP
+↓
+Rate limit in a persistent store, on both IP and identity
+↓
+Reserve the quota in one SQL statement
+↓
+Run the work with its own timeout, a little under the platform limit
+↓
+On failure refund the quota, and use an idempotency key for side effects
+
+</Flow>
+
+For background jobs:
+
+- A recurring task is a cron endpoint triggered by the platform scheduler, and it checks `CRON_SECRET`. If the secret is not set, return 503.
+- Every job must be safe to run again.
+- Work that takes longer than the request timeout (video, large AI generation) goes to a queue or job, and you show the user a status.
+
+## 6. Exceptions and common mistakes
+
+An in memory limiter is fine in local development. Internal admin tools used only by the team can get away with a looser limit. But in production, if the limit store itself is down, it is better to refuse the request than to let the expensive endpoint run.
+
+<Mistake
+  title="An in memory rate limiter on serverless"
+  why="Each instance has its own count and resets on restart, so the attacker effectively gets no limit."
+  better="Use a store like Redis or a database that survives restarts and works across instances."
+/>
+
+<Mistake
+  title="Limiting only by IP"
+  why="Bots rotate thousands of IPs and keep targeting the same email or phone."
+  better="Add separate limits on both the IP and a hashed identity, such as the email or phone."
+/>
+
+<Mistake
+  title="Checking the quota first and incrementing it separately later"
+  why="If two requests arrive together, both pass the check and the limit is broken."
+  better="Check and increment in one statement, like update ... where used less than limit returning."
+/>
+
+<Mistake
+  title="A cron job that repeats its work when it runs again"
+  why="On a retry or a manual re-run, emails, payments or webhooks go out twice."
+  better="Keep a unique idempotency key column for every side effect and skip on conflict."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [API Handler Shape](/courses/best-practices/api-handler-shape), [Authentication Patterns](/courses/best-practices/authentication), [Environment Variables](/courses/nextjs/environment-variables) |
+| **Alongside** | [Query Patterns & Transactions](/courses/best-practices/query-patterns), [Logging](/courses/best-practices/logging) |
+| **After** | [Security Baseline](/courses/best-practices/security-baseline), [Production Readiness Checklist](/courses/best-practices/production-readiness-checklist) |
+
+## Final quick revision
+
+| Check | Question |
+| --- | --- |
+| Which endpoints | Are email, SMS, AI tokens and login all limited? |
+| Store | Does the limit survive restarts and work across instances? |
+| Keys | Both IP and hashed identity? |
+| Response | 429 with `Retry-After`? |
+| Quota | Reserved in one statement, refunded on failure? |
+| Jobs | Cron secret checked and every side effect idempotent? |
+
+<Callout variant="important" title="Remember">
+
+Always put a cap on an endpoint that spends money or opens a door. And write every job so that if it runs twice, nothing happens twice.
+
+</Callout>

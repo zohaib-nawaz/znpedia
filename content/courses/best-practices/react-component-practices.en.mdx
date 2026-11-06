@@ -1,0 +1,220 @@
+---
+title: React Component Practices
+description: React best practices for components and hooks. A 400 line limit, hooks that return a named state object, render functions for conditions and logic outside the component.
+keywords:
+  - react best practices components hooks
+  - react component size
+  - custom hook return object
+  - conditional rendering render function
+  - logic out of components
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Keep a component under 400 lines, have custom hooks return a named object (not a tuple or JSX), make every conditional render a small render function, and keep logic outside the component, in a hook or in `src/lib`.**
+
+</Callout>
+
+A component's job is to **display**. Handling state is the hook's job, and rules (what is overdue, what the total is) belong to pure functions in `src/lib`. When a component only builds markup from props and hook values, it stays small, readable and safe to change.
+
+## 2. Why does it matter?
+
+Three real bugs these rules stop:
+
+- A hook returned `[invoices, isLoading, error]`. In one file someone wrote `const [invoices, error, isLoading]`. Now `if (isLoading)` ran on the error string, and when an error happened the skeleton just kept spinning.
+- `{items.length && <List />}` printed `0` on screen for an empty list, because React renders `0`.
+- A 1200 line `Dashboard.tsx` could not be reviewed by anyone, so every PR got an "LGTM" and was merged.
+
+<CompareTable leftTitle="Without rules" rightTitle="With rules">
+
+Wrong tuple order, a silent bug | A named object, value by name, no order problem
+A nested ternary is a puzzle to read | Plain if and return inside renderBody
+Length and double ampersand put 0 on screen | A braced guard, returns only an element or null
+A 1000 line component, review is impossible | Small child components, each in its own file
+The rule lives in the component, rendering is needed to test it | The rule is in a pure function, tested directly
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Learn to move logic into hooks and keep components small | This is the most useful habit in React |
+| **Production code** | All four rules required, checked in review | A team's code only gets reviewed when it is small and predictable |
+| **Senior level** | Set up lint rules and component patterns | Rules like `react/jsx-no-leaked-render` reduce the review burden |
+
+## 4. Bad vs good code
+
+### Bad: tuple, ternary and logic inside
+
+```tsx
+"use client";
+
+export function InvoiceList() {
+  const [invoices, isLoading, error] = useInvoices();
+  const overdue = invoices.filter((invoice) => !invoice.paidAt && invoice.dueAt < new Date());
+
+  return (
+    <section>
+      {overdue.length && <p>{overdue.length} overdue</p>}
+      {isLoading ? <Spinner /> : error ? <p>{error}</p> : invoices.map((invoice) => (
+        <InvoiceRow key={invoice.id} invoice={invoice} />
+      ))}
+    </section>
+  );
+}
+```
+
+### Good: named state, render functions, logic outside
+
+The hook's result type goes in `use-invoices.types.ts`:
+
+```ts
+export type UseInvoicesResult = {
+  invoices: Invoice[];
+  isLoading: boolean;
+  error: string | null;
+  refresh: () => Promise<void>;
+};
+```
+
+The rule goes in `src/lib/invoices/invoices.library.ts`:
+
+```ts
+export function isOverdue(invoice: Invoice, now: Date) {
+  return !invoice.paidAt && invoice.dueAt < now;
+}
+```
+
+The component only connects and displays:
+
+```tsx
+"use client";
+
+export function InvoiceList() {
+  const { invoices, isLoading, error, refresh } = useInvoices();
+  const overdueCount = invoices.filter((invoice) => isOverdue(invoice, new Date())).length;
+
+  const renderOverdue = () => {
+    if (overdueCount === 0) {
+      return null;
+    }
+
+    return <OverdueBadge count={overdueCount} />;
+  };
+
+  const renderBody = () => {
+    if (isLoading) {
+      return <InvoiceSkeleton />;
+    }
+
+    if (error) {
+      return <ErrorState message={error} onRetry={refresh} />;
+    }
+
+    return invoices.map((invoice) => <InvoiceRow key={invoice.id} invoice={invoice} />);
+  };
+
+  return (
+    <section>
+      {renderOverdue()}
+      {renderBody()}
+    </section>
+  );
+}
+```
+
+### What is the difference?
+
+| Thing | Bad | Good |
+| --- | --- | --- |
+| Hook result | A tuple, relying on order | `{ invoices, isLoading, error, refresh }` |
+| Overdue rule | Inline in the component | An `isOverdue()` pure function, easy to test |
+| Empty count | `0` on screen | The braced guard returns `null` |
+| States | Nested ternary | Plain `if` inside `renderBody()` |
+| Retry on error | None | `refresh` comes by name |
+
+## 5. How to apply it
+
+<Flow title="While writing a component">
+
+State and data work goes in a custom hook
+↓
+The hook returns a named object, not JSX
+↓
+Rules and calculations go in pure functions in src/lib
+↓
+Every conditional block is a renderX function
+↓
+Near 400 lines, move child components into separate files
+
+</Flow>
+
+When you split, keep private children in the parent's folder: `InvoiceList/components/InvoiceRow/InvoiceRow.tsx`. Keep state as deep as possible. Lift it up only when two siblings need it.
+
+A component should never call `fetch` directly. On the server, call a service. On the client, use a hook that uses the typed client.
+
+## 6. Exceptions and common mistakes
+
+Some of these rules are strict house opinions here, and many teams do things differently:
+
+- **Ternary and `&&`:** most React codebases use them freely, and a short `isOpen ? "Close" : "Open"` is perfectly readable. The rule is strict here because a nested ternary quickly becomes a puzzle and the `0` bug with `&&` is common. A render function gives every state a name. The trade-off: a bit more code, but every branch is clear.
+- **Tuple:** React's own `useState` returns a tuple because it has two generic values that you rename. Many teams find a tuple fine for small hooks with two values. With three or more values, a named object is always better.
+- **400 lines:** this is a hard limit, not a target. Often splitting at 150 lines is better.
+
+<Mistake
+  title="Returning JSX from a hook, like renderModal"
+  why="The hook starts deciding the UI, and you have to open the hook whenever styling or layout changes."
+  better="The hook gives only data and callbacks, like isOpen and open. The component builds the markup."
+/>
+
+<Mistake
+  title="Fetching and transforming data with useEffect inside a component"
+  why="Loading, error, race conditions and transforms all land in one file and nothing is reusable."
+  better="In Next.js, call the service from a server component. On the client, use one hook that uses the typed client."
+/>
+
+<Mistake
+  title="Only moving helpers to the bottom when you hit 400 lines"
+  why="The file is still one file and one component is still doing all the work."
+  better="Make the real parts of the UI separate child components, each in its own file with its own props type."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Custom Hooks](/courses/react/custom-hooks), [Conditional Rendering](/courses/react/conditional-rendering) |
+| **Alongside** | [Conditionals Without Ternaries](/courses/best-practices/conditionals-without-ternaries), [Separation of Concerns](/courses/best-practices/separation-of-concerns) |
+| **After** | [Next.js Practices](/courses/best-practices/nextjs-practices), [Design Tokens & UI Consistency](/courses/best-practices/design-tokens-and-ui) |
+
+<Flow title="Suggested order">
+
+Custom Hooks
+↓
+Conditionals Without Ternaries
+↓
+React Component Practices
+↓
+Next.js Practices
+
+</Flow>
+
+## Final quick revision
+
+| Check | Yes / No |
+| --- | --- |
+| Component under 400 lines | Yes |
+| Custom hook returns a tuple | No |
+| Hook returns JSX | No |
+| Ternary or `&&` in returned JSX | No, use `renderX()` |
+| Rules and calculations in `src/lib` | Yes |
+| `fetch` in a component | No |
+
+<Callout variant="important" title="Remember">
+
+The component displays, the hook handles state, the library decides. Give every state a name, every condition its own render function, and keep the file small.
+
+</Callout>

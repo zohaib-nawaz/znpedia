@@ -1,0 +1,189 @@
+---
+title: Prototypes & Inheritance
+description: Learn what JavaScript prototype inheritance is, how the prototype chain works, and how objects share behavior with Object.create.
+keywords:
+  - javascript prototype inheritance
+  - prototype chain in javascript
+  - object.create
+  - __proto__ vs prototype
+---
+
+## 1. What are prototypes?
+
+<Callout variant="tip" title="Short definition">
+
+**A prototype is another object that an object borrows missing properties and methods from.**
+
+</Callout>
+
+In JavaScript, every object has a hidden link called `[[Prototype]]`. When you look for a property on an object and it is not found there, JavaScript follows that link and looks in the prototype object.
+
+This system is called **prototypal inheritance**. JavaScript classes also run on top of it under the hood.
+
+## 2. Why does it matter?
+
+If you have 1000 user objects and each has its own copy of a `greet` function, memory is wasted. With a prototype, all objects share a single method.
+
+<CompareTable leftTitle="Without a prototype" rightTitle="With a prototype">
+
+A separate copy of the method in every object | The method lives in one place, all objects share it
+More memory used | Less memory used
+To change a method, update every object | One change on the prototype affects everything
+Code is repeated | Reuse and inheritance are easy
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Place | Role of the prototype |
+| --- | --- |
+| **Arrays** | `[1, 2].map()` actually comes from `Array.prototype.map` |
+| **Strings** | `"hi".toUpperCase()` comes from `String.prototype` |
+| **Classes** | `class` methods are stored on the prototype |
+| **Libraries** | Putting shared behavior on a base object and extending it |
+| **Interviews** | The prototype chain and `__proto__` vs `prototype` are common questions |
+
+## 4. How does it work?
+
+Property lookup works like a chain. JavaScript goes from the bottom up until it finds the property or the chain ends at `null`.
+
+<Flow title="Prototype chain lookup">
+
+Look for the property on the user object
+↓
+Not found, so look in userPrototype
+↓
+Not found, so look in Object.prototype
+↓
+Not found, so the chain ends at null
+↓
+The result is undefined
+
+</Flow>
+
+<Callout variant="important" title="Mental model">
+
+**If an object does not have something, it asks its prototype, and then that prototype's prototype.**
+
+</Callout>
+
+`__proto__` and `prototype` are different things:
+
+| Thing | Meaning |
+| --- | --- |
+| `obj.__proto__` | The old way to see an object's prototype, today use `Object.getPrototypeOf(obj)` |
+| `Fn.prototype` | Exists only on functions and classes, and it becomes the prototype of objects made with `new Fn()` |
+
+## 5. Code example
+
+### Inheritance with Object.create
+
+```js
+const animal = {
+  speak() {
+    return `${this.name} makes a sound`;
+  },
+};
+
+const dog = Object.create(animal);
+dog.name = "Moti";
+
+console.log(dog.speak());
+console.log(Object.getPrototypeOf(dog) === animal);
+console.log(Object.hasOwn(dog, "speak"));
+```
+
+### Constructor function and prototype
+
+```js
+function User(name) {
+  this.name = name;
+}
+
+User.prototype.greet = function () {
+  return `Hello, ${this.name}`;
+};
+
+const ali = new User("Ali");
+const sara = new User("Sara");
+
+console.log(ali.greet());
+console.log(ali.greet === sara.greet);
+```
+
+### How does the code work?
+
+| Line | What is happening |
+| --- | --- |
+| `Object.create(animal)` | A new empty object whose prototype is `animal` |
+| `dog.speak()` | `dog` has no `speak`, so `animal.speak` is found through the chain |
+| `Object.hasOwn(dog, "speak")` | `false`, because the method is borrowed, not its own |
+| `User.prototype.greet` | The method sits once on the prototype, all users share it |
+| `ali.greet === sara.greet` | `true`, both use the same function |
+
+### Interview tip
+
+A common question is: "What is the end of the prototype chain?" The answer: `Object.prototype`, and its prototype is `null`. That is why `Object.getPrototypeOf(Object.prototype)` returns `null`.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Making a prototype method with an arrow function"
+  why="An arrow function has no this of its own, so this.name comes out undefined."
+  better="Use a normal function or class method syntax for prototype methods."
+/>
+
+<Mistake
+  title="Modifying built-in prototypes like Array.prototype"
+  why="It can conflict with other libraries and with future JavaScript features."
+  better="Write your own helper functions separately and do not touch built-in prototypes."
+/>
+
+<Mistake
+  title="Setting __proto__ directly in code"
+  why="It is an old and slow approach that hurts both performance and readability."
+  better="Use Object.create, Object.getPrototypeOf, and classes."
+/>
+
+<Mistake
+  title="Forgetting inherited properties in a for...in loop"
+  why="for...in also gives the prototype's enumerable properties, which leads to odd results."
+  better="Use Object.keys or Object.entries, which return only own properties."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Objects](/courses/javascript/objects), [The this Keyword](/courses/javascript/this-keyword), [Functions](/courses/javascript/functions) |
+| **Alongside** | [call, apply & bind](/courses/javascript/call-apply-bind) |
+| **After** | [Classes](/courses/javascript/classes), [Iterators & Generators](/courses/javascript/iterators-and-generators) |
+
+<Flow title="Suggested order">
+
+Objects
+↓
+this keyword
+↓
+Prototypes
+↓
+Classes
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Prototype | The object that properties are borrowed from |
+| Prototype chain | Lookup goes upward until it reaches `null` |
+| `Object.create(proto)` | A new object with the given prototype |
+| `Object.getPrototypeOf` | The modern way to read a prototype |
+| `Object.hasOwn` | Check whether a property is own or inherited |
+| Classes | Clean syntax on top of prototypes |
+
+<Callout variant="important" title="Remember">
+
+Inheritance in JavaScript goes **from object to object**. Whether you use class syntax or a constructor function, the prototype chain is what does the work underneath.
+
+</Callout>

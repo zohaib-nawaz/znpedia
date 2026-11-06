@@ -1,0 +1,223 @@
+---
+title: Introduction
+description: Learn what React.js is, why it is used, and how it builds user interfaces with Components and State, a beginner-friendly introduction.
+keywords:
+  - what is react
+  - react js
+  - react components
+  - react state
+---
+
+## 1. What is React?
+
+### Definition
+
+<Callout variant="tip" title="Short definition">
+
+**React.js is a JavaScript library used to build user interfaces (UI).**
+
+</Callout>
+
+In simple words, React divides the UI into small **reusable Components**. Each Component does one specific job in the UI, and you combine these Components to build a complete application.
+
+<Flow title="UI = a combination of small parts">
+
+Navbar
+   +
+Product Card
+   +
+Shopping Cart
+   +
+Footer
+   ↓
+Complete UI
+
+</Flow>
+
+React.js is part of the **JavaScript ecosystem** and is mainly used for frontend UI development.
+
+
+## 2. Why does it matter?
+
+### What problem does it solve?
+
+In traditional JavaScript, updating a complex UI manually can be difficult, for example when several UI elements must update together after a user action.
+
+<CompareTable leftTitle="Without React" rightTitle="With React">
+
+User action | State / data changes
+Find the DOM manually | React detects the change
+Update every element yourself | The UI updates automatically
+Code gets complex quickly | A UI organized with components + state
+
+</CompareTable>
+
+<Flow title="React's simple flow">
+
+State/Data change
+      ↓
+React
+      ↓
+UI update
+
+</Flow>
+
+React makes it easier to organize and manage a complex UI through Components and State.
+
+
+## 3. Where is it used?
+
+React is used wherever you need an **interactive UI**:
+
+| Area | What is built with React |
+| --- | --- |
+| **E-commerce** | Product cards, cart, filters, checkout UI |
+| **Dashboard** | Tables, charts, filters, interactive panels |
+| **SaaS apps** | Settings, forms, modals, user dashboards |
+| **Social apps** | Posts, likes, comments, notifications |
+
+React is also used inside frameworks like **Next.js** (along with routing, SSR and a production setup).
+
+
+## 4. How does it work?
+
+### Basic mental model
+
+The basic idea of React is that **the UI is rendered according to the current data / state**.
+
+<Flow title="From user action to UI">
+
+User Action
+     ↓
+State/Data Change
+     ↓
+React re-render
+     ↓
+UI update
+
+</Flow>
+
+**Example:** The user presses the `Like` button → the state changes → React renders the component again → the updated like count appears on the screen.
+
+<Callout variant="important" title="Mental model">
+
+**Data / state changes → the UI updates to match the change**
+
+</Callout>
+
+
+## 5. Code example
+
+In React you write the UI in the form of **Components**:
+
+```tsx
+function Welcome() {
+  return <h1>Hello React</h1>;
+}
+```
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `Welcome` | A React **Component** (a reusable piece of UI) |
+| `return (...)` | JSX, HTML-like syntax that describes the UI |
+| On the screen | The heading `Hello React` is shown |
+
+In a real app, multiple components are combined:
+
+<Flow title="Component tree (simple)">
+
+App
+ ↓
+Navbar
+ ↓
+ProductList
+ ↓
+ProductCard
+
+</Flow>
+
+
+## 6. Common mistakes
+
+<Mistake
+  title="Building one huge Component"
+  why="The code becomes hard to understand and maintain."
+  better="Divide the UI into small, reusable Components, with one clear job for each part."
+/>
+
+<Mistake
+  title="Making everything State"
+  why="Extra state code is confusing and sometimes hurts performance too."
+  better="Keep only the data that changes in the UI in State, and use normal variables or props for the rest."
+/>
+
+<Mistake
+  title="Mixing up Props and State"
+  why="They play different roles, and using the wrong one causes bugs."
+  better="Props = data that came from the parent; State = the component's own changing data."
+/>
+
+| Topic | **Props** | **State** |
+| --- | --- | --- |
+| **Where it comes from** | The parent component | Inside the component itself |
+| **Who changes it** | The parent (read-only for the child) | The component itself (user action, API, etc.) |
+| **When to use** | Passing data down | UI that is changing |
+
+<Mistake
+  title="Thinking React is just a way to write HTML"
+  why="The real benefit is in Components, State, Props and a data-driven UI."
+  better="Understand the mental model first, and the JSX syntax comes naturally later."
+/>
+
+
+## 7. What to learn before and after
+
+### Learning path
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | HTML/CSS basics, JavaScript basics, functions, arrays & objects, `map()`, `import` / `export` |
+| **Related (alongside React)** | Components, JSX, Props, State, Events, Hooks |
+| **After** | API integration, routing, advanced Hooks, Next.js |
+
+<Flow title="Suggested order">
+
+JavaScript
+     ↓
+React.js
+     ↓
+Components + JSX
+     ↓
+Props + State
+     ↓
+Hooks
+     ↓
+API Integration
+     ↓
+Next.js
+
+</Flow>
+
+
+## Final quick revision
+
+### In simple words
+
+React.js is a **JavaScript library** used to build interactive UI. The UI is divided into **Components**; when **state / data** changes, the UI updates.
+
+### Key points
+
+| Point | Detail |
+| --- | --- |
+| What React is | A JavaScript library for building UI |
+| UI structure | Reusable Components |
+| Update trigger | State / data change |
+| Data between Components | **Props** |
+
+<Callout variant="important" title="One thing to remember">
+
+In React we divide the UI into **Components** and update the UI according to **data / state**.
+
+</Callout>

@@ -1,0 +1,172 @@
+---
+title: useReducer
+description: Learn how the React useReducer hook manages complex state through a reducer function and actions, with simple examples for beginners.
+keywords:
+  - react usereducer
+  - usereducer vs usestate
+  - reducer function react
+  - react dispatch action
+---
+
+## 1. What is useReducer?
+
+<Callout variant="tip" title="Short definition">
+
+**`useReducer` is a hook that keeps all of your state update logic in one place, a reducer function.**
+
+</Callout>
+
+With `useState`, you set the new value directly. With `useReducer`, you say **what happened** (an action), and the reducer decides **how** the state changes.
+
+Think of it like this: the component only sends an "order", and the reducer is the kitchen that prepares a new plate (state) based on that order.
+
+## 2. Why does it matter?
+
+When one piece of state has several related parts and many event handlers change them in different ways, `useState` code starts to get scattered.
+
+<CompareTable leftTitle="useState only" rightTitle="With useReducer">
+
+Different setState logic in every handler | All update logic in one reducer
+Several setState calls together | One dispatch, one clear action
+Hard to find bugs | Each action has a predictable result
+Hard to test the logic | The reducer is a pure function, easy to test
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Use case | Example actions |
+| --- | --- |
+| **Shopping cart** | `added`, `removed`, `quantity_changed` |
+| **Multi-step form** | `next_step`, `field_changed`, `reset` |
+| **Todo app** | `added`, `toggled`, `deleted` |
+| **Data loading** | `loading`, `success`, `failed` |
+
+For a simple counter or a single input, `useState` is enough. Choose `useReducer` when the state logic becomes **complex**.
+
+## 4. How does it work?
+
+<Flow title="From dispatch to the new UI">
+
+The user clicks a button
+↓
+dispatch(action) is called
+↓
+React runs reducer(currentState, action)
+↓
+The reducer returns the new state
+↓
+The component re-renders with the new state
+
+</Flow>
+
+A reducer must be a **pure function**: the same input gives the same output, with no API calls and no mutation. It always returns a **new object**.
+
+## 5. Code example
+
+### Todo list reducer
+
+```tsx
+import { useReducer } from "react";
+
+type Todo = { id: number; text: string; done: boolean };
+
+type Action =
+  | { type: "added"; text: string }
+  | { type: "toggled"; id: number }
+  | { type: "deleted"; id: number };
+
+function todosReducer(todos: Todo[], action: Action): Todo[] {
+  switch (action.type) {
+    case "added":
+      return [...todos, { id: Date.now(), text: action.text, done: false }];
+    case "toggled":
+      return todos.map((t) => (t.id === action.id ? { ...t, done: !t.done } : t));
+    case "deleted":
+      return todos.filter((t) => t.id !== action.id);
+  }
+}
+
+export default function TodoApp() {
+  const [todos, dispatch] = useReducer(todosReducer, []);
+
+  return (
+    <div>
+      <button onClick={() => dispatch({ type: "added", text: "Learn React" })}>
+        Add
+      </button>
+      <ul>
+        {todos.map((todo) => (
+          <li key={todo.id}>
+            <input
+              type="checkbox"
+              checked={todo.done}
+              onChange={() => dispatch({ type: "toggled", id: todo.id })}
+            />
+            {todo.text}
+            <button onClick={() => dispatch({ type: "deleted", id: todo.id })}>x</button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `Action` type | Every possible action and its data, so TypeScript catches mistakes |
+| `todosReducer` | A pure function: the old list plus an action gives the new list |
+| `useReducer(todosReducer, [])` | Passes the reducer and the initial state `[]` |
+| `[todos, dispatch]` | The current state and a function to send actions |
+| `dispatch({ type: "toggled", id })` | The component only says what happened |
+
+## 6. Common mistakes
+
+<Mistake
+  title="Mutating state inside the reducer"
+  why="A mutation like todos.push keeps the same reference, and React may skip the re-render."
+  better="Always return a new array or object, for example with spread, map or filter."
+/>
+
+<Mistake
+  title="Writing side effects in the reducer"
+  why="In development React can run the reducer twice, so a fetch or a localStorage write would happen twice."
+  better="Keep the reducer pure. Do side effects in event handlers or useEffect."
+/>
+
+<Mistake
+  title="Expecting the new state right after dispatch"
+  why="After dispatch, the state variable in the same function still holds the old value. The update arrives in the next render."
+  better="If you need the new state now, call reducer(state, action) yourself, or wait for the next render."
+/>
+
+### Interview tip
+
+`useReducer` and Redux share the same idea: **state + action = new state**. The difference is that `useReducer` is for one component's local state. You can also combine it with Context to build a small global store.
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [State with useState](/courses/react/state), [Handling Events](/courses/react/events), [Lists & Keys](/courses/react/lists-and-keys) |
+| **Alongside** | [useContext](/courses/react/use-context), [Custom Hooks](/courses/react/custom-hooks) |
+| **After** | [State Management Libraries](/courses/react/state-management), [TypeScript with React](/courses/react/typescript-with-react) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| What it is | Complex state logic in one reducer function |
+| Signature | `useReducer(reducer, initialState)` |
+| Returns | `[state, dispatch]` |
+| Reducer | A pure function that makes a new state from `(state, action)` |
+| When to use it | Many related values, many kinds of updates |
+
+<Callout variant="important" title="Remember">
+
+The component says **what happened**, and the reducer decides **how the state changes**. Keep the reducer pure and always return a new state.
+
+</Callout>

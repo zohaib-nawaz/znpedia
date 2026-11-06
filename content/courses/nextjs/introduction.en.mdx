@@ -1,0 +1,187 @@
+---
+title: "Introduction"
+description: "What is Next.js? A beginner's start with Next.js 16, why this framework was built on top of React, and how the App Router works."
+keywords:
+  - what is next.js
+  - next.js app router
+  - react framework
+  - next.js 16
+---
+
+## 1. What is Next.js?
+
+<Callout variant="tip" title="Short definition">
+
+**Next.js is a React framework that gives you routing, server rendering, data fetching and a production build in one place.**
+
+</Callout>
+
+React is only a UI library. It teaches you how to build components, but leaves routing, SEO, the server, bundling and deployment for you to decide. Next.js makes those decisions for you up front, so you can focus on building the app.
+
+In this course we cover **Next.js 16** and the **App Router** (the `app/` folder). The old `pages/` router still works, but new projects are built with the App Router.
+
+<Flow title="Next.js = React + full-stack features">
+
+React components
+   +
+File-based routing
+   +
+Server Components
+   +
+Data fetching and caching
+   +
+Turbopack build
+   ↓
+Production-ready web app
+
+</Flow>
+
+## 2. Why does it matter?
+
+With plain React (like a Vite setup), the page is built in the browser after the JavaScript loads. That delays the first paint, weakens SEO, and means you need a separate library for routing.
+
+<CompareTable leftTitle="Plain React (client-side)" rightTitle="Next.js App Router">
+
+A separate library for routing | Folders are the routes
+Empty HTML, content after JS loads | HTML is built on the server and sent
+Extra work for SEO | Built-in Metadata API
+A separate backend for APIs | Route Handlers and Server Actions
+You configure the bundler | Turbopack by default, zero config
+Data fetching in useEffect | A direct await in a Server Component
+
+</CompareTable>
+
+Put simply, Next.js lets you write **both frontend and backend** in one project.
+
+## 3. Where is it used?
+
+| Area | What you build with Next.js |
+| --- | --- |
+| **Marketing sites** | Fast, SEO-friendly landing pages and blogs |
+| **E-commerce** | Product pages, cart, checkout, search |
+| **SaaS dashboards** | Panels behind auth, settings, reports |
+| **Docs and content** | MDX docs, knowledge bases (like this ZnPedia) |
+| **Full-stack apps** | A database, forms and APIs in a single codebase |
+
+## 4. How does it work?
+
+The mental model of Next.js is: **every request matches a route, the route's components render on the server, and only the necessary JavaScript goes to the browser.**
+
+<Flow title="From request to screen">
+
+The browser sends a /blog request
+   ↓
+Next.js finds app/blog/page.tsx
+   ↓
+Server Components render on the server
+   ↓
+HTML + RSC payload go to the browser
+   ↓
+Client Components hydrate
+   ↓
+The page is interactive
+
+</Flow>
+
+<Callout variant="important" title="Mental model">
+
+**Everything is a Server Component by default. If you need interactivity, add `"use client"`.**
+
+</Callout>
+
+In Next.js 16 the bundler is **Turbopack** by default, `proxy.ts` is used to intercept requests, and caching is opt-in through **Cache Components** (`"use cache"`).
+
+## 5. Code example
+
+A tiny Next.js page. The file's name and location create the route.
+
+```tsx
+export default async function HomePage() {
+  const res = await fetch("https://api.github.com/repos/vercel/next.js");
+  const repo = await res.json();
+
+  return (
+    <main>
+      <h1>Welcome to Next.js</h1>
+      <p>Stars on the Next.js repo: {repo.stargazers_count}</p>
+    </main>
+  );
+}
+```
+
+Put this file in `app/page.tsx` and this page shows up on the `/` route.
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `app/page.tsx` | This file's location creates the `/` route |
+| `export default` | Every page has one default exported component |
+| `async function` | A Server Component can be async |
+| `await fetch(...)` | The data is fetched on the server, not in the browser |
+| `<main>` JSX | Turned into HTML on the server and sent to the browser |
+
+### Interview tip
+
+If you are asked, "What is the difference between React and Next.js?", say: React is a UI library, while Next.js is a full-stack framework built on React that provides routing, server rendering, caching and build tooling.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Thinking Next.js replaces React"
+  why="Next.js uses React inside, and the components, hooks and JSX are the same."
+  better="Learn React basics first, then see Next.js as a framework layer on top of React."
+/>
+
+<Mistake
+  title="Adding use client to every component"
+  why="This throws away the benefit of server rendering and makes the JavaScript bundle bigger."
+  better="Keep Server Components as the default, and make only the interactive parts Client Components."
+/>
+
+<Mistake
+  title="Following old Pages Router tutorials"
+  why="getServerSideProps and getStaticProps do not work in the App Router."
+  better="Follow docs and tutorials for Next.js 16 and the app folder."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [JavaScript async/await](/courses/javascript/async-await), [React components](/courses/react/components), [React state](/courses/react/state) |
+| **Alongside** | [React Server Components](/courses/react/server-components), [Suspense](/courses/react/suspense-and-lazy) |
+| **After** | [Installation & Project Structure](/courses/nextjs/installation-and-project-structure), [What's New in Next.js 16](/courses/nextjs/nextjs-16-whats-new), [Routing & Pages](/courses/nextjs/routing-and-pages) |
+
+<Flow title="Suggested order">
+
+JavaScript
+   ↓
+React basics
+   ↓
+Next.js setup
+   ↓
+Routing and layouts
+   ↓
+Server and Client Components
+   ↓
+Data fetching and caching
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| What Next.js is | A full-stack framework built on React |
+| Router | App Router, the `app/` folder |
+| Default component | Server Component |
+| Bundler | Turbopack (the Next.js 16 default) |
+| Caching | Opt-in, with `"use cache"` |
+| Request interception | `proxy.ts` |
+
+<Callout variant="important" title="Remember">
+
+In Next.js, **folder = route**, **default = Server Component**, and **you choose caching yourself**.
+
+</Callout>

@@ -1,0 +1,188 @@
+---
+title: When to Learn What
+description: A roadmap of junior vs senior developer practices. What a beginner, a production developer and a senior should focus on, and in what order to learn.
+keywords:
+  - junior vs senior developer practices
+  - developer learning roadmap
+  - beginner coding best practices
+  - senior developer roadmap
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Do not learn all the best practices at once. Make your own level's practices solid first, then move to the next level.**
+
+</Callout>
+
+This course has 57 chapters. If a beginner reads about migrations, multi-tenancy and supply chain security in the first week, nothing will stick. This chapter is a roadmap: which practice, and when.
+
+There are three levels:
+
+| Level | Who | Main question |
+| --- | --- | --- |
+| **Beginner** | First year, learning projects | "Is my code readable?" |
+| **Production developer** | Writes code for real users in a team | "Is my code safe, testable and maintainable?" |
+| **Senior** | Responsible for design and review | "Are the system and the team heading in the right direction?" |
+
+## 2. Why does it matter?
+
+Every practice solves a problem. Until you have seen that problem, the practice just feels like useless weight. That is why the order matters.
+
+<CompareTable leftTitle="Everything at once" rightTitle="By level">
+
+You remember the rules but do not understand why | Each rule arrived when the problem was in front of you
+Heavy architecture on a small project | Practices that match the project's size
+Overwhelmed and quit learning | A small win at every stage, and confidence grows
+Buzzwords in interviews, nothing in real work | Real experience with every practice
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | The habits of the Clean Code section | Naming, small functions and early returns help in all code |
+| **Production code** | Types, API, database, security and testing too | Now a mistake affects users and data |
+| **Senior level** | Architecture, trade-offs and team workflow | A senior builds the path for others |
+
+## 4. Bad vs good code
+
+How one small task looks at three levels. Task: load a user by id.
+
+**Focus at beginner level:** names, braces, early return.
+
+```ts
+async function load(id: string) {
+  const user = await db.user.findUnique({ where: { id } });
+
+  if (!user) {
+    throw new Error(`User ${id} not found`);
+  }
+
+  return user;
+}
+```
+
+**Focus at production level:** input validation, a typed result, logic in a service.
+
+```ts
+export async function GET(request: Request, ctx: RouteContext<"/api/users/[id]">) {
+  const { id } = userParamsSchema.parse(await ctx.params);
+
+  return Response.json(await users.find(id));
+}
+```
+
+**Focus at senior level:** authorization, tenant scoping, and making sure every handler in the team has this same shape.
+
+```ts
+export async function find(caller: Caller, id: string) {
+  const user = await db.user.findFirst({ where: { id, orgId: caller.orgId } });
+
+  if (!user) {
+    throw new NotFoundError("user");
+  }
+
+  return user;
+}
+```
+
+| What is the difference? | Beginner | Production | Senior |
+| --- | --- | --- | --- |
+| Focus | The code is clean | The code is safe and layered | The whole system is consistent and secure |
+| Question | Is the name right? | Was the input checked? | Could a user from another org leak? |
+
+## 5. How to apply it
+
+**Stage 1: Beginner (the first 3 to 6 months)**
+
+| Practice | Chapter |
+| --- | --- |
+| Thinking | [Core Philosophy](/courses/best-practices/core-philosophy) |
+| Names | [Naming Things](/courses/best-practices/naming) |
+| Flow | [Early Returns & Braces](/courses/best-practices/early-returns-and-braces) |
+| Functions | [Small Functions](/courses/best-practices/small-functions) |
+| Formatting | [Breathing Room & Transient Locals](/courses/best-practices/readable-formatting) |
+| Constants | [Constants & Magic Values](/courses/best-practices/constants-and-magic-values) |
+| Comments | [Self-Documenting Code](/courses/best-practices/self-documenting-code) |
+| Secrets | [Secrets Management](/courses/best-practices/secrets-management) |
+| Git | [Git Branches & Commits](/courses/best-practices/git-branches-and-commits) |
+
+**Stage 2: Production developer**
+
+| Practice | Chapter |
+| --- | --- |
+| Advanced clean code | [Conditionals Without Ternaries](/courses/best-practices/conditionals-without-ternaries), [DRY Without Tight Coupling](/courses/best-practices/dry-without-coupling), [Fail Fast](/courses/best-practices/fail-fast-and-no-fallbacks) |
+| Types and layers | [Strict Typing](/courses/best-practices/strict-typing), [Service Layer](/courses/best-practices/service-layer) |
+| API | [Input Validation](/courses/best-practices/input-validation), [Error Handling](/courses/best-practices/error-handling-and-envelope) |
+| Data | [Database Design](/courses/best-practices/database-design) |
+| Quality | [Definition of Done](/courses/best-practices/definition-of-done), [Testing Pyramid](/courses/best-practices/testing-pyramid), [Code Review](/courses/best-practices/pull-requests-and-code-review) |
+
+**Stage 3: Senior**
+
+| Practice | Chapter |
+| --- | --- |
+| Design | [Dependency Injection](/courses/best-practices/dependency-injection), [Following Existing Patterns](/courses/best-practices/following-existing-patterns), [Fix Root Causes](/courses/best-practices/fix-root-causes) |
+| Security | [Authorization & Multi-Tenancy](/courses/best-practices/authorization-and-tenancy), [OWASP](/courses/best-practices/common-vulnerabilities) |
+| Data | [Safe Migrations](/courses/best-practices/migrations), [Query Patterns](/courses/best-practices/query-patterns) |
+| Shipping | [Production Readiness](/courses/best-practices/production-readiness-checklist), [Performance: Measure First](/courses/best-practices/performance-measure-first) |
+
+<Flow title="Roadmap">
+
+Clean Code habits
+↓
+Types and the service layer
+↓
+API, database and security basics
+↓
+Testing and code review
+↓
+Architecture, tenancy and production readiness
+
+</Flow>
+
+## 6. Exceptions and common mistakes
+
+This roadmap is a guide, not a prison. If your very first job needs you to write migrations, read that chapter first. The needs of the work can change the order.
+
+<Mistake
+  title="Reading senior topics first because they look impressive"
+  why="Without a foundation, architecture patterns are just names, and they make a small project heavy."
+  better="Make naming, functions and flow solid first. Architecture makes sense once you have seen messy code yourself."
+/>
+
+<Mistake
+  title="Never leaving the beginner level"
+  why="Clean code alone is not enough, and code without security, validation and tests is dangerous in production."
+  better="Start Stage 2 as soon as you join your first team."
+/>
+
+<Mistake
+  title="Thinking being senior means applying every rule strictly"
+  why="A senior's real job is understanding trade-offs, and blind strictness slows the team down."
+  better="Explain the reason for each rule, and allow an exception where the reason does not apply."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Introduction](/courses/best-practices/introduction), [Core Philosophy](/courses/best-practices/core-philosophy) |
+| **After** | [Self-Documenting Code](/courses/best-practices/self-documenting-code), then the Clean Code section in order |
+
+## Final quick revision
+
+| Level | Focus |
+| --- | --- |
+| Beginner | Names, flow, small functions, constants, secrets, Git |
+| Production | Types, service layer, validation, errors, tests, review |
+| Senior | Architecture, authorization, migrations, performance, readiness |
+| Order | See the problem first, and then the practice makes sense |
+
+<Callout variant="important" title="Remember">
+
+Each level asks a different question. A beginner asks "is this clean?", a production developer asks "is this safe?", and a senior asks "is the whole system right?".
+
+</Callout>

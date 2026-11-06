@@ -1,0 +1,188 @@
+---
+title: DOM Basics
+description: Learn JavaScript DOM manipulation basics. Find elements with querySelector, change text, classes and attributes, and create new elements.
+keywords:
+  - javascript dom manipulation
+  - dom basics
+  - queryselector
+  - createelement javascript
+---
+
+## 1. What is the DOM?
+
+<Callout variant="tip" title="Short definition">
+
+**The DOM (Document Object Model) is a tree of the HTML page that JavaScript can read and change like objects.**
+
+</Callout>
+
+The browser reads your HTML file and turns every tag into a **node**. These nodes form a tree of parents and children, and the root of that tree is `document`.
+
+JavaScript updates the page live by changing this tree: changing text, adding items, applying classes. All of it happens through the DOM.
+
+## 2. Why does it matter?
+
+HTML on its own is static. Without the DOM, you cannot change the page in response to what the user does.
+
+<CompareTable leftTitle="HTML only" rightTitle="HTML plus DOM and JavaScript">
+
+The page stays exactly as written | The page changes on user actions
+Reload the page to add an item | The item is added to the list instantly
+Changing the theme is not possible | Dark mode with a class toggle
+The server renders the data to show it | Build elements yourself from API data
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Use case | DOM job |
+| --- | --- |
+| **Todo list** | Create a new `li` and add it to the list |
+| **Dark mode** | Toggle a class on `body` |
+| **Cart count** | Update the badge text |
+| **Modal** | Add or remove the `hidden` attribute |
+| **React / Vue** | They use these same DOM APIs under the hood |
+
+## 4. How does it work?
+
+<Flow title="DOM update flow">
+
+The browser builds the DOM tree from HTML
+↓
+JavaScript finds an element with querySelector
+↓
+It changes the element with a property or method
+↓
+The browser repaints the screen
+
+</Flow>
+
+| Task | Method |
+| --- | --- |
+| Find one element | `document.querySelector(".card")` |
+| Find all elements | `document.querySelectorAll("li")` |
+| Change text | `el.textContent = "Hello"` |
+| Class | `el.classList.add / remove / toggle` |
+| Attribute | `el.setAttribute`, `el.dataset.id` |
+| New element | `document.createElement("li")` |
+| Add / remove | `parent.append(child)`, `el.remove()` |
+
+<Callout variant="important" title="Mental model">
+
+**Find first, then change.** Every DOM task starts with selecting an element.
+
+</Callout>
+
+## 5. Code example
+
+HTML:
+
+```html
+<h1 id="title">My List</h1>
+<ul class="todo-list"></ul>
+<button id="theme-btn">Theme</button>
+```
+
+JavaScript:
+
+```js
+const title = document.querySelector("#title");
+const list = document.querySelector(".todo-list");
+const themeBtn = document.querySelector("#theme-btn");
+
+title.textContent = "Today's tasks";
+
+const items = ["Learn JavaScript", "Walk", "Groceries"];
+
+for (const text of items) {
+  const li = document.createElement("li");
+  li.textContent = text;
+  li.dataset.done = "false";
+  list.append(li);
+}
+
+themeBtn.addEventListener("click", () => {
+  document.body.classList.toggle("dark");
+});
+
+console.log(list.children.length);
+```
+
+### How does the code work?
+
+| Line | What happens |
+| --- | --- |
+| `querySelector("#title")` | The first element that matches the CSS selector |
+| `textContent = ...` | Sets text safely, no HTML is parsed |
+| `createElement("li")` | A new element in memory, not on the page yet |
+| `li.dataset.done` | Creates a `data-done="false"` attribute |
+| `list.append(li)` | Now the element shows up on the page |
+| `classList.toggle("dark")` | Removes the class if present, adds it if not |
+
+### Interview tip
+
+`textContent` vs `innerHTML`: `innerHTML` parses text as HTML, so user input creates an XSS risk. Always use `textContent` for user data.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Running the script before the DOM exists"
+  why="If the script is in the head, querySelector returns null and el.textContent throws a TypeError."
+  better="Add defer to the script tag or use type module."
+/>
+
+<Mistake
+  title="Putting user input into innerHTML"
+  why="If someone writes a script or an img onerror tag, that code can run (XSS)."
+  better="Use textContent, or build elements with createElement."
+/>
+
+<Mistake
+  title="Setting a property directly on the querySelectorAll result"
+  why="It is a NodeList, so list.style.color does not apply to every element."
+  better="Use for...of or forEach and work on each element separately."
+/>
+
+<Mistake
+  title="Updating the page on every item inside a loop"
+  why="Changing the DOM again and again makes the browser do more work."
+  better="Build the items in a DocumentFragment or an array and append them once."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Variables](/courses/javascript/variables), [Objects](/courses/javascript/objects), [Loops](/courses/javascript/loops) |
+| **After** | [DOM Events](/courses/javascript/dom-events), [Event Bubbling & Delegation](/courses/javascript/event-delegation), [Forms & Validation](/courses/javascript/forms-and-validation) |
+
+<Flow title="Suggested order">
+
+JavaScript basics
+↓
+DOM Basics
+↓
+DOM Events
+↓
+Event Delegation
+↓
+Forms and Validation
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| DOM | A live object tree of the HTML |
+| Select | `querySelector`, `querySelectorAll` |
+| Text | `textContent` is safe, `innerHTML` only for trusted HTML |
+| Classes | `classList.add / remove / toggle` |
+| Data | `data-*` attributes through `dataset` |
+| New elements | `createElement`, `append`, `remove` |
+
+<Callout variant="important" title="Remember">
+
+**Select** the element first, then **change** it. Always insert user text with `textContent`.
+
+</Callout>

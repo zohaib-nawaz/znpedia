@@ -1,0 +1,182 @@
+---
+title: React Compiler
+description: What React Compiler 1.0 is, how it adds automatic memoization at build time, and how to turn it on in Vite or Next.js 16, explained for beginners.
+keywords:
+  - react compiler
+  - babel-plugin-react-compiler
+  - react automatic memoization
+  - react compiler nextjs 16
+---
+
+## 1. What is React Compiler?
+
+<Callout variant="tip" title="Short definition">
+
+**React Compiler is a build-time tool that analyzes your components and hooks and adds memoization automatically.**
+
+</Callout>
+
+To stop needless re-renders, we used to write `useMemo`, `useCallback` and `memo` by hand. The compiler does this work **at build time**, and often more carefully than a person would.
+
+React Compiler 1.0 is a stable release and ships as the `babel-plugin-react-compiler` package.
+
+## 2. Why does it matter?
+
+<CompareTable leftTitle="Manual memoization" rightTitle="With React Compiler">
+
+useMemo and useCallback everywhere | Plain component code, memoization happens on its own
+Bugs from forgetting a dependency array | The compiler works out dependencies itself
+Forget to add memo and it gets slow | Every component is optimized by default
+Long code that is hard to read | Short, clean code
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Setup | How to turn it on |
+| --- | --- |
+| **Next.js 16** | `reactCompiler: true` in `next.config.ts` |
+| **Vite** | In the Babel plugins of `@vitejs/plugin-react` |
+| **Expo** | On by default in newer SDK templates |
+| **Older codebase** | Adopt it folder by folder, slowly |
+
+The compiler works best with React 19. For React 17 and 18 you need the `react-compiler-runtime` package and the `target` option.
+
+## 4. How does it work?
+
+<Flow title="What happens at build time">
+
+You write a normal component
+↓
+During the build, the Babel plugin reads your code
+↓
+The compiler checks that the code follows the Rules of React
+↓
+Automatic caching is added for values and JSX
+↓
+Optimized code runs in the browser
+
+</Flow>
+
+If a component **breaks the Rules of React** (for example, by mutating props during render), the compiler skips that component and it runs as before. The app does not break.
+
+## 5. Code example
+
+### Turning it on in Next.js 16
+
+```bash
+npm install -D babel-plugin-react-compiler
+```
+
+```ts
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  reactCompiler: true,
+};
+
+export default nextConfig;
+```
+
+### Turning it on in Vite
+
+```ts
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+
+export default defineConfig({
+  plugins: [
+    react({
+      babel: {
+        plugins: ["babel-plugin-react-compiler"],
+      },
+    }),
+  ],
+});
+```
+
+### A component with the compiler
+
+```tsx
+import { List } from "./list";
+
+type Product = { id: number; name: string };
+
+export function ProductList({ products, query }: { products: Product[]; query: string }) {
+  const visible = products.filter((p) => p.name.includes(query));
+  const handleSelect = (id: number) => console.log("Selected", id);
+
+  return <List items={visible} onSelect={handleSelect} />;
+}
+```
+
+There is no `useMemo` or `useCallback` in this code, yet the compiler caches `visible` and `handleSelect` as long as `products` and `query` stay the same.
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `babel-plugin-react-compiler` | The compiler itself, a dev dependency |
+| `reactCompiler: true` | The stable option in Next.js 16 |
+| `babel.plugins` | Adds the compiler to the Babel pipeline in Vite |
+| Plain `filter` and arrow function | The compiler memoizes these on its own |
+
+### Opting a component out
+
+```tsx
+function LegacyWidget() {
+  "use no memo";
+  return <div>Old code</div>;
+}
+```
+
+The `"use no memo"` directive is a temporary escape hatch for when a component has trouble with the compiler.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Turning on the compiler but still breaking the Rules of React"
+  why="The compiler skips any component that breaks the rules, so you get no benefit."
+  better="Turn on the recommended config of eslint-plugin-react-hooks, which includes the compiler lint rules."
+/>
+
+<Mistake
+  title="Deleting every useMemo and useCallback right after adopting the compiler"
+  why="In some places, such as effect dependencies, manual memoization affects behavior."
+  better="Do not write them in new code. Clean up old code slowly, with tests."
+/>
+
+<Mistake
+  title="Thinking the compiler solves every performance problem"
+  why="The compiler reduces needless re-renders, but it does not fix a slow network, a big bundle or a heavy algorithm."
+  better="Keep measuring with the Profiler, and also use code splitting or transitions."
+/>
+
+### Interview tip
+
+The compiler is a **build-time tool, not a runtime library**. It does fine-grained memoization, even inside conditional code, which manual `useMemo` cannot do. That is why new React code needs very little manual memoization.
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Rules of Hooks](/courses/react/rules-of-hooks), [useMemo & useCallback](/courses/react/use-memo-and-use-callback), [React.memo & Performance](/courses/react/memo-and-performance) |
+| **Alongside** | [Setup with Vite](/courses/react/setup-with-vite), [How React Renders](/courses/react/how-react-renders) |
+| **After** | [Server Components](/courses/react/server-components), [Testing React Apps](/courses/react/testing) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| What it is | A build-time tool that does automatic memoization |
+| Version | React Compiler 1.0, stable |
+| Package | `babel-plugin-react-compiler` |
+| Next.js 16 | `reactCompiler: true` |
+| If rules are broken | The component is skipped, the app keeps working |
+| Opt out | The `"use no memo"` directive |
+
+<Callout variant="important" title="Remember">
+
+Turn on the compiler, follow the **Rules of React**, and in new code write manual `useMemo`, `useCallback` and `memo` only when you have a specific reason.
+
+</Callout>

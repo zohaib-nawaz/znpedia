@@ -1,0 +1,178 @@
+---
+title: How JavaScript Runs
+description: Learn what a JavaScript engine and runtime are, how V8 and the call stack work, and how code runs in the browser and Node.js. A simple mental model.
+keywords:
+  - javascript engine runtime
+  - how javascript works
+  - v8 engine
+  - javascript call stack
+  - browser vs node.js runtime
+---
+
+## 1. What is a JavaScript runtime?
+
+<Callout variant="tip" title="Short definition">
+
+**The JavaScript engine runs your code, and the runtime is the environment that gives the engine extra features (like the DOM, timers and the file system).**
+
+</Callout>
+
+The JavaScript text you write does nothing by itself. You need an **engine** to run it. The engine alone only understands the language. Things like page buttons, `fetch` and `setTimeout` are provided by the **runtime**.
+
+| Runtime | Engine | Extra features |
+| --- | --- | --- |
+| Chrome / Edge | V8 | DOM, `fetch`, `localStorage`, timers |
+| Firefox | SpiderMonkey | DOM, `fetch`, timers |
+| Safari | JavaScriptCore | DOM, `fetch`, timers |
+| Node.js | V8 | File system, `process`, `fetch`, timers |
+| Deno / Bun | V8 / JavaScriptCore | File system, web APIs, built-in tools |
+
+## 2. Why does it matter?
+
+Beginners often assume `document` is available everywhere. Then Node.js shows a `document is not defined` error. Understanding the difference between engine and runtime clears up this confusion.
+
+<CompareTable leftTitle="Not knowing the difference" rightTitle="Knowing the difference">
+
+Trying to use document everywhere | Knowing that only the browser provides document
+Error reasons make no sense | Spotting a runtime problem from the error
+Code order feels confusing | The call stack makes the order clear
+Treating setTimeout as magic | Knowing the runtime runs the timer, not the engine
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Situation | How this knowledge helps |
+| --- | --- |
+| **Frontend code** | You know the DOM and `window` come from the browser runtime |
+| **Backend code** | Node.js gives you `fs` and `process`, not the DOM |
+| **Debugging** | The call stack shows up in an error's stack trace |
+| **Performance** | You understand why a heavy loop blocks the main thread |
+| **Async code** | The foundation for understanding the [Event Loop](/courses/javascript/event-loop) |
+
+## 4. How does it work?
+
+The engine first **parses** the code (turns text into a structure). Then modern engines **JIT (Just In Time) compile** the code: first a version that starts quickly, and then more optimization for code that runs again and again.
+
+<Flow title="Inside the engine">
+
+JavaScript source code
+     ↓
+Parser (turns code into a structure)
+     ↓
+Interpreter (starts running code quickly)
+     ↓
+JIT compiler (makes hot code fast)
+     ↓
+Machine code runs
+
+</Flow>
+
+JavaScript is **single threaded**. This means only one thing runs at a time. Every function call goes onto the **call stack**, and leaves the stack when its work is done.
+
+<Flow title="Simple call stack flow">
+
+Global code on the stack
+     ↓
+greet() is called, pushed on the stack
+     ↓
+greet() finishes, popped off the stack
+     ↓
+The next line runs
+
+</Flow>
+
+Slow work like timers and network requests is handled by the runtime itself. When that work is ready, its callback is placed in a queue and runs once the stack is empty. This whole system is called the **event loop**.
+
+<Callout variant="important" title="Mental model">
+
+**Engine = the machine that runs the language. Runtime = engine + tools to talk to the outside world. Call stack = what is running right now.**
+
+</Callout>
+
+## 5. Code example
+
+See the order of the call stack:
+
+```js
+function greet(name) {
+  console.log(`Hello, ${name}`);
+}
+
+console.log("Start");
+greet("Ali");
+console.log("End");
+```
+
+Output: `Start`, then `Hello, Ali`, then `End`. Each line runs in its turn.
+
+Now see the runtime at work:
+
+```js
+console.log("1");
+
+setTimeout(() => {
+  console.log("2 (from the timer)");
+}, 0);
+
+console.log("3");
+```
+
+Output: `1`, `3`, then `2 (from the timer)`. The timer is `0` ms, yet the callback runs later, because it comes out of the queue only when the call stack is empty.
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `greet("Ali")` | The function goes onto the call stack and leaves when it finishes |
+| `setTimeout` | A feature of the runtime, not of the engine |
+| `0` ms delay | The minimum wait, not a guarantee of running immediately |
+| Output order | All sync code first, then the callbacks from the queue |
+
+### Interview tip
+
+"JavaScript is single threaded, so how does it do async work?" Answer: the engine is single threaded, but the runtime (the browser or Node.js) handles timers and network in the background, and the event loop runs their callbacks when the call stack is empty.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Using document or window in Node.js"
+  why="These are objects of the browser runtime. They do not exist in Node.js, so you get a ReferenceError."
+  better="First check where the code will run. If you need code that works in both places, use globalThis."
+/>
+
+<Mistake
+  title="Thinking setTimeout(fn, 0) runs immediately"
+  why="The callback goes into the queue and runs only after all the sync code has finished."
+  better="Think about the order in terms of the call stack and the event loop, and treat the delay as only a minimum time."
+/>
+
+<Mistake
+  title="Running a very heavy loop on the main thread"
+  why="The single thread gets blocked, the page freezes in the browser and clicks stop working."
+  better="Break heavy work into small pieces or move it to a Web Worker."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Introduction](/courses/javascript/introduction) |
+| **After this** | [Setup & First Program](/courses/javascript/setup-and-first-program) |
+| **Going deeper** | [Event Loop](/courses/javascript/event-loop), [Timers](/courses/javascript/timers), [Scope & Hoisting](/courses/javascript/scope-and-hoisting) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Engine | Parses, compiles and runs code (V8, SpiderMonkey) |
+| Runtime | Engine + extra APIs (browser or Node.js) |
+| JIT | Optimizing code at runtime when it runs again and again |
+| Single threaded | One task at a time, one call stack |
+| Async work | The runtime handles it, the event loop runs the callback |
+
+<Callout variant="important" title="Remember">
+
+The browser provides `document`, Node.js provides `fs`. The language is the same in both places, but the **runtime is different**.
+
+</Callout>

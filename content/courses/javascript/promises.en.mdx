@@ -1,0 +1,189 @@
+---
+title: Promises
+description: Learn JavaScript promises, including pending, fulfilled, and rejected states, then, catch, finally, Promise.all, allSettled, any, race, and withResolvers.
+keywords:
+  - javascript promises
+  - promise.all allsettled any
+  - promise then catch
+  - promise.withresolvers
+---
+
+## 1. What are promises?
+
+<Callout variant="tip" title="Short definition">
+
+**A promise is an object that represents a result (or error) that will arrive in the future.**
+
+</Callout>
+
+When you start an async job, like fetching data from a server, you do not get the result right away. A promise is like a receipt: empty for now, and later filled with a value or an error.
+
+Every promise is in one of three states: **pending**, **fulfilled**, or **rejected**. Once it settles, its state never changes again.
+
+## 2. Why does it matter?
+
+With [Callbacks](/courses/javascript/callbacks), nesting keeps growing and errors must be handled separately at every level. Promises give you a flat chain and error handling in one place.
+
+<CompareTable leftTitle="Callbacks" rightTitle="Promises">
+
+Every step is nested inside | A flat chain of then
+An error check at every level | One catch handles all errors
+Hard to combine parallel work | Promise.all and allSettled
+A callback can run twice | A promise settles only once
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Place | Example |
+| --- | --- |
+| **Network** | `fetch(url)` returns a promise |
+| **Files (Node.js)** | Methods from `fs/promises` |
+| **Parallel requests** | `Promise.all([getUser(), getPosts()])` |
+| **Timeouts** | Giving up on a slow request with `Promise.race` |
+| **async / await** | `await` works on promises |
+
+## 4. How does it work?
+
+<Flow title="The life of a promise">
+
+A new Promise is created, state pending
+↓
+The work succeeds, resolve(value) and the state is fulfilled
+↓
+Or the work fails, reject(error) and the state is rejected
+↓
+The callbacks of then, catch, or finally run as microtasks
+
+</Flow>
+
+| Method | When it runs |
+| --- | --- |
+| `.then(fn)` | When fulfilled, with the value |
+| `.catch(fn)` | When rejected, with the error |
+| `.finally(fn)` | In both cases, for cleanup |
+
+<Callout variant="important" title="Mental model">
+
+**`.then` always returns a new promise**, which is why chains work. Whatever you return goes to the next `.then`.
+
+</Callout>
+
+## 5. Code example
+
+### Creating a promise and chaining
+
+```js
+function getUser(id) {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      if (id > 0) resolve({ id, name: "Sara" });
+      else reject(new Error("User not found"));
+    }, 300);
+  });
+}
+
+getUser(1)
+  .then((user) => user.name.toUpperCase())
+  .then((name) => console.log(name))
+  .catch((error) => console.error(error.message))
+  .finally(() => console.log("Done"));
+```
+
+### Combinators
+
+```js
+const tasks = [getUser(1), getUser(-1), getUser(2)];
+
+const all = await Promise.allSettled(tasks);
+all.forEach((r) => console.log(r.status));
+
+const first = await Promise.any(tasks);
+console.log(first.name);
+```
+
+### Promise.withResolvers
+
+```js
+const { promise, resolve } = Promise.withResolvers();
+
+button.addEventListener("click", () => resolve("clicked"), { once: true });
+
+console.log(await promise);
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `Promise.all` | An array if all are fulfilled, rejects immediately if even one rejects |
+| `Promise.allSettled` | Waits for all, gives each one's `status` and value or reason |
+| `Promise.any` | The first fulfilled, `AggregateError` if all fail |
+| `Promise.race` | Whichever settles first, success or failure |
+| `Promise.withResolvers()` | The promise and its `resolve`, `reject` in separate variables |
+
+### Interview tip
+
+`all` vs `allSettled` is often asked. Use `allSettled` when you want every result even if some fail. Use `all` when one failure makes everything useless.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Forgetting return inside then"
+  why="The next then gets undefined and the chain breaks."
+  better="Return a value or a promise from every then."
+/>
+
+<Mistake
+  title="Not adding a catch"
+  why="An unhandled promise rejection shows an error in the console and can stop the Node.js process."
+  better="Add a catch at the end of every chain, or keep await inside try catch."
+/>
+
+<Mistake
+  title="Nesting promises inside then"
+  why="It brings callback hell back."
+  better="Return the inner promise so the chain stays flat."
+/>
+
+<Mistake
+  title="Running independent requests one after another"
+  why="Three requests of 1 second each take 3 seconds."
+  better="Run them in parallel with Promise.all, and the total time is the slowest request."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Callbacks](/courses/javascript/callbacks), [Event Loop](/courses/javascript/event-loop), [Timers](/courses/javascript/timers) |
+| **After** | [Async / Await](/courses/javascript/async-await), [Fetch API](/courses/javascript/fetch-api), [Error Handling](/courses/javascript/error-handling) |
+
+<Flow title="Suggested order">
+
+Callbacks
+↓
+Promises
+↓
+Async Await
+↓
+Fetch API
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| States | pending, fulfilled, rejected |
+| `then` / `catch` / `finally` | Result, error, cleanup |
+| Chain | Every `then` gives a new promise |
+| `all` / `allSettled` | All together, fail fast vs a report on all |
+| `any` / `race` | First success vs first to settle |
+| `withResolvers` | For resolving from outside |
+
+<Callout variant="important" title="Remember">
+
+A promise **settles once**. Always return, always add a `catch`, and run independent work in parallel.
+
+</Callout>

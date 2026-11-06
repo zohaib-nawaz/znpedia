@@ -1,0 +1,188 @@
+---
+title: Documentation & Decision Records
+description: Architecture decision records and a repo knowledge base, with a decisions log, gotchas, a glossary, and a way to keep docs true alongside the code.
+keywords:
+  - architecture decision records
+  - adr decision log
+  - project documentation best practices
+  - gotchas knowledge base
+  - docs as code
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**What code cannot show (decisions and their reasons, traps, domain words) is written in `docs/` inside the repo, and a PR that changes behaviour updates the docs in that same PR.**
+
+</Callout>
+
+Code tells you **what** is happening. Docs tell you **why**, and where the danger of falling is. These docs live in the repo next to the code, not in a separate wiki that nobody updates.
+
+## 2. Why does it matter?
+
+Every team has some code that looks "strange": why retry three times? Why is this field nullable? Without a written decision, a new developer "fixes" it, and the old bug that caused the decision comes back.
+
+<Callout variant="note" title="Real incident">
+
+The whole history of some repos was squashed into one commit. The reason for every decision lived in the commits, and it was all erased. When an old design question came up again, nobody remembered what had been tried last time and why it failed. The team had the same argument and made the same mistake again.
+
+</Callout>
+
+<CompareTable leftTitle="Docs without a system" rightTitle="Docs next to the code">
+
+Decisions buried in chat | In a decisions log with a date
+Every new developer loses a day to one trap | The gotchas file is read on day one
+The wiki is old, nobody knows how old | A verified commit on every module
+The decision was made last week | The decision was made on 2026-03-14
+Docs and code in separate PRs | Behaviour and docs in one PR
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | A good README: what it is, how to run it | Explaining it to yourself 3 months later |
+| **Production code** | README, decisions, gotchas, the key modules | The team and new people move faster |
+| **Senior level** | Create the structure and make docs part of review | Knowledge does not stay in one person's head |
+
+## 4. Bad vs good code
+
+### Bad
+
+```bash
+docs/
+  notes.md
+  new-notes-final.md
+  old/
+```
+
+```bash
+we changed the retry logic last week because of the issue with the provider
+```
+
+Which week? Which issue? Which file is right?
+
+### Good: structure
+
+```bash
+README.md
+docs/knowledge/
+  README.md
+  architecture.md
+  decisions.md
+  gotchas.md
+  glossary.md
+  billing.md
+  auth-tenancy.md
+```
+
+`docs/knowledge/README.md` is a short index: what the product is, which 3 to 6 files to read on day one, and which question each file answers.
+
+### Good: decisions log
+
+```bash
+- 2026-03-14: webhook delivery retries three times with backoff. the provider drops about 1% of first attempts.
+- 2026-04-02: invoices store amounts in cents as integers. floats gave rounding errors in totals.
+- 2026-05-20: no soft delete on comments. legal asked for real deletion.
+```
+
+### Good: gotcha
+
+```bash
+trap: exports time out above 50k rows
+
+symptom: csv export returns 504 for large stores
+cause: export runs inside the request, the host kills it at 60s
+fix: use the background export job for more than 10k rows
+seen: 2026-06-11
+```
+
+### What is the difference?
+
+| Thing | Bad | Good |
+| --- | --- | --- |
+| Date | "Last week" | `2026-03-14` |
+| Reason | Missing | One sentence |
+| Finding it | Spread over three files | One index, one question per file |
+| Freshness | Unknown | A verified commit or last updated date |
+
+## 5. How to apply it
+
+| File | What it holds |
+| --- | --- |
+| `README.md` (root) | Setup, commands, how to run |
+| `docs/knowledge/README.md` | The index and reading order |
+| `architecture.md` | How the pieces connect, what was deliberately not built |
+| `decisions.md` | Each decision as one line: date, decision, the reason in one sentence |
+| `gotchas.md` | Each trap: symptom, cause, what to do |
+| `glossary.md` | Domain words, one line each |
+| `<module>.md` | One bounded question, like billing or auth |
+
+<Flow title="How to keep docs true">
+
+A PR changes behaviour
+↓
+Update the related module in the same PR
+↓
+If a bug fix found a new trap, add it to gotchas
+↓
+If a decision was made in a review thread, add it to decisions
+↓
+Update the module's last verified date or commit
+
+</Flow>
+
+Docs never hold a secret value, a customer's identity or personal data. The **name** of an env variable is fine, its value is not.
+
+### Other approaches
+
+Many teams use the **ADR** (Architecture Decision Record) format: a separate file for each big decision with Context, Decision and Consequences sections. This is better for big, long decisions. A one-line decisions log is faster for small and frequent decisions. Some teams keep both: the log for every decision, and ADRs only for decisions that change the architecture.
+
+## 6. Exceptions and common mistakes
+
+**When the rule does not apply:** do not repeat in docs what the code makes clear by itself. Let names and types say what a function does. Docs are only for what the code cannot say.
+
+<Mistake
+  title="Treating docs as work for later"
+  why="Later never comes and the docs drift further from the code."
+  better="Put docs in the same PR that changes behaviour, and add a line for it in the PR template."
+/>
+
+<Mistake
+  title="Writing relative dates"
+  why="Last week means nothing three months later."
+  better="Always write the full date, like 2026-03-14."
+/>
+
+<Mistake
+  title="Leaving a wrong doc in place"
+  why="An old wrong doc does more harm than no doc, because people trust it."
+  better="Fix or delete the wrong module right away, do not create a new duplicate."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Self-Documenting Code (No Comments)](/courses/best-practices/self-documenting-code), [Git Branches & Commits](/courses/best-practices/git-branches-and-commits) |
+| **Alongside** | [Pull Requests & Code Review](/courses/best-practices/pull-requests-and-code-review), [Project Structure](/courses/best-practices/project-structure) |
+| **After** | [Working with AI Coding Agents](/courses/best-practices/working-with-ai-agents), [Production Readiness Checklist](/courses/best-practices/production-readiness-checklist) |
+
+## Final quick revision
+
+| Check | Yes? |
+| --- | --- |
+| Setup and commands in the README | |
+| Decisions log with date and reason | |
+| Gotchas: symptom, cause, fix | |
+| One file per question, one index | |
+| Behaviour and docs in one PR | |
+| No secrets or personal data | |
+
+<Callout variant="important" title="Remember">
+
+Code says "what", docs say "why". A decision that is not written down will be made again, and often wrongly.
+
+</Callout>
