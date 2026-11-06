@@ -2,26 +2,31 @@
 
 import { useCallback, useState } from "react";
 
+import type { Locale } from "@/lib/i18n/config";
 import type { SearchEntry } from "@/lib/search";
 
-let cachedIndex: Promise<SearchEntry[]> | null = null;
+const cachedIndexes = new Map<Locale, Promise<SearchEntry[]>>();
 
-function fetchIndex(): Promise<SearchEntry[]> {
-  if (!cachedIndex) {
-    cachedIndex = fetch("/search-index.json").then((response) => {
-      if (!response.ok) {
-        cachedIndex = null;
-        throw new Error(`Search index failed with ${response.status}`);
-      }
-
-      return response.json() as Promise<SearchEntry[]>;
-    });
+function fetchIndex(locale: Locale): Promise<SearchEntry[]> {
+  const cached = cachedIndexes.get(locale);
+  if (cached) {
+    return cached;
   }
 
-  return cachedIndex;
+  const request = fetch(`/${locale}/search-index.json`).then((response) => {
+    if (!response.ok) {
+      cachedIndexes.delete(locale);
+      throw new Error(`Search index failed with ${response.status}`);
+    }
+
+    return response.json() as Promise<SearchEntry[]>;
+  });
+  cachedIndexes.set(locale, request);
+
+  return request;
 }
 
-export function useSearchIndex() {
+export function useSearchIndex(locale: Locale) {
   const [entries, setEntries] = useState<SearchEntry[]>([]);
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
 
@@ -31,13 +36,13 @@ export function useSearchIndex() {
     }
 
     setStatus("loading");
-    fetchIndex()
+    fetchIndex(locale)
       .then((index) => {
         setEntries(index);
         setStatus("ready");
       })
       .catch(() => setStatus("error"));
-  }, [status]);
+  }, [status, locale]);
 
   return { entries, status, load };
 }

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
 
 import { ChapterPreview } from "@/components/landing/chapter-preview";
+import type { Dictionary } from "@/lib/i18n/dictionaries/ur";
 
 type HeroStat = {
   value: string;
@@ -12,11 +13,11 @@ type HeroProps = {
   badge: string;
   stats: HeroStat[];
   startHref: string;
+  coursesHref: string;
+  copy: Dictionary["hero"];
 };
 
-const HIGHLIGHTS = ["Bilkul free", "Koi signup nahi", "React 19.2 aur Next.js 16"];
-
-export function Hero({ badge, stats, startHref }: HeroProps) {
+export function Hero({ badge, stats, startHref, coursesHref, copy }: HeroProps) {
   return (
     <section className="dark surface-inverse relative overflow-hidden">
       <div
@@ -34,29 +35,28 @@ export function Hero({ badge, stats, startHref }: HeroProps) {
             {badge}
           </p>
           <h1 className="mt-6 text-4xl font-bold tracking-tight text-foreground [text-wrap:balance] sm:text-5xl lg:text-6xl">
-            Web development seekhein, <span className="text-accent">apni zabaan</span> mein
+            {copy.titleStart} <span className="text-accent">{copy.titleAccent}</span> {copy.titleEnd}
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground [text-wrap:pretty]">
-            JavaScript se Next.js aur production-grade best practices tak. Har topic ek chhota,
-            focused chapter: definition, code example, common mistakes aur quick revision.
+            {copy.body}
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link
               href={startHref}
               className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-accent px-5 text-sm font-semibold text-accent-foreground transition-opacity duration-200 hover:opacity-90"
             >
-              Pehla chapter parhein
+              {copy.primary}
               <ArrowRight className="h-4 w-4" aria-hidden />
             </Link>
             <Link
-              href="/courses"
+              href={coursesHref}
               className="inline-flex h-11 items-center justify-center rounded-lg border border-border bg-card/60 px-5 text-sm font-semibold text-foreground transition-colors duration-200 hover:bg-muted"
             >
-              Saare courses dekhein
+              {copy.secondary}
             </Link>
           </div>
           <ul className="mt-8 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
-            {HIGHLIGHTS.map((item) => (
+            {copy.highlights.map((item) => (
               <li key={item} className="inline-flex items-center gap-1.5">
                 <Check className="h-4 w-4 text-accent" aria-hidden />
                 {item}
@@ -64,7 +64,7 @@ export function Hero({ badge, stats, startHref }: HeroProps) {
             ))}
           </ul>
         </div>
-        <ChapterPreview />
+        <ChapterPreview labels={copy.preview} />
       </div>
       <div className="relative border-t border-border">
         <dl className="mx-auto grid max-w-6xl grid-cols-2 px-4 sm:px-6 md:grid-cols-4">

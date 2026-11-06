@@ -8,9 +8,10 @@ type OgImageInput = {
   eyebrow: string;
   title: string;
   subtitle: string;
+  tagline: string;
 };
 
-export function renderOgImage({ eyebrow, title, subtitle }: OgImageInput) {
+export function renderOgImage({ eyebrow, title, subtitle, tagline }: OgImageInput) {
   return new ImageResponse(
     (
       <div
@@ -42,7 +43,7 @@ export function renderOgImage({ eyebrow, title, subtitle }: OgImageInput) {
           </div>
         </div>
         <div style={{ display: "flex", fontSize: 24, color: "#71717a" }}>
-          {siteConfig.name}: Roman Urdu mein web development
+          {siteConfig.name}: {tagline}
         </div>
       </div>
     ),

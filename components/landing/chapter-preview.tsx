@@ -13,7 +13,23 @@ const next = createCounter();
 next();
 next();`;
 
-export function ChapterPreview() {
+type ChapterPreviewLabels = {
+  section: string;
+  position: string;
+  readTime: string;
+  definitionLabel: string;
+  definition: string;
+  mistakeLabel: string;
+  mistake: string;
+  betterLabel: string;
+  better: string;
+};
+
+type ChapterPreviewProps = {
+  labels: ChapterPreviewLabels;
+};
+
+export function ChapterPreview({ labels }: ChapterPreviewProps) {
   return (
     <div className="relative">
       <div className="absolute -inset-4 rounded-3xl bg-accent/20 blur-3xl" aria-hidden />
@@ -28,16 +44,16 @@ export function ChapterPreview() {
         </div>
         <div className="space-y-4 p-5">
           <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-            <span className="font-semibold uppercase tracking-[0.12em] text-accent">Functions</span>
+            <span className="font-semibold uppercase tracking-[0.12em] text-accent">{labels.section}</span>
             <span aria-hidden>·</span>
-            <span>Chapter 16 / 47</span>
+            <span>{labels.position}</span>
             <span aria-hidden>·</span>
-            <span>5 min read</span>
+            <span>{labels.readTime}</span>
           </div>
           <div className="rounded-lg bg-muted/60 px-4 py-3">
-            <p className="text-xs font-semibold text-foreground">Short definition</p>
+            <p className="text-xs font-semibold text-foreground">{labels.definitionLabel}</p>
             <p className="mt-1 text-sm leading-relaxed text-foreground/90">
-              Closure woh function hai jo apne bahar wale scope ke variables yaad rakhta hai.
+              {labels.definition}
             </p>
           </div>
           <pre className="overflow-x-auto rounded-lg border border-border bg-background p-4 font-mono text-[12.5px] leading-relaxed">
@@ -45,14 +61,11 @@ export function ChapterPreview() {
           </pre>
           <div className="rounded-lg border border-rose-500/25 px-4 py-3 text-sm">
             <p className="font-semibold text-foreground">
-              Galati:{" "}
-              <span className="font-normal text-muted-foreground">
-                loop mein var ke saath closure
-              </span>
+              {labels.mistakeLabel}{" "}
+              <span className="font-normal text-muted-foreground">{labels.mistake}</span>
             </p>
             <p className="mt-1 text-muted-foreground">
-              <span className="font-semibold text-accent">Behtar:</span> let use karein, har
-              iteration ka apna scope.
+              <span className="font-semibold text-accent">{labels.betterLabel}</span> {labels.better}
             </p>
           </div>
         </div>

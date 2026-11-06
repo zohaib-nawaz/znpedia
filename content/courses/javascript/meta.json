@@ -3,6 +3,11 @@
   "order": 1,
   "slug": "javascript",
   "description": "JavaScript zero se advanced tak Roman Urdu mein, variables, functions, closures, async/await, DOM aur modern ES features chhote chhote chapters mein.",
+  "i18n": {
+    "en": {
+      "description": "JavaScript from zero to advanced: variables, functions, closures, async/await, the DOM and modern ES features, in short focused chapters."
+    }
+  },
   "badge": "JS",
   "sections": [
     {

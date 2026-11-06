@@ -2,9 +2,10 @@ import { Link2 } from "lucide-react";
 
 type HeadingAnchorProps = React.ComponentPropsWithoutRef<"h2"> & {
   as: "h2" | "h3";
+  linkLabel: string;
 };
 
-export function HeadingAnchor({ as: Tag, id, children, ...props }: HeadingAnchorProps) {
+export function HeadingAnchor({ as: Tag, id, children, linkLabel, ...props }: HeadingAnchorProps) {
   const renderLink = () => {
     if (!id) {
       return null;
@@ -14,7 +15,7 @@ export function HeadingAnchor({ as: Tag, id, children, ...props }: HeadingAnchor
       <a
         href={`#${id}`}
         className="heading-anchor ml-2 inline-flex align-middle text-muted-foreground no-underline opacity-0 transition-opacity duration-200 group-hover:opacity-100 focus-visible:opacity-100"
-        aria-label="Link to this section"
+        aria-label={linkLabel}
       >
         <Link2 className="h-4 w-4" aria-hidden />
       </a>

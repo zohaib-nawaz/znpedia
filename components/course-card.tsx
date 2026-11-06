@@ -8,19 +8,28 @@ import { getCourseBadge } from "@/lib/docs-config";
 import { cn } from "@/lib/utils";
 import type { CourseMeta } from "@/types/course";
 
+type CourseCardLabels = {
+  chapters: (count: number) => string;
+  sections: (count: number) => string;
+  hours: (hours: number) => string;
+  start: string;
+};
+
 type CourseCardProps = {
   course: CourseMeta;
+  href: string;
+  labels: CourseCardLabels;
   shares: LevelShare[];
   hours: number;
   theme: CourseTheme;
 };
 
-export function CourseCard({ course, shares, hours, theme }: CourseCardProps) {
+export function CourseCard({ course, href, labels, shares, hours, theme }: CourseCardProps) {
   const badge = getCourseBadge(course);
 
   return (
     <Link
-      href={`/courses/${course.slug}`}
+      href={href}
       className={cn(
         "group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/5 dark:hover:shadow-black/40",
         theme.hoverBorder,
@@ -51,7 +60,7 @@ export function CourseCard({ course, shares, hours, theme }: CourseCardProps) {
             {badge}
           </span>
           <span className="rounded-full border border-border bg-background/70 px-2.5 py-1 text-[11px] font-medium text-muted-foreground backdrop-blur">
-            {course.sections.length} sections
+            {labels.sections(course.sections.length)}
           </span>
         </div>
         <h3 className="mt-5 text-xl font-bold tracking-tight text-foreground">{course.title}</h3>
@@ -65,13 +74,14 @@ export function CourseCard({ course, shares, hours, theme }: CourseCardProps) {
       <div className="relative flex items-center gap-4 border-t border-border bg-muted/30 px-6 py-3.5 text-xs font-medium text-muted-foreground sm:px-7">
         <span className="inline-flex items-center gap-1.5">
           <BookOpen className="h-3.5 w-3.5" aria-hidden />
-          {course.chapters.length} chapters
+          {labels.chapters(course.chapters.length)}
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <Clock className="h-3.5 w-3.5" aria-hidden />~{hours} ghante
+          <Clock className="h-3.5 w-3.5" aria-hidden />
+          {labels.hours(hours)}
         </span>
         <span className={cn("ml-auto inline-flex items-center gap-1 font-semibold", theme.text)}>
-          Shuru karein
+          {labels.start}
           <ArrowRight
             className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-1"
             aria-hidden

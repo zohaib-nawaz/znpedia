@@ -7,9 +7,13 @@ type ChapterMetaProps = {
   position: ChapterPosition | null;
   level?: ChapterLevel;
   readingMinutes: number;
+  labels: {
+    position: (current: number, total: number) => string;
+    minRead: (minutes: number) => string;
+  };
 };
 
-export function ChapterMeta({ position, level, readingMinutes }: ChapterMetaProps) {
+export function ChapterMeta({ position, level, readingMinutes, labels }: ChapterMetaProps) {
   const renderPosition = () => {
     if (!position) {
       return null;
@@ -22,7 +26,7 @@ export function ChapterMeta({ position, level, readingMinutes }: ChapterMetaProp
         </span>
         <span aria-hidden>·</span>
         <span className="tabular-nums">
-          Chapter {position.number} / {position.total}
+          {labels.position(position.number, position.total)}
         </span>
       </>
     );
@@ -42,7 +46,7 @@ export function ChapterMeta({ position, level, readingMinutes }: ChapterMetaProp
       {renderLevel()}
       <span className="inline-flex items-center gap-1">
         <Clock className="h-3.5 w-3.5" aria-hidden />
-        {readingMinutes} min read
+        {labels.minRead(readingMinutes)}
       </span>
     </div>
   );

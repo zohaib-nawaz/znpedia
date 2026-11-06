@@ -21,7 +21,18 @@ export type CourseMeta = {
   order?: number;
 };
 
-export type CourseMetaFile = Omit<CourseMeta, "chapters">;
+export type CourseTranslation = {
+  description: string;
+};
+
+export type CourseMetaFile = Omit<CourseMeta, "chapters"> & {
+  i18n?: Record<string, CourseTranslation>;
+};
+
+export type ChapterSource = {
+  filePath: string;
+  isFallback: boolean;
+};
 
 export type ChapterPosition = {
   number: number;

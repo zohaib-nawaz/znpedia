@@ -1,3 +1,9 @@
+export type SectionCopy = {
+  eyebrow: string;
+  title: string;
+  description: string;
+};
+
 type SectionHeadingProps = {
   eyebrow: string;
   title: string;

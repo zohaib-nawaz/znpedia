@@ -3,6 +3,11 @@
   "order": 4,
   "slug": "best-practices",
   "description": "Production-grade coding ki best practices Roman Urdu mein: clean code, architecture, API, database, security, UX, testing aur team workflow. Kya, kyun aur kab.",
+  "i18n": {
+    "en": {
+      "description": "Production-grade coding practices: clean code, architecture, APIs, databases, security, UX, testing and team workflow. What, why and when."
+    }
+  },
   "badge": "BP",
   "sections": [
     {

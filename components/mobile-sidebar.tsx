@@ -5,13 +5,20 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { DocsSidebar } from "@/components/docs-sidebar";
+import type { Locale } from "@/lib/i18n/config";
 import type { CourseMeta } from "@/types/course";
 
 type MobileSidebarProps = {
   course: CourseMeta;
+  locale: Locale;
+  labels: {
+    menu: string;
+    close: string;
+    overview: string;
+  };
 };
 
-export function MobileSidebar({ course }: MobileSidebarProps) {
+export function MobileSidebar({ course, locale, labels }: MobileSidebarProps) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -45,7 +52,7 @@ export function MobileSidebar({ course }: MobileSidebarProps) {
         <button
           type="button"
           className="fixed inset-0 z-50 bg-black/40"
-          aria-label="Close menu"
+          aria-label={labels.close}
           onClick={close}
         />
         <aside
@@ -58,13 +65,18 @@ export function MobileSidebar({ course }: MobileSidebarProps) {
               type="button"
               onClick={close}
               className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-md border border-border"
-              aria-label="Close menu"
+              aria-label={labels.close}
             >
               <X className="h-4 w-4" aria-hidden />
             </button>
           </div>
           <div className="flex-1 overflow-y-auto p-4">
-            <DocsSidebar course={course} onNavigate={close} />
+            <DocsSidebar
+              course={course}
+              locale={locale}
+              overviewLabel={labels.overview}
+              onNavigate={close}
+            />
           </div>
         </aside>
       </>,
@@ -82,7 +94,7 @@ export function MobileSidebar({ course }: MobileSidebarProps) {
         aria-controls="mobile-docs-sidebar"
       >
         <Menu className="h-4 w-4" aria-hidden />
-        Menu
+        {labels.menu}
       </button>
       {renderDrawer()}
     </div>

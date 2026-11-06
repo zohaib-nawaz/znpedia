@@ -3,6 +3,11 @@
   "order": 2,
   "slug": "react",
   "description": "React 19 Roman Urdu mein, components, JSX, props, state, hooks, performance aur React Compiler tak, har topic ek chhota chapter.",
+  "i18n": {
+    "en": {
+      "description": "React 19 step by step: components, JSX, props, state, hooks, performance and the React Compiler, one short chapter per topic."
+    }
+  },
   "badge": "RC",
   "sections": [
     {

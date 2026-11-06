@@ -8,6 +8,8 @@ import remarkGfm from "remark-gfm";
 const CONTENT_DIR = path.join(process.cwd(), "content/courses");
 const ALLOWED_COMPONENTS = new Set(["Callout", "CompareTable", "Flow", "Mistake"]);
 const DESCRIPTION_RANGE = { min: 70, max: 170 };
+const ROMAN_URDU_MARKERS = /\b(hai|hain|mein|aur|kya|kyun|nahi|karta|karte|kaise|wala|wali|liye|bhi|seekhein)\b/gi;
+const MAX_ROMAN_URDU_MARKERS = 6;
 
 function listCourses() {
   return fs
@@ -46,28 +48,79 @@ function checkComponents(body, problems) {
   }
 }
 
-async function checkChapter(courseSlug, chapterSlug) {
-  const filePath = path.join(CONTENT_DIR, courseSlug, `${chapterSlug}.mdx`);
-  if (!fs.existsSync(filePath)) {
-    return ["file missing"];
+function chapterPath(courseSlug, chapterSlug, locale) {
+  if (locale === "ur") {
+    return path.join(CONTENT_DIR, courseSlug, `${chapterSlug}.mdx`);
   }
-  const source = fs.readFileSync(filePath, "utf8");
-  const { data, content } = matter(source);
-  const problems = [];
-  checkFrontmatter(data, problems);
-  checkComponents(content, problems);
+
+  return path.join(CONTENT_DIR, courseSlug, `${chapterSlug}.${locale}.mdx`);
+}
+
+function countMatches(text, pattern) {
+  return (text.match(pattern) ?? []).length;
+}
+
+function checkTranslation(source, translation, problems) {
+  const pairs = [
+    ["## headings", /^## /gm],
+    ["code blocks", /^```/gm],
+    ["Mistake components", /<Mistake/g],
+  ];
+  for (const [label, pattern] of pairs) {
+    const expected = countMatches(source.content, pattern);
+    const actual = countMatches(translation.content, pattern);
+    if (expected !== actual) {
+      problems.push(`en ${label}: ${actual}, Roman Urdu has ${expected}`);
+    }
+  }
+  const markers = countMatches(stripCode(translation.content), ROMAN_URDU_MARKERS);
+  if (markers > MAX_ROMAN_URDU_MARKERS) {
+    problems.push(`en still has ${markers} Roman Urdu words`);
+  }
+  if (source.data.title !== translation.data.title) {
+    problems.push(`en title "${translation.data.title}" differs from "${source.data.title}"`);
+  }
+}
+
+async function checkFile(filePath, label, problems) {
+  const parsed = matter(fs.readFileSync(filePath, "utf8"));
+  const local = [];
+  checkFrontmatter(parsed.data, local);
+  checkComponents(parsed.content, local);
   try {
-    await compile(content, { remarkPlugins: [remarkGfm] });
+    await compile(parsed.content, { remarkPlugins: [remarkGfm] });
   } catch (error) {
-    problems.push(`mdx compile: ${error.message.split("\n")[0]}`);
+    local.push(`mdx compile: ${error.message.split("\n")[0]}`);
   }
-  return problems;
+  problems.push(...local.map((problem) => `${label}: ${problem}`));
+
+  return parsed;
+}
+
+async function checkChapter(courseSlug, chapterSlug) {
+  const sourcePath = chapterPath(courseSlug, chapterSlug, "ur");
+  if (!fs.existsSync(sourcePath)) {
+    return { problems: ["file missing"], translated: false };
+  }
+
+  const problems = [];
+  const source = await checkFile(sourcePath, "ur", problems);
+  const translationPath = chapterPath(courseSlug, chapterSlug, "en");
+  if (!fs.existsSync(translationPath)) {
+    return { problems, translated: false };
+  }
+
+  const translation = await checkFile(translationPath, "en", problems);
+  checkTranslation(source, translation, problems);
+
+  return { problems, translated: true };
 }
 
 async function main() {
   const filter = process.argv[2];
   let failures = 0;
   let checked = 0;
+  let translated = 0;
 
   for (const courseSlug of listCourses()) {
     for (const chapterSlug of readMeta(courseSlug)) {
@@ -76,7 +129,11 @@ async function main() {
         continue;
       }
       checked += 1;
-      const problems = await checkChapter(courseSlug, chapterSlug);
+      const result = await checkChapter(courseSlug, chapterSlug);
+      const problems = result.problems;
+      if (result.translated) {
+        translated += 1;
+      }
       if (problems.length > 0) {
         failures += 1;
         console.log(`FAIL ${id}\n  - ${problems.join("\n  - ")}`);
@@ -85,6 +142,7 @@ async function main() {
   }
 
   console.log(`${checked - failures}/${checked} chapters ok`);
+  console.log(`${translated}/${checked} chapters translated to English`);
   process.exitCode = failures > 0 ? 1 : 0;
 }
 

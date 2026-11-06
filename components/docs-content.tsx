@@ -1,7 +1,6 @@
 import { ChevronDown } from "lucide-react";
 
 import { TableOfContents } from "@/components/table-of-contents";
-import { docsConfig } from "@/lib/docs-config";
 import type { TocHeading } from "@/types/course";
 import { cn } from "@/lib/utils";
 
@@ -11,9 +10,17 @@ type DocsContentProps = {
   description?: string;
   children: React.ReactNode;
   toc: TocHeading[];
+  tocLabel: string;
 };
 
-export function DocsContent({ title, meta, description, children, toc }: DocsContentProps) {
+export function DocsContent({
+  title,
+  meta,
+  description,
+  children,
+  toc,
+  tocLabel,
+}: DocsContentProps) {
   const hasToc = toc.length > 0;
 
   const renderDescription = () => {
@@ -32,14 +39,14 @@ export function DocsContent({ title, meta, description, children, toc }: DocsCon
     return (
       <details className="group mb-8 rounded-lg border border-border bg-muted/30 xl:hidden [&_summary::-webkit-details-marker]:hidden">
         <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-semibold text-foreground">
-          {docsConfig.toc.label}
+          {tocLabel}
           <ChevronDown
             className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-open:rotate-180"
             aria-hidden
           />
         </summary>
         <div className="px-4 pb-4">
-          <TableOfContents headings={toc} label={docsConfig.toc.label} />
+          <TableOfContents headings={toc} label={tocLabel} />
         </div>
       </details>
     );
@@ -54,9 +61,9 @@ export function DocsContent({ title, meta, description, children, toc }: DocsCon
       <aside className="hidden w-48 shrink-0 self-stretch border-l border-border pl-5 xl:block">
         <div className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto py-2">
           <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            {docsConfig.toc.label}
+            {tocLabel}
           </p>
-          <TableOfContents headings={toc} label={docsConfig.toc.label} />
+          <TableOfContents headings={toc} label={tocLabel} />
         </div>
       </aside>
     );
