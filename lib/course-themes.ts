@@ -17,14 +17,14 @@ const DEFAULT_THEME: CourseTheme = {
 const COURSE_THEMES: Record<string, CourseTheme> = {
   javascript: {
     tile: "bg-amber-400 text-zinc-950 shadow-amber-500/30",
-    text: "text-amber-600 dark:text-amber-400",
+    text: "text-amber-700 dark:text-amber-400",
     wash: "from-amber-400/20",
     hoverBorder: "hover:border-amber-400/60",
     glow: "bg-amber-400/25",
   },
   react: {
     tile: "bg-sky-400 text-zinc-950 shadow-sky-500/30",
-    text: "text-sky-600 dark:text-sky-400",
+    text: "text-sky-700 dark:text-sky-400",
     wash: "from-sky-400/20",
     hoverBorder: "hover:border-sky-400/60",
     glow: "bg-sky-400/25",
@@ -37,7 +37,7 @@ const COURSE_THEMES: Record<string, CourseTheme> = {
     glow: "bg-violet-500/25",
   },
   "best-practices": {
-    tile: "bg-emerald-600 text-white shadow-emerald-600/30",
+    tile: "bg-emerald-700 text-white shadow-emerald-700/30",
     text: "text-emerald-700 dark:text-emerald-400",
     wash: "from-emerald-500/20",
     hoverBorder: "hover:border-emerald-500/60",

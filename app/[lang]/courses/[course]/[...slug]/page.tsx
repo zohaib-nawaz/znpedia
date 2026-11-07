@@ -68,7 +68,12 @@ async function loadChapter(
     courseSlug: course.slug,
     chapterSlug: chapter.slug,
     locale,
-    labels: { ...dict.mdx, linkToSection: dict.chapter.linkToSection },
+    labels: {
+      ...dict.mdx,
+      linkToSection: dict.chapter.linkToSection,
+      copyCode: dict.chapter.copyCode,
+      copied: dict.chapter.copied,
+    },
   });
   if (!mdx) {
     return null;

@@ -73,6 +73,7 @@ export default async function CoursesPage({ params }: CoursesPageProps) {
             {buildCourseCards(courses, (course) => getCourseReadingMinutes(course, locale)).map(
               (card) => (
                 <CourseCard
+                  headingLevel="h2"
                   key={card.course.slug}
                   course={card.course}
                   href={getCourseHref(locale, card.course.slug)}

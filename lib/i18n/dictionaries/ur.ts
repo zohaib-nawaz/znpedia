@@ -229,8 +229,8 @@ const ur = {
     linkToSection: "Link to this section",
     fallbackTitle: "Translation abhi tayyar nahi",
     fallbackBody: "Yeh chapter abhi is language mein available nahi, is liye asal version dikhaya ja raha hai.",
-    copyCode: "Copy code",
-    copied: "Copied",
+    copyCode: "Code copy karein",
+    copied: "Copy ho gaya",
   },
   mdx: {
     mistake: "Galati",

@@ -22,10 +22,20 @@ type CourseCardProps = {
   shares: LevelShare[];
   hours: number;
   theme: CourseTheme;
+  headingLevel?: "h2" | "h3";
 };
 
-export function CourseCard({ course, href, labels, shares, hours, theme }: CourseCardProps) {
+export function CourseCard({
+  course,
+  href,
+  labels,
+  shares,
+  hours,
+  theme,
+  headingLevel = "h3",
+}: CourseCardProps) {
   const badge = getCourseBadge(course);
+  const Heading = headingLevel;
 
   return (
     <Link
@@ -63,7 +73,9 @@ export function CourseCard({ course, href, labels, shares, hours, theme }: Cours
             {labels.sections(course.sections.length)}
           </span>
         </div>
-        <h3 className="mt-5 text-xl font-bold tracking-tight text-foreground">{course.title}</h3>
+        <Heading className="mt-5 text-xl font-bold tracking-tight text-foreground">
+          {course.title}
+        </Heading>
         <p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground">
           {course.description}
         </p>

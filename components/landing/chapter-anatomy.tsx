@@ -63,7 +63,7 @@ export function ChapterAnatomy({ steps, copy }: ChapterAnatomyProps) {
                   >
                     <Icon className="h-5 w-5" aria-hidden />
                   </span>
-                  <span className="font-mono text-2xl font-black text-foreground/10 transition-colors duration-300 group-hover:text-foreground/20">
+                  <span className="font-mono text-2xl font-black text-muted-foreground transition-colors duration-300 group-hover:text-accent">
                     {String(index + 1).padStart(2, "0")}
                   </span>
                 </div>

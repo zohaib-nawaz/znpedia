@@ -3,6 +3,7 @@ import type { MDXComponents } from "mdx/types";
 
 import { Callout } from "@/components/callout";
 import { CodeBlock } from "@/components/code-block";
+import type { CopyCodeLabels } from "@/components/copy-code-button";
 import { HeadingAnchor } from "@/components/heading-anchor";
 import { CompareTable } from "@/components/mdx-compare-table";
 import { Flow } from "@/components/mdx-flow";
@@ -11,10 +12,11 @@ import type { Locale } from "@/lib/i18n/config";
 import { localizeContentHref } from "@/lib/i18n/paths";
 import { cn } from "@/lib/utils";
 
-export type MdxLabels = MistakeLabels & {
-  note: string;
-  linkToSection: string;
-};
+export type MdxLabels = MistakeLabels &
+  CopyCodeLabels & {
+    note: string;
+    linkToSection: string;
+  };
 
 type AnchorProps = React.ComponentPropsWithoutRef<"a">;
 
@@ -33,7 +35,7 @@ export function getMdxComponents(locale: Locale, labels: MdxLabels): MDXComponen
     Flow,
     Mistake: (props) => <Mistake {...props} labels={labels} />,
     a: (props) => renderAnchor(locale, props),
-    pre: (props) => <CodeBlock {...props} />,
+    pre: (props) => <CodeBlock {...props} labels={labels} />,
     h2: (props) => <HeadingAnchor as="h2" linkLabel={labels.linkToSection} {...props} />,
     h3: (props) => <HeadingAnchor as="h3" linkLabel={labels.linkToSection} {...props} />,
     table: ({ className, ...props }) => (
