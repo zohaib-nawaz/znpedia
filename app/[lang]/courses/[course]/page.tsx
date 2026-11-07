@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { AskAssistantCard } from "@/components/ask-assistant-card";
 import { CourseOverview } from "@/components/course-overview";
 import { JsonLd } from "@/components/json-ld";
+import { getAssistantHref } from "@/lib/assistant/links";
 import { countChaptersByLevel, numberSections, shareLevels, toHours } from "@/lib/catalog";
 import { getCourseTheme } from "@/lib/course-themes";
 import { getCourseMeta, getCourseReadingMinutes } from "@/lib/courses";
@@ -69,6 +71,14 @@ export default async function CourseIndexPage({ params }: CourseIndexPageProps) 
         hours={toHours(getCourseReadingMinutes(course, locale))}
         startHref={getChapterHref(course.slug, getDefaultChapterSlug(course), locale)}
       />
+      <div className="mx-auto w-full max-w-4xl px-4 pb-12 sm:px-6 lg:px-10">
+        <AskAssistantCard
+          title={dict.assistant.askTitle}
+          body={dict.assistant.askCourseBody}
+          cta={dict.assistant.askCta}
+          href={getAssistantHref(locale, { course: course.slug })}
+        />
+      </div>
     </>
   );
 }

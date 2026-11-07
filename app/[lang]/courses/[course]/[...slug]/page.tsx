@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { AskAssistantCard } from "@/components/ask-assistant-card";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { ChapterMeta } from "@/components/chapter-meta";
 import { DocsContent } from "@/components/docs-content";
@@ -15,6 +16,7 @@ import {
   getCourseMeta,
   isChapterTranslated,
 } from "@/lib/courses";
+import { getAssistantHref } from "@/lib/assistant/links";
 import { getChapterPosition } from "@/lib/catalog";
 import { getAdjacentChapters, getChapterHref, getChapterPath, getCourseHref } from "@/lib/docs";
 import { defaultLocale, locales, type Locale } from "@/lib/i18n/config";
@@ -204,7 +206,13 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
         {renderNotice(mdx.isFallback, dict)}
         {mdx.content}
       </DocsContent>
-      <div className="mx-auto max-w-4xl px-3 pb-8 sm:px-5 lg:pl-8">
+      <div className="mx-auto max-w-4xl space-y-8 px-3 pb-8 sm:px-5 lg:pl-8">
+        <AskAssistantCard
+          title={dict.assistant.askTitle}
+          body={dict.assistant.askChapterBody}
+          cta={dict.assistant.askCta}
+          href={getAssistantHref(locale, { course: course.slug, chapter: chapter.slug })}
+        />
         <Pagination
           previous={previous}
           next={next}

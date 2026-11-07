@@ -11,6 +11,7 @@ Content pehle add hua hai. Neeche wali list aage ke features ki hai. Har item ke
 - Heading anchor links
 - 404, error, About, Privacy aur Terms pages
 - Do languages: Roman Urdu (`/ur`) aur English (`/en`), switcher aur hreflang ke saath
+- AI Assistant (`/assistant`): full-screen chat, jawab chapters se aur sources ke saath, Gemini se. Dekhein `docs/ai-assistant.md`
 
 ## Basic
 
@@ -25,7 +26,7 @@ Content pehle add hua hai. Neeche wali list aage ke features ki hai. Har item ke
 | 9 | Progress tracking | Chapter "complete" mark, sidebar mein checkmarks, course progress bar (localStorage) | M |
 | 10 | Bookmarks | Chapters save karna aur "My bookmarks" page | M |
 | 11 | Quiz per chapter | Har chapter ke end par 3 se 5 MCQs, frontmatter se data | M |
-| 12 | Live code playground | JS aur React examples browser mein run (Sandpack) | L |
+| 12 | Live code playground | Har code example par "Try it": editor mein khule, run karein, output dekhein | L |
 | 13 | Prev/next keyboard shortcuts | Arrow keys ya `j` / `k` se chapters badalna | S |
 | 15 | Feedback widget | "Kya yeh page helpful tha?" yes/no, analytics ke saath | S |
 | 16 | RSS / changelog | Naye chapters ka feed | S |
@@ -35,7 +36,6 @@ Content pehle add hua hai. Neeche wali list aage ke features ki hai. Har item ke
 | # | Feature | Kya karega | Effort |
 | --- | --- | --- | --- |
 | 17 | User accounts | Login, cloud par progress aur bookmarks sync | L |
-| 18 | AI tutor | Chapter context ke saath sawal poochna, Roman Urdu jawab | L |
 | 20 | Certificates | Course complete hone par quiz score ke saath certificate | L |
 | 21 | Practice projects | Har section ke end par guided mini project | L |
 | 22 | Interview prep mode | Sirf "Interview tip" sections aur quizzes ka ek collection | M |

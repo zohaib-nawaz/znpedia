@@ -5,6 +5,10 @@ const DEFAULT_LOCALE = "ur";
 const LEGACY_PATHS = ["/courses", "/courses/:path*", "/about", "/privacy", "/terms"];
 
 const nextConfig: NextConfig = {
+  outputFileTracingIncludes: {
+    "/api/assistant": ["./content/courses/**/*"],
+    "/[lang]/assistant": ["./content/courses/**/*"],
+  },
   async redirects() {
     return [
       {

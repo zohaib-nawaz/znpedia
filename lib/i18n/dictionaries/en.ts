@@ -22,7 +22,10 @@ const en: Dictionary = {
       "What ZnPedia is, who it is for and how the content is written. Free web development courses in short, structured chapters.",
     privacyTitle: "Privacy Policy",
     privacyDescription:
-      "ZnPedia collects no accounts, tracking or personal data. Only your theme and language are saved in your browser. Full details here.",
+      "ZnPedia collects no accounts, tracking or personal data. Theme, language and AI chats stay in your browser. Full details here.",
+    assistantTitle: "AI Assistant: ask about the courses",
+    assistantDescription:
+      "Ask the ZnPedia AI Assistant about JavaScript, React, Next.js and best practices. Answers come from ZnPedia chapters, with links to the sources.",
     termsTitle: "Terms of Use",
     termsDescription:
       "How you may use ZnPedia content, a note on accuracy, and the general terms for using the site.",
@@ -44,6 +47,7 @@ const en: Dictionary = {
     privacy: "Privacy",
     terms: "Terms",
     language: "Language",
+    assistant: "AI Assistant",
   },
   theme: {
     toLight: "Light mode",
@@ -289,9 +293,93 @@ const en: Dictionary = {
       secondary: "All courses",
     },
   },
+  assistant: {
+    title: "AI Assistant",
+    newChat: "New chat",
+    history: "Recent chats",
+    emptyHistory: "No chats yet. Ask your first question.",
+    deleteChat: "Delete chat",
+    openSidebar: "Show chats",
+    closeSidebar: "Hide chats",
+    backToSite: "Back to ZnPedia",
+    greeting: "What do you want to learn today?",
+    greetingBody: "Ask anything about JavaScript, React, Next.js or best practices. Answers come from ZnPedia chapters, with links to the sources.",
+    placeholder: "Ask a question...",
+    send: "Send",
+    stop: "Stop",
+    composerHint: "Enter to send, Shift + Enter for a new line",
+    disclaimer: "AI can make mistakes. Check important details in the linked chapter.",
+    you: "You",
+    assistantName: "ZnPedia AI",
+    thinking: "Looking through the chapters...",
+    sources: "Sources",
+    copy: "Copy answer",
+    copied: "Copied",
+    retry: "Try again",
+    scopeLabel: "Answer from",
+    scopeAll: "All courses",
+    scopeWholeCourse: "Whole course",
+    scopeChapterHint: "Chapter",
+    howItWorks: "How does this work?",
+    howItWorksClose: "Close",
+    howItWorksTitle: "How the AI Assistant works",
+    howItWorksIntro: "The assistant does not make things up on its own. Every answer is based on ZnPedia's 175 chapters.",
+    howItWorksSteps: [
+      {
+        title: "1. Your question",
+        body: "You type a question and choose whether the answer should come from all courses, one course, or a single chapter.",
+      },
+      {
+        title: "2. Searching the chapters",
+        body: "The server looks for your words in every chapter section (definition, examples, mistakes, revision) and picks the closest matches.",
+      },
+      {
+        title: "3. Gemini writes the answer",
+        body: "Those sections and the course list are given to Gemini, Google's AI model. Gemini answers from them, in your language, with examples.",
+      },
+      {
+        title: "4. With sources",
+        body: "Under each answer you see the chapters it was built from. Click a link to read the full chapter.",
+      },
+    ],
+    howItWorksPrivacy: "Your chats are saved only in your browser. Questions are sent to the Google Gemini API to generate answers; ZnPedia does not store chats on its servers.",
+    suggestions: {
+      general: [
+        "What is a closure? Show a small example.",
+        "When does the useEffect cleanup run?",
+        "What is the difference between Server Actions and Route Handlers?",
+        "How do I write a good commit message?",
+      ],
+      course: [
+        "Where should I start with {name}?",
+        "What are the most important {name} topics?",
+        "What mistakes do beginners make in {name}?",
+        "Suggest a small {name} practice project.",
+      ],
+      chapter: [
+        "Explain \"{name}\" in simple words.",
+        "Give me another example of \"{name}\".",
+        "What are the common mistakes with \"{name}\"?",
+        "Quiz me with 3 questions on \"{name}\".",
+      ],
+    },
+    errors: {
+      not_configured: "The AI Assistant is not set up yet. Please try again later.",
+      rate_limited: "Too many questions at once. Please wait a few minutes and ask again.",
+      invalid_request: "Your question could not be sent. Try a shorter chat or start a new one.",
+      refused: "This question can't be answered. Try asking something else.",
+      busy: "The assistant is busy right now. Please try again shortly.",
+      failed: "Something went wrong. Please try again.",
+      network: "Connection problem. Check your internet and try again.",
+    },
+    askTitle: "Something not clear?",
+    askChapterBody: "Ask the AI Assistant about this chapter. Answers come from this chapter.",
+    askCourseBody: "Ask the AI Assistant about any topic in this course.",
+    askCta: "Ask AI",
+  },
   legal: {
     updatedLabel: "Last updated",
-    updated: "6 November 2026",
+    updated: "7 November 2026",
     privacyIntro: "The short version: ZnPedia does not collect your personal data.",
     termsIntro: "The general terms for using ZnPedia content, in plain words.",
     privacy: [
@@ -305,8 +393,16 @@ const en: Dictionary = {
       {
         title: "What your browser saves",
         body: [
-          "Two things: your chosen theme (light or dark) in localStorage, and your chosen language in a small cookie (NEXT_LOCALE), so the site opens the same way next time.",
+          "Your chosen theme (light or dark) and your AI Assistant chats in localStorage, and your chosen language in a small cookie (NEXT_LOCALE), so the site opens the same way next time.",
           "You can clear both at any time from your browser settings.",
+        ],
+      },
+      {
+        title: "AI Assistant",
+        body: [
+          "When you ask the AI Assistant a question, your question, the earlier messages of that chat and the matching chapter sections are sent to Google's Gemini API to generate the answer. Google processes this data under the Gemini API terms.",
+          "ZnPedia does not store your chats on its servers. To prevent abuse, the server counts requests per IP address for a few minutes, in memory only.",
+          "Do not type personal or sensitive information into the chat.",
         ],
       },
       {
@@ -334,6 +430,13 @@ const en: Dictionary = {
         title: "Accuracy",
         body: [
           "We try hard to keep the content current and correct, but libraries and frameworks keep changing. Always check the official documentation before putting code in production.",
+        ],
+      },
+      {
+        title: "AI Assistant answers",
+        body: [
+          "AI Assistant answers are generated automatically from ZnPedia chapters and can contain mistakes. Treat them as study help, and check the linked chapter or the official documentation before relying on them.",
+          "Do not use the assistant for anything unrelated to learning, and do not try to overload or misuse it. Requests are rate limited.",
         ],
       },
       {

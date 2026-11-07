@@ -20,7 +20,10 @@ const ur = {
       "ZnPedia kya hai, kis ke liye hai aur content kaise likha jata hai. Roman Urdu mein free web development courses, chhote structured chapters ke saath.",
     privacyTitle: "Privacy Policy",
     privacyDescription:
-      "ZnPedia koi account, tracking ya personal data collect nahi karta. Sirf theme aur language aapke browser mein save hoti hai. Poori tafseel yahan.",
+      "ZnPedia koi account, tracking ya personal data collect nahi karta. Theme, language aur AI chats aapke browser mein rehte hain. Poori tafseel yahan.",
+    assistantTitle: "AI Assistant: courses ke baare mein sawal poochein",
+    assistantDescription:
+      "ZnPedia AI Assistant se JavaScript, React, Next.js aur best practices ke sawal poochein. Jawab ZnPedia ke chapters se, Roman Urdu mein, sources ke saath.",
     termsTitle: "Terms of Use",
     termsDescription:
       "ZnPedia ka content kaise use kar sakte hain, accuracy ke baare mein note, aur site ke istemal ki aam shartein, Roman Urdu mein.",
@@ -42,6 +45,7 @@ const ur = {
     privacy: "Privacy",
     terms: "Terms",
     language: "Language",
+    assistant: "AI Assistant",
   },
   theme: {
     toLight: "Light mode",
@@ -289,9 +293,93 @@ const ur = {
       secondary: "Saare courses",
     },
   },
+  assistant: {
+    title: "AI Assistant",
+    newChat: "Naya chat",
+    history: "Pichle chats",
+    emptyHistory: "Abhi koi chat nahi. Pehla sawal poochein.",
+    deleteChat: "Chat delete karein",
+    openSidebar: "Chats dikhayein",
+    closeSidebar: "Chats band karein",
+    backToSite: "ZnPedia par wapas",
+    greeting: "Aaj kya seekhna hai?",
+    greetingBody: "JavaScript, React, Next.js ya best practices ke baare mein kuch bhi poochein. Jawab ZnPedia ke chapters se aata hai, sources ke links ke saath.",
+    placeholder: "Apna sawal likhein...",
+    send: "Bhejein",
+    stop: "Rokein",
+    composerHint: "Enter se bhejein, Shift + Enter se nayi line",
+    disclaimer: "AI ghalati kar sakta hai. Zaroori baat ko linked chapter se milayein.",
+    you: "Aap",
+    assistantName: "ZnPedia AI",
+    thinking: "Chapters dekh raha hoon...",
+    sources: "Sources",
+    copy: "Jawab copy karein",
+    copied: "Copy ho gaya",
+    retry: "Dobara try karein",
+    scopeLabel: "Kahan se jawab de",
+    scopeAll: "Saare courses",
+    scopeWholeCourse: "Poora course",
+    scopeChapterHint: "Chapter",
+    howItWorks: "Yeh kaise kaam karta hai?",
+    howItWorksClose: "Band karein",
+    howItWorksTitle: "AI Assistant kaise kaam karta hai",
+    howItWorksIntro: "Assistant apni marzi se kuch nahi ghadta. Har jawab ZnPedia ke 175 chapters par based hota hai.",
+    howItWorksSteps: [
+      {
+        title: "1. Aapka sawal",
+        body: "Aap sawal likhte hain aur chunte hain ke jawab saare courses se aaye, ek course se, ya sirf ek chapter se.",
+      },
+      {
+        title: "2. Chapters mein talaash",
+        body: "Server har chapter ke sections (definition, examples, mistakes, revision) mein aapke alfaaz dhoondta hai aur sab se milte julte sections chunta hai.",
+      },
+      {
+        title: "3. Gemini jawab likhta hai",
+        body: "Wohi sections aur courses ki list Gemini (Google ka AI model) ko di jati hai. Gemini unhi ki buniyad par aapki language mein, examples ke saath jawab likhta hai.",
+      },
+      {
+        title: "4. Sources ke saath",
+        body: "Jawab ke neeche woh chapters dikhte hain jin se jawab bana. Link par click karke poora chapter parh sakte hain.",
+      },
+    ],
+    howItWorksPrivacy: "Aapke chats sirf aapke browser mein save hote hain. Sawal jawab banane ke liye Google Gemini API ko bheja jata hai, ZnPedia apne server par chats store nahi karta.",
+    suggestions: {
+      general: [
+        "Closure kya hota hai? Ek chhota example do.",
+        "useEffect ka cleanup kab chalta hai?",
+        "Server Actions aur Route Handlers mein kya fark hai?",
+        "Acha commit message kaise likhte hain?",
+      ],
+      course: [
+        "{name} kahan se shuru karun?",
+        "{name} ke sab se important topics kaun se hain?",
+        "{name} mein beginners ki common mistakes kya hain?",
+        "{name} ke liye ek chhota practice project batao.",
+      ],
+      chapter: [
+        "\"{name}\" ko aasan alfaaz mein samjhao.",
+        "\"{name}\" ka ek aur example do.",
+        "\"{name}\" mein common mistakes kya hain?",
+        "\"{name}\" par mujh se 3 sawal ka quiz lo.",
+      ],
+    },
+    errors: {
+      not_configured: "AI Assistant abhi setup nahi hua. Thodi der baad try karein.",
+      rate_limited: "Bohat zyada sawal ek saath. Kuch minute baad dobara poochein.",
+      invalid_request: "Sawal bhejne mein masla hua. Chat chhota karke ya naya chat shuru karke try karein.",
+      refused: "Is sawal ka jawab nahi diya ja sakta. Koi aur sawal poochein.",
+      busy: "Assistant abhi masroof hai. Thodi der baad try karein.",
+      failed: "Kuch ghalat ho gaya. Dobara try karein.",
+      network: "Connection ka masla. Internet check karke dobara try karein.",
+    },
+    askTitle: "Kuch samajh nahi aaya?",
+    askChapterBody: "AI Assistant se is chapter ke baare mein sawal poochein. Jawab isi chapter se aayega.",
+    askCourseBody: "Is course ke kisi bhi topic par AI Assistant se sawal poochein.",
+    askCta: "AI se poochein",
+  },
   legal: {
     updatedLabel: "Last updated",
-    updated: "6 November 2026",
+    updated: "7 November 2026",
     privacyIntro: "Seedhi baat: ZnPedia aapka personal data collect nahi karta.",
     termsIntro: "ZnPedia ka content istemal karne ki aam shartein, saaf alfaaz mein.",
     privacy: [
@@ -305,8 +393,16 @@ const ur = {
       {
         title: "Aapke browser mein kya save hota hai",
         body: [
-          "Do cheezein: aapka chuna hua theme (light ya dark) localStorage mein, aur chuni hui language ek chhoti cookie (NEXT_LOCALE) mein, taake agli baar wahi khule.",
+          "Aapka chuna hua theme (light ya dark) aur AI Assistant ke chats localStorage mein, aur chuni hui language ek chhoti cookie (NEXT_LOCALE) mein, taake agli baar wahi khule.",
           "Browser ki settings se aap inhein kabhi bhi clear kar sakte hain.",
+        ],
+      },
+      {
+        title: "AI Assistant",
+        body: [
+          "Jab aap AI Assistant se sawal poochte hain, to aapka sawal, us chat ke pichle messages aur milte julte chapter sections jawab banane ke liye Google ki Gemini API ko bheje jate hain. Google yeh data Gemini API ki apni terms ke tehat process karta hai.",
+          "ZnPedia aapke chats apne server par store nahi karta. Ghalat istemal rokne ke liye server kuch minute tak har IP address ki requests sirf memory mein ginta hai.",
+          "Chat mein apni personal ya sensitive maloomat na likhein.",
         ],
       },
       {
@@ -334,6 +430,13 @@ const ur = {
         title: "Accuracy",
         body: [
           "Content ko current aur durust rakhne ki poori koshish ki jati hai, lekin libraries aur frameworks badalte rehte hain. Production mein koi bhi code lagane se pehle official documentation se zaroor milayein.",
+        ],
+      },
+      {
+        title: "AI Assistant ke jawab",
+        body: [
+          "AI Assistant ke jawab ZnPedia ke chapters se khud ba khud bante hain aur in mein ghalati ho sakti hai. Inhein parhai mein madad samjhein, aur bharosa karne se pehle linked chapter ya official documentation se milayein.",
+          "Assistant ko seekhne ke ilawa kisi aur kaam ke liye use na karein aur na hi isay ghalat tareeqe se istemal karein. Requests ki limit lagi hui hai.",
         ],
       },
       {

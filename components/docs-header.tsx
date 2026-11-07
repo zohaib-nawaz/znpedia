@@ -48,6 +48,12 @@ export function DocsHeader({ course, locale, dict }: DocsHeaderProps) {
             {dict.nav.courses}
           </Link>
           <Link
+            href={localizePath(locale, "/assistant")}
+            className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground"
+          >
+            {dict.nav.assistant}
+          </Link>
+          <Link
             href={localizePath(locale, "/about")}
             className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground"
           >

@@ -24,6 +24,7 @@ type PageSpec = {
 const STATIC_PAGES: PageSpec[] = [
   { path: "/", priority: 1, changeFrequency: "weekly" },
   { path: "/courses", priority: 0.9, changeFrequency: "weekly" },
+  { path: "/assistant", priority: 0.6, changeFrequency: "monthly" },
   { path: "/about", priority: 0.4, changeFrequency: "yearly" },
   { path: "/privacy", priority: 0.2, changeFrequency: "yearly" },
   { path: "/terms", priority: 0.2, changeFrequency: "yearly" },
