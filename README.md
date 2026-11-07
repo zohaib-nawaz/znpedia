@@ -29,6 +29,10 @@ Naya chapter: `meta.json` ke section mein `{ "slug", "title" }` add karein, phir
 npm run check:content
 ```
 
+## AI Assistant
+
+`.env.local` mein `GEMINI_API_KEY` set karein, phir `/ur/assistant` kholein. Tafseel: [docs/ai-assistant.md](docs/ai-assistant.md).
+
 ## SEO
 
 - `NEXT_PUBLIC_SITE_URL` set karein (jaise `https://znpedia.com`). Vercel par `VERCEL_PROJECT_PRODUCTION_URL` fallback hai.

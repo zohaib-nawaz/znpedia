@@ -16,6 +16,7 @@ export function buildPrimaryNav(locale: Locale, nav: Dictionary["nav"]): NavLink
   return [
     { label: nav.courses, href: localizePath(locale, "/courses") },
     { label: nav.learningPath, href: localizePath(locale, "/#learning-path") },
+    { label: nav.assistant, href: localizePath(locale, "/assistant") },
     { label: nav.about, href: localizePath(locale, "/about") },
   ];
 }
