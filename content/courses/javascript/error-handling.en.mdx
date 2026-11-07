@@ -1,0 +1,205 @@
+---
+title: Error Handling
+description: Learn JavaScript try catch error handling, finally, throw, custom error classes, Error cause, and how to handle async errors the right way.
+keywords:
+  - javascript try catch error handling
+  - custom error class javascript
+  - error cause
+  - async error handling
+---
+
+## 1. What is error handling?
+
+<Callout variant="tip" title="Short definition">
+
+**Error handling means catching the things that go wrong and giving a proper response instead of letting the program crash.**
+
+</Callout>
+
+When JavaScript sees a mistake (like reading a property on `undefined`), it **throws an error**. If nobody catches it, it travels up out of the function and its callers and stops the program.
+
+With `try / catch` you catch the error, with `throw` you send an error yourself, and with `finally` you do cleanup.
+
+## 2. Why does it matter?
+
+The network fails, users enter wrong input, the server sends a 500. If these are not handled, the user gets a blank screen and you do not even know what happened.
+
+<CompareTable leftTitle="Without handling" rightTitle="With proper handling">
+
+One error, the whole feature stops | The error is caught, the rest of the app keeps running
+The user sees a blank screen | A clear message and a retry option
+The cause of the bug is unknown | The error message, cause, and stack are logged
+Every error looks the same | Custom classes give different responses
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Place | Example |
+| --- | --- |
+| **API calls** | Showing a message on a network or HTTP error |
+| **JSON parsing** | `JSON.parse` throws `SyntaxError` on bad text |
+| **Form validation** | Throwing `ValidationError` and highlighting the field |
+| **Libraries** | `TypeError` or `RangeError` on a bad argument |
+| **Logging** | Sending errors to a monitoring service |
+
+## 4. How does it work?
+
+<Flow title="The journey of an error">
+
+Code runs inside the try block
+↓
+An error is thrown somewhere
+↓
+The rest of try is skipped, control goes to catch
+↓
+catch runs with the error object
+↓
+finally always runs
+
+</Flow>
+
+| Built-in error | When it happens |
+| --- | --- |
+| `TypeError` | An operation on the wrong type, like `null.name` |
+| `ReferenceError` | The variable does not exist |
+| `SyntaxError` | Bad syntax, or `JSON.parse` fails |
+| `RangeError` | A value is out of range |
+| `AggregateError` | Many errors at once, like from `Promise.any` |
+
+<Callout variant="important" title="Mental model">
+
+**An error keeps going up until it finds a `catch`.** Catch it where you can actually do something about it.
+
+</Callout>
+
+## 5. Code example
+
+### try, catch, finally
+
+```js
+function parseSettings(text) {
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    console.warn("Settings are broken, using defaults:", error.message);
+    return { theme: "light" };
+  } finally {
+    console.log("Parse attempt finished");
+  }
+}
+
+parseSettings("{ bad json");
+```
+
+### Custom error class and cause
+
+```js
+class ApiError extends Error {
+  constructor(message, { status, cause } = {}) {
+    super(message, { cause });
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
+async function getProfile() {
+  let res;
+  try {
+    res = await fetch("/api/profile");
+  } catch (error) {
+    throw new ApiError("Network failed", { cause: error });
+  }
+  if (!res.ok) throw new ApiError("Profile load failed", { status: res.status });
+  return res.json();
+}
+
+try {
+  await getProfile();
+} catch (error) {
+  if (error instanceof ApiError && error.status === 401) {
+    console.log("Please log in again");
+  } else {
+    console.error(error, error.cause);
+  }
+}
+```
+
+### How does the code work?
+
+| Line | What is happening |
+| --- | --- |
+| `JSON.parse(text)` | Throws `SyntaxError` on bad text |
+| `finally` | Always runs, on success or on error |
+| `class ApiError extends Error` | Your own error type, with an extra `status` |
+| `super(message, { cause })` | Saves the original error in `cause` |
+| `instanceof ApiError` | A different response depending on the kind of error |
+
+### Interview tip
+
+Throw only `Error` objects, not strings. `throw "fail"` has no stack trace, and `error.message` comes out as `undefined`.
+
+## 6. Common mistakes
+
+<Mistake
+  title="An empty catch block"
+  why="The error is silently swallowed and finding the bug becomes impossible."
+  better="At least log it, or rethrow an error that you cannot handle."
+/>
+
+<Mistake
+  title="Trying to catch an async error in an outer try"
+  why="An error from a setTimeout callback or a promise without await arrives later, by which time the try block has already finished."
+  better="Use await, or put your own try catch inside the callback."
+/>
+
+<Mistake
+  title="Losing the original error when creating a new one"
+  why="Only the new message survives, and the original cause and stack are lost."
+  better="Use new Error(message, { cause: originalError })."
+/>
+
+<Mistake
+  title="Adding try catch in every function"
+  why="The code gets heavy and errors are handled at the wrong level."
+  better="Catch where you can respond to the user or retry."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Classes](/courses/javascript/classes), [Promises](/courses/javascript/promises), [Async / Await](/courses/javascript/async-await) |
+| **Alongside** | [Fetch API](/courses/javascript/fetch-api), [JSON](/courses/javascript/json) |
+| **After** | [Forms & Validation](/courses/javascript/forms-and-validation), [Debugging JavaScript](/courses/javascript/debugging) |
+
+<Flow title="Suggested order">
+
+Promises
+↓
+Async Await
+↓
+Fetch API
+↓
+Error Handling
+↓
+Debugging
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `try / catch` | Catch an error |
+| `finally` | Cleanup that always runs |
+| `throw` | Send an error yourself, always an `Error` object |
+| Custom error | `class X extends Error`, set the `name` |
+| `cause` | Attach the original error to the new error |
+| Async | `try / catch` with `await`, or `.catch()` |
+
+<Callout variant="important" title="Remember">
+
+Do not **hide** errors, understand them. Catch them in the right place, wrap them with `cause`, and give the user a clear message.
+
+</Callout>

@@ -1,0 +1,202 @@
+---
+title: Classes
+description: Learn the modern JavaScript class syntax, including constructor, extends, super, private #fields, and static blocks, with simple examples.
+keywords:
+  - javascript classes
+  - private fields javascript
+  - extends and super
+  - static methods javascript
+---
+
+## 1. What are classes?
+
+<Callout variant="tip" title="Short definition">
+
+**A class is a blueprint used to create objects that share the same structure.**
+
+</Callout>
+
+In a class, you describe what data (fields) and what actions (methods) the object will have. Then the `new` keyword creates objects (instances) from that blueprint.
+
+JavaScript classes are really a cleaner syntax on top of [prototypes](/courses/javascript/prototypes). Methods are still stored on the prototype.
+
+## 2. Why does it matter?
+
+Writing constructor functions and `prototype` by hand is long and confusing. Class syntax does the same job in a shorter, more readable way.
+
+<CompareTable leftTitle="Old constructor function" rightTitle="Modern class">
+
+Write the function and prototype separately | Everything in one class block
+Object.create and call for inheritance | Just extends and super
+Closure tricks for private data | Real private #fields
+Forgetting new is a silent bug | Calling a class without new throws an error
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Place | Example |
+| --- | --- |
+| **Custom errors** | `class ValidationError extends Error` |
+| **Data models** | Objects like `User`, `Product`, `Order` |
+| **Services** | An API client class that manages a token and base URL |
+| **Web Components** | `class MyCard extends HTMLElement` |
+| **Games** | Entities like `Player`, `Enemy` |
+
+## 4. How does it work?
+
+<Flow title="What happens during new User()">
+
+A new empty object is created
+↓
+Its prototype is set to User.prototype
+↓
+Fields are initialized
+↓
+The constructor runs and this is the new object
+↓
+The object is returned
+
+</Flow>
+
+| Part | Job |
+| --- | --- |
+| `constructor()` | Runs once when the object is created |
+| Public field | `count = 0`, each instance has its own value |
+| Private field | `#balance`, accessible only inside the class |
+| Method | Stored on the prototype, all instances share it |
+| `static` | On the class itself, not on instances |
+| `static { }` block | Setup code that runs once when the class loads |
+
+## 5. Code example
+
+### Basic class with a private field
+
+```js
+class BankAccount {
+  #balance = 0;
+  static count = 0;
+
+  static {
+    BankAccount.bankName = "ZnBank";
+  }
+
+  constructor(owner) {
+    this.owner = owner;
+    BankAccount.count++;
+  }
+
+  deposit(amount) {
+    if (amount <= 0) throw new RangeError("Amount must be positive");
+    this.#balance += amount;
+    return this.#balance;
+  }
+
+  get balance() {
+    return this.#balance;
+  }
+}
+
+const acc = new BankAccount("Ali");
+acc.deposit(500);
+console.log(acc.balance, BankAccount.count, BankAccount.bankName);
+```
+
+### Inheritance with extends and super
+
+```js
+class Animal {
+  constructor(name) {
+    this.name = name;
+  }
+
+  speak() {
+    return `${this.name} makes a sound`;
+  }
+}
+
+class Dog extends Animal {
+  speak() {
+    return `${super.speak()}: Woof woof`;
+  }
+}
+
+console.log(new Dog("Moti").speak());
+```
+
+### How does the code work?
+
+| Line | What is happening |
+| --- | --- |
+| `#balance = 0` | A private field, writing `acc.#balance` from outside is a SyntaxError |
+| `static count` | A class-level counter, accessed with `BankAccount.count` |
+| `static { }` | Runs once as soon as the class is defined |
+| `get balance()` | A getter, read `acc.balance` like a property |
+| `extends Animal` | `Dog`'s prototype chain is linked to `Animal` |
+| `super.speak()` | Calls the parent class's method |
+
+### Interview tip
+
+If you write a `constructor` in a child class, you must call `super()` before using `this`, otherwise you get a ReferenceError.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Using this before super() in a child constructor"
+  why="The parent has not initialized the object yet, so a ReferenceError is thrown."
+  better="Call super(args) on the first line of the constructor, then use this."
+/>
+
+<Mistake
+  title="Passing a method as a callback and losing this"
+  why="In button.addEventListener('click', obj.save), this is no longer obj."
+  better="Wrap it in an arrow function, or make the method a class field arrow function."
+/>
+
+<Mistake
+  title="Treating an underscore property as private"
+  why="_balance is only a naming convention, and anyone can change it from outside."
+  better="Use a #balance private field for real privacy."
+/>
+
+<Mistake
+  title="Making a class for everything"
+  why="For small jobs, a class brings extra boilerplate and complexity."
+  better="Plain objects and functions are enough for simple data. Use a class when state and behavior go together."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Objects](/courses/javascript/objects), [The this Keyword](/courses/javascript/this-keyword), [Prototypes & Inheritance](/courses/javascript/prototypes) |
+| **After** | [Error Handling](/courses/javascript/error-handling) (custom error classes), [Modules](/courses/javascript/modules) |
+
+<Flow title="Suggested order">
+
+Objects
+↓
+Prototypes
+↓
+Classes
+↓
+Custom Errors and Modules
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Class | A blueprint for objects, syntax on top of prototypes |
+| `constructor` | Runs when an instance is created |
+| `#field` | Real private data |
+| `static` | A member of the class itself, not of instances |
+| `extends` / `super` | Inheritance and calling the parent |
+| Getter / setter | Property-like access with logic inside |
+
+<Callout variant="important" title="Remember">
+
+A class is just a cleaner syntax. The same **prototype chain** runs underneath, and `#private` fields are truly hidden from outside.
+
+</Callout>

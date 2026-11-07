@@ -1,0 +1,187 @@
+---
+title: Error Boundaries
+description: Learn how a React error boundary catches render errors so the whole app does not crash, using a class component, react-error-boundary and reset.
+keywords:
+  - react error boundary
+  - react error handling
+  - react-error-boundary library
+  - getderivedstatefromerror
+---
+
+## 1. What is an Error Boundary?
+
+<Callout variant="tip" title="Short definition">
+
+**An Error Boundary is a component that catches errors thrown while its children render, and shows a fallback UI instead of crashing.**
+
+</Callout>
+
+In React, if a component throws an error during render and nothing catches it, React **unmounts the whole root**. The user sees an empty white screen.
+
+An Error Boundary is like JavaScript's `try/catch`, but for a tree of components.
+
+## 2. Why does it matter?
+
+<CompareTable leftTitle="Without an Error Boundary" rightTitle="With an Error Boundary">
+
+One widget throws, the whole app goes white | Only that widget shows a fallback
+The user has no idea what happened | A clear message and a Try again button
+The error is not logged anywhere | Error reporting in componentDidCatch
+No way out except a reload | Reset and render again
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Place | Why |
+| --- | --- |
+| Around the whole app | Last line of defense, a generic error page |
+| Around each route or page | An error on one page does not break the rest of the navigation |
+| Third-party widget, chart, map | If outside code crashes, only that part is affected |
+| Components that use `use(promise)` | The error from a rejected Promise lands here |
+
+In the Next.js App Router, an `error.tsx` file creates an Error Boundary for you.
+
+## 4. How does it work?
+
+<Flow title="From error to fallback">
+
+A child component throws an error during render
+↓
+React looks up the tree for the nearest Error Boundary
+↓
+getDerivedStateFromError updates the state
+↓
+The boundary renders the fallback instead of the children
+↓
+componentDidCatch logs the error
+
+</Flow>
+
+<Callout variant="note" title="What it does not catch">
+
+An Error Boundary does **not** catch errors in **event handlers** (like `onClick`), async code such as `setTimeout`, server rendering errors, or errors in **itself**. For event handler errors, use a normal `try/catch`.
+
+</Callout>
+
+## 5. Code example
+
+### A class component boundary
+
+An Error Boundary is still built with a **class component**, because there is no hook for it.
+
+```tsx
+import { Component, type ErrorInfo, type ReactNode } from "react";
+
+type Props = { fallback: ReactNode; children: ReactNode };
+type State = { hasError: boolean };
+
+export class ErrorBoundary extends Component<Props, State> {
+  state: State = { hasError: false };
+
+  static getDerivedStateFromError(): State {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error(error, info.componentStack);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
+```
+
+```tsx
+<ErrorBoundary fallback={<p>Could not load the chart.</p>}>
+  <SalesChart />
+</ErrorBoundary>
+```
+
+### Reset with the react-error-boundary library
+
+```tsx
+import { ErrorBoundary, type FallbackProps } from "react-error-boundary";
+
+function Fallback({ error, resetErrorBoundary }: FallbackProps) {
+  return (
+    <div role="alert">
+      <p>Something went wrong: {error instanceof Error ? error.message : "Unknown error"}</p>
+      <button onClick={resetErrorBoundary}>Try again</button>
+    </div>
+  );
+}
+
+export function Dashboard() {
+  return (
+    <ErrorBoundary FallbackComponent={Fallback}>
+      <SalesChart />
+    </ErrorBoundary>
+  );
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `getDerivedStateFromError` | As soon as an error arrives, state becomes `hasError: true` |
+| `componentDidCatch` | Logging, or reporting to a service like Sentry |
+| `info.componentStack` | Which component tree the error came from |
+| `fallback` | The UI shown when there is an error |
+| `resetErrorBoundary` | Resets the state and tries to render the children again |
+
+React 19 also has the `onCaughtError` and `onUncaughtError` options on `createRoot`, where you can report all errors in one place.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Relying on an Error Boundary for an onClick error"
+  why="An event handler does not run during render, so the boundary never sees that error."
+  better="Write a try catch inside the handler and keep the error in state to show it in the UI."
+/>
+
+<Mistake
+  title="Using only one boundary for the whole app"
+  why="An error in one small widget turns the entire page into the fallback."
+  better="Keep one boundary at the top, and separate boundaries around important sections or widgets."
+/>
+
+<Mistake
+  title="Giving the fallback no way to reset"
+  why="The user is forced to reload the page and loses form data."
+  better="Add a Try again button that resets the boundary, like resetErrorBoundary in react-error-boundary."
+/>
+
+### Interview tip
+
+You may be asked, "Can a function component be an Error Boundary?" The answer: **not by itself**. So far only a class component can provide `getDerivedStateFromError` and `componentDidCatch`. For function components, the `react-error-boundary` library gives you a wrapper.
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Components](/courses/react/components), [Conditional Rendering](/courses/react/conditional-rendering), [Handling Events](/courses/react/events) |
+| **Alongside** | [Suspense & lazy()](/courses/react/suspense-and-lazy), [The use() API](/courses/react/use-hook) |
+| **After** | [Server Components](/courses/react/server-components), [Testing React Apps](/courses/react/testing) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| What it is | A component that catches render errors and shows a fallback |
+| How it is built | A class component with `getDerivedStateFromError` |
+| Logging | `componentDidCatch(error, info)` |
+| Does not catch | Event handlers, async code, SSR, its own errors |
+| Easy option | The `react-error-boundary` library |
+| Next.js | The `error.tsx` file |
+
+<Callout variant="important" title="Remember">
+
+Think of Error Boundaries like **Suspense**: Suspense handles loading, Error Boundaries handle errors. Put both around important sections so that if one part fails, the rest of the app keeps working.
+
+</Callout>

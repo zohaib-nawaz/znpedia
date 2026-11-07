@@ -1,0 +1,190 @@
+---
+title: Route Handlers (API)
+description: Learn how to build a REST API in app/api with Next.js route handlers, using the Web Request and Response, dynamic params, auth checks and caching.
+keywords:
+  - next.js route handlers api
+  - next.js api routes app router
+  - route.ts next.js
+  - next.js rest api
+---
+
+## 1. What are Route Handlers?
+
+<Callout variant="tip" title="Short definition">
+
+**A Route Handler is a `route.ts` file that handles HTTP methods (`GET`, `POST` and so on) on a URL, using the standard Web `Request` and `Response`.**
+
+</Callout>
+
+In the Pages Router these were called **API Routes**. In the App Router, you create a `route.ts` anywhere inside the `app` folder and it becomes an API endpoint, for example `app/api/products/route.ts` gives you `/api/products`.
+
+A Route Handler does not render any UI. It returns JSON, text, a file or a redirect.
+
+## 2. Why does it matter?
+
+Server Actions are only for the forms of your own app. But sometimes the outside world also needs to talk to your server: a mobile app, a webhook, another website.
+
+<CompareTable leftTitle="Server Action" rightTitle="Route Handler">
+
+Called only from your own Next.js app | Any client can call it
+POST only, URL hidden | GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS
+For forms and mutations | Public API, webhooks, file downloads
+The response updates the UI | The response is JSON or any format
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Use case | Example route |
+| --- | --- |
+| **API for a mobile app** | `app/api/products/route.ts` |
+| **Stripe or CMS webhook** | `app/api/webhooks/stripe/route.ts` |
+| **File download or CSV export** | `app/api/reports/route.ts` |
+| **OAuth callback** | `app/api/auth/callback/route.ts` |
+| **RSS feed** | `app/feed.xml/route.ts` |
+
+## 4. How does it work?
+
+<Flow title="Route Handler flow">
+
+The client sends an HTTP request
+↓
+Next.js finds route.ts from the URL
+↓
+The function named after the method runs
+↓
+Auth check + validation + the work
+↓
+Response.json is returned
+
+</Flow>
+
+Some important rules:
+
+| Rule | Detail |
+| --- | --- |
+| File name | Always `route.ts` or `route.js` |
+| Conflict | A single segment cannot have both `page.tsx` and `route.ts` |
+| Unknown method | Next.js returns `405 Method Not Allowed` by itself |
+| Caching | No caching by default, it runs on every request |
+| Params | `ctx.params` is a Promise, so you must `await` it |
+
+<Callout variant="important" title="Mental model">
+
+**The method name = the function name. The Request comes in, the Response goes out.**
+
+</Callout>
+
+## 5. Code example
+
+### Example 1: list and create
+
+```ts
+import { db } from "@/lib/db";
+import { getSession } from "@/lib/dal";
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const category = searchParams.get("category") ?? undefined;
+
+  const products = await db.product.findMany({ where: { category } });
+  return Response.json(products);
+}
+
+export async function POST(request: Request) {
+  const session = await getSession();
+  if (!session) {
+    return Response.json({ error: "Please log in" }, { status: 401 });
+  }
+
+  const body = await request.json();
+  const product = await db.product.create({ data: { name: String(body.name) } });
+  return Response.json(product, { status: 201 });
+}
+```
+
+### Example 2: dynamic segment `app/api/products/[id]/route.ts`
+
+```ts
+import type { NextRequest } from "next/server";
+import { db } from "@/lib/db";
+
+export async function GET(_request: NextRequest, ctx: RouteContext<"/api/products/[id]">) {
+  const { id } = await ctx.params;
+  const product = await db.product.findUnique({ where: { id } });
+
+  if (!product) {
+    return Response.json({ error: "Product not found" }, { status: 404 });
+  }
+
+  return Response.json(product);
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `export async function GET` | `GET /api/products` runs this function |
+| `new URL(request.url)` | The standard way to read the query string |
+| `request.json()` | Parses the POST body as JSON |
+| `Response.json(data, { status })` | A JSON response with a status code |
+| `RouteContext<"/api/products/[id]">` | Next.js's global type helper, makes `params` typed |
+| `await ctx.params` | In Next.js 16, params are async |
+
+When Cache Components is on, a static `GET` handler can be prerendered. If you want to cache data, put `"use cache"` in a separate helper function, not inside the handler.
+
+### Interview tip
+
+"Server Action or Route Handler?" Answer: a Server Action for the forms and mutations of your own app, and a Route Handler for outside clients, webhooks and non-HTML responses.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Keeping both page.tsx and route.ts in the same folder"
+  why="Both claim the same URL, and Next.js gives a conflict error."
+  better="Keep the API in a separate segment, such as inside app/api/..."
+/>
+
+<Mistake
+  title="Fetching your own API from your own Server Component"
+  why="It adds an extra network hop and causes URL issues in a production build."
+  better="Call the database or a service function directly in the Server Component."
+/>
+
+<Mistake
+  title="Thinking a Route Handler is protected because the UI has no link to it"
+  why="Every route.ts is a public URL, and anyone can hit it with curl."
+  better="Check the session and role in every handler, and return 401 or 403."
+/>
+
+<Mistake
+  title="Using the request body without validating it"
+  why="Wrong types or missing fields turn into database errors or security bugs."
+  better="safeParse the body with a Zod schema and return 400 if it fails."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Routing & Pages](/courses/nextjs/routing-and-pages), [Dynamic Routes](/courses/nextjs/dynamic-routes) |
+| **Alongside** | [Server Actions](/courses/nextjs/server-actions), [Cookies & Headers](/courses/nextjs/cookies-and-headers) |
+| **After** | [Proxy (formerly Middleware)](/courses/nextjs/proxy), [Authentication](/courses/nextjs/authentication), [Database Integration](/courses/nextjs/database-integration) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| File | `app/api/.../route.ts` |
+| Functions | `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`, `OPTIONS` |
+| Input | Web `Request` or `NextRequest` |
+| Output | `Response.json(data, { status })` |
+| Params | `await ctx.params` |
+| Security | An auth check in every handler |
+
+<Callout variant="important" title="Remember">
+
+A Route Handler is the **public API door** of your app. Use the standard Web Request and Response, `await` the params, and do auth and validation on every request.
+
+</Callout>

@@ -1,0 +1,187 @@
+---
+title: React.memo & Performance
+description: React memo performance guide, stop needless re-renders with React.memo, measure with the React DevTools Profiler, and the right approach in the React Compiler era.
+keywords:
+  - react memo performance
+  - react.memo
+  - react unnecessary re-renders
+  - react profiler
+---
+
+## 1. What is React.memo?
+
+<Callout variant="tip" title="Short definition">
+
+**`memo` is a function that wraps a component so it skips re-rendering when its props are the same as last time.**
+
+</Callout>
+
+By default, when a parent re-renders, **all of its children** re-render too, whether their props changed or not.
+
+`memo` tells React: "compare the props first, and if nothing changed, reuse the previous result."
+
+## 2. Why does it matter?
+
+Most re-renders are cheap. But if a child is heavy (a big list, a chart, an editor), rendering it on every small parent update makes the app feel slow.
+
+<CompareTable leftTitle="Without memo" rightTitle="With memo">
+
+The parent's counter changes, the heavy chart re-renders | The chart's props are the same, so the render is skipped
+Typing feels laggy | Only the input part updates
+Every list item renders every time | Only the changed item renders
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Situation | Will memo help? |
+| --- | --- |
+| A heavy component whose props rarely change | Yes |
+| Items in a long list | Yes, often |
+| A small button or text | No, the comparison costs more than it saves |
+| A component whose props change on every render | No |
+
+## 4. How does it work?
+
+<Flow title="How memo decides">
+
+The parent re-renders
+↓
+React compares the old and new props of the memo child
+↓
+If every prop is the same by Object.is, the render is skipped
+↓
+If any prop changed, the child re-renders
+
+</Flow>
+
+Remember: `memo` only looks at **props**. If the child's own state changes, or a Context it reads changes, it will still re-render.
+
+### The right way to approach performance
+
+<Flow title="Before you optimize">
+
+Record with the React DevTools Profiler
+↓
+Find the slow component
+↓
+Understand the cause: heavy work or needless renders
+↓
+Fix the structure first, then use memo
+↓
+Measure again
+
+</Flow>
+
+## 5. Code example
+
+### A heavy list with memo
+
+```tsx
+import { memo, useState } from "react";
+
+type Item = { id: number; title: string };
+
+const BigList = memo(function BigList({ items }: { items: Item[] }) {
+  return (
+    <ul>
+      {items.map((item) => (
+        <li key={item.id}>{item.title}</li>
+      ))}
+    </ul>
+  );
+});
+
+export function Page({ items }: { items: Item[] }) {
+  const [count, setCount] = useState(0);
+
+  return (
+    <>
+      <button onClick={() => setCount(count + 1)}>Clicks: {count}</button>
+      <BigList items={items} />
+    </>
+  );
+}
+```
+
+### Without memo: move the state down
+
+Here `BigList` and `Item` are the same as in the example above.
+
+```tsx
+import { useState } from "react";
+
+function Counter() {
+  const [count, setCount] = useState(0);
+  return <button onClick={() => setCount(count + 1)}>Clicks: {count}</button>;
+}
+
+export function Page({ items }: { items: Item[] }) {
+  return (
+    <>
+      <Counter />
+      <BigList items={items} />
+    </>
+  );
+}
+```
+
+In the second example the `count` state moved inside `Counter`, so `Page` no longer re-renders at all. This is often a better fix than `memo`.
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `memo(function BigList ...)` | Skips the render when props are the same |
+| `items` prop | The same array reference from the parent, so the render is skipped |
+| `Counter` as a separate component | The state lives only there, the rest of the tree is untouched |
+| Profiler | Shows which component rendered how many times and how long it took |
+
+## 6. Common mistakes
+
+<Mistake
+  title="Passing a new object or function to a memo child on every render"
+  why="A style object or arrow function is a new reference on every render, so memo's comparison always fails."
+  better="Make the values stable with useMemo or useCallback, or turn on React Compiler, which does this for you."
+/>
+
+<Mistake
+  title="Wrapping every component in memo without measuring"
+  why="Every memo adds the cost of comparing props and makes the code harder to read."
+  better="Find the slow part with the Profiler first, then optimize only there."
+/>
+
+<Mistake
+  title="Trying to fix a bug with memo"
+  why="memo is only a performance hint. React may re-render at any time, so correctness must not depend on it."
+  better="Write logic that gives the right result no matter how many times it renders."
+/>
+
+### Interview tip
+
+For a performance question, mention **measuring** first, then **state colocation** (moving state down), then `memo`. Also say that React Compiler 1.0 now does this memoization for you, so new projects need less manual `memo`.
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [How React Renders](/courses/react/how-react-renders), [Props](/courses/react/props), [Lifting State Up](/courses/react/lifting-state-up) |
+| **Alongside** | [useMemo & useCallback](/courses/react/use-memo-and-use-callback), [useTransition & useDeferredValue](/courses/react/use-transition) |
+| **After** | [React Compiler](/courses/react/react-compiler), [Suspense & lazy()](/courses/react/suspense-and-lazy) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| What `memo` does | Skips the re-render when props are the same |
+| Comparison | Each prop by `Object.is`, shallow |
+| When it helps | Heavy component, props change rarely |
+| First step | Measure with the Profiler |
+| Often a better fix | Move state down |
+| With the compiler | Less need for manual `memo` |
+
+<Callout variant="important" title="Remember">
+
+**Measure first.** Fix the structure first, then use `memo` if you still need it. And keep props stable, otherwise `memo` does nothing.
+
+</Callout>

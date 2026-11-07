@@ -1,0 +1,190 @@
+---
+title: Fail Fast, No Defensive Fallbacks
+description: Fail fast vs defensive programming. Why a clear error beats hiding missing data with ?? [], and when ?? is fine. TypeScript examples.
+keywords:
+  - fail fast defensive programming
+  - fail fast principle
+  - nullish coalescing fallback
+  - hiding errors with defaults
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Do not put `?? []` or `?? {}` on a value that must always exist by contract. If it is missing, that is a bug: raise a clear error and fix the bug where the value is produced.**
+
+</Callout>
+
+"Defensive" code adds defaults everywhere to stop crashes. It sounds good, but stopping a crash and stopping a bug are different things. Failing fast means surfacing a mistake **early and loudly**, right where it happened.
+
+| Situation | Right approach |
+| --- | --- |
+| The value is truly optional (a user's nickname, a config option) | `value ?? default` is perfectly fine |
+| The value must exist (a database row, a required field) | `if (!value)` and `throw` |
+| There are two valid paths | A clear `if` / `else`, both on purpose |
+
+## 2. Why does it matter?
+
+A fallback stops the crash, not the bug. The bug hides, keeps going, and shows up somewhere else in another form, where its cause is very hard to find.
+
+<CompareTable leftTitle="Defensive fallback" rightTitle="Fail fast">
+
+order.items ?? [] shows an empty order, but the customer already paid | Error: order 42 has no items, you know right away
+The dashboard shows 0 revenue and everyone thinks there were no sales | The API bug is caught on day one
+The bug is found weeks later through a support ticket | The bug is found in development or on the first deploy
+Wrong data gets saved to the database | The work stops and no bad data is created
+The error appears in one place, the cause is in another | The error appears exactly where the problem is
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Understand when `??` hides things | Beginners "fix" every error with `??`, break that habit early |
+| **Production code** | Very important | Hidden bugs create bad data and wrong money |
+| **Senior level** | Trace it back to the producer | A senior fixes the cause, not the symptom |
+
+## 4. Bad vs good code
+
+```ts
+async function invoiceTotal(invoiceId: string) {
+  const invoice = await db.invoice.findUnique({ where: { id: invoiceId } });
+  const lines = invoice?.lines ?? [];
+  const rate = invoice?.customer?.taxRate ?? 0;
+
+  try {
+    return lines.reduce((sum, line) => sum + line.amount, 0) * (1 + rate);
+  } catch {
+    return 0;
+  }
+}
+```
+
+```ts
+async function invoiceTotal(invoiceId: string) {
+  const invoice = await db.invoice.findUnique({
+    where: { id: invoiceId },
+    include: { lines: true, customer: true },
+  });
+
+  if (!invoice) {
+    throw new NotFoundError(`Invoice ${invoiceId} not found`);
+  }
+
+  return subtotal(invoice.lines) * (1 + invoice.customer.taxRate);
+}
+```
+
+| What is the difference? | Bad | Good |
+| --- | --- | --- |
+| Invoice not found | Total is `0`, nobody knows why | A clear `NotFoundError` |
+| Tax rate missing | Silently `0`, wrong bill | Required in the schema, it cannot be missing |
+| Empty `catch` | Swallows every error | The error goes up and gets logged |
+| Debugging | Hours of "why is the total 0?" | The error message has the id and the reason |
+
+### Why not `?? throw`
+
+Some people write a helper to throw in one line:
+
+```ts
+const user = (await users.find(id)) ?? fail("User missing");
+```
+
+The strict house style asks for an explicit check instead, so every throw is visible at a glance and the guard pattern looks the same everywhere:
+
+```ts
+const user = await users.find(id);
+
+if (!user) {
+  throw new NotFoundError(`User ${id} not found`);
+}
+```
+
+### Pass the error up with context
+
+```ts
+try {
+  await payments.charge(order);
+} catch (error) {
+  throw new Error(`Charging order ${order.id} failed`, { cause: error });
+}
+```
+
+`cause` keeps the original error attached, and the message says which task failed.
+
+## 5. How to apply it
+
+<Flow title="Before writing a fallback">
+
+Is this value optional by contract?
+↓
+Yes: ?? default is fine
+↓
+No: it being missing is a bug
+↓
+Add a guard and throw with a clear message
+↓
+Find out where the value is produced
+↓
+Fix the bug there, do not patch the symptom
+
+</Flow>
+
+On the frontend, a backend mistake is often hidden with `?? []`. The real fix is in the backend: it should always send that field, or the contract should mark it optional and the UI should show a clear empty state.
+
+## 6. Exceptions and common mistakes
+
+The whole app should not crash in front of the user. Failing fast does not mean a white screen. Catch the error at a **boundary** (a React error boundary, the API error handler), log it, and show the user a clear message. Just do not swallow it quietly in the middle and invent a fake value.
+
+For things like network calls, retries and a graceful fallback (showing cached data) are a deliberate design, not a hidden bug. The difference is that they are intentional and logged.
+
+<Mistake
+  title="?? [] or ?? {} on required data"
+  why="Instead of a crash you get a wrong UI or wrong numbers, and the bug is found late."
+  better="Guard and throw, then fix the bug in the producer."
+/>
+
+<Mistake
+  title="An empty catch block"
+  why="Every error, from a network failure to a typo, disappears silently."
+  better="Log the error with context, or rethrow it with a cause."
+/>
+
+<Mistake
+  title="Optional chaining chains everywhere"
+  why="a?.b?.c?.d shows that you do not know the shape of the data, and undefined quietly travels onward."
+  better="Parse the data at the boundary, then trust the types."
+/>
+
+<Mistake
+  title="No context in the error message"
+  why="Something went wrong does not tell you which record, which user or which task."
+  better="Put the id and the task name in the message, and attach the cause."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Optional Chaining & Nullish](/courses/javascript/optional-chaining-and-nullish), [Error Handling](/courses/javascript/error-handling) |
+| **Alongside** | [Early Returns & Braces](/courses/best-practices/early-returns-and-braces), [Strict Typing](/courses/best-practices/strict-typing) |
+| **After** | [Fix Root Causes](/courses/best-practices/fix-root-causes), [Input Validation](/courses/best-practices/input-validation), [Error Handling & Error Envelope](/courses/best-practices/error-handling-and-envelope) |
+
+## Final quick revision
+
+| Check | Question |
+| --- | --- |
+| Optional? | Is `??` used only on a truly optional value? |
+| Required | Does a missing required value throw? |
+| Catch | Is there any empty catch? |
+| Context | Does the error message have the id and the task? |
+| Root cause | Was the bug fixed at the producer? |
+| Boundary | Does the user get a clear message instead of a crash? |
+
+<Callout variant="important" title="Remember">
+
+A fallback hides the crash, not the bug. Report what is wrong early and clearly, so it gets fixed right where it was born.
+
+</Callout>

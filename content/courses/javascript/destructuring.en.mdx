@@ -1,0 +1,193 @@
+---
+title: Destructuring
+description: Learn JavaScript destructuring to pull values from arrays and objects into variables, with default values, renaming, nested patterns, and function parameters.
+keywords:
+  - javascript destructuring
+  - object destructuring javascript
+  - array destructuring javascript
+  - destructuring default values
+---
+
+## 1. What is destructuring?
+
+<Callout variant="tip" title="Short definition">
+
+**Destructuring is a syntax that pulls values out of an array or object into separate variables in a single line.**
+
+</Callout>
+
+Object destructuring works by **name** (`{ name }`), while array destructuring works by **position** (`[first, second]`). Both support default values, renaming, and nested patterns.
+
+## 2. Why does it matter?
+
+To get five fields out of an object, you have to write five lines of `const x = obj.x`. Destructuring removes this repetition.
+
+<CompareTable leftTitle="Without destructuring" rightTitle="With destructuring">
+
+const name = user.name | const name and email in one line
+const email = user.email | Values pulled out by name
+A separate if check for a missing value | The default value lives in the pattern
+props.title, props.price everywhere | Pull them out right in the function parameters
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Area | Example |
+| --- | --- |
+| **React props** | `function Card({ title, price })` |
+| **React hooks** | `const [count, setCount] = useState(0)` |
+| **API data** | `const { data, error } = await res.json()` |
+| **Loops** | `for (const [key, value] of Object.entries(obj))` |
+| **Swap** | `[a, b] = [b, a]` |
+
+## 4. How does it work?
+
+The left side has a **pattern** that matches the shape of the right side.
+
+| Pattern | Meaning |
+| --- | --- |
+| `const { a } = obj` | `obj.a` into `a` |
+| `const { a: x } = obj` | `obj.a` under the name `x` |
+| `const { a = 5 } = obj` | `5` if `obj.a` is `undefined` |
+| `const { a: { b } } = obj` | Nested, `obj.a.b` |
+| `const { a, ...rest } = obj` | The remaining properties into `rest` |
+| `const [first, , third] = arr` | By position, skipping the middle one |
+
+<Flow title="Object destructuring flow">
+
+Got the object on the right side
+↓
+Look up each key of the pattern in that object
+↓
+If a value is found, put it in the variable
+↓
+If the value was undefined, the default was used
+↓
+The remaining keys go into the rest variable (if written)
+
+</Flow>
+
+<Callout variant="important" title="Mental model">
+
+**Object = match by name. Array = match by position.**
+
+</Callout>
+
+## 5. Code example
+
+### Object destructuring
+
+```js
+const user = {
+  id: 7,
+  name: "Hina",
+  address: { city: "Multan" },
+};
+
+const { name, role = "student", address: { city }, ...rest } = user;
+
+console.log(name, role, city);
+console.log(rest);
+
+const { name: fullName } = user;
+console.log(fullName);
+```
+
+### Array destructuring and function parameters
+
+```js
+const [first, , third = "none"] = ["red", "green"];
+console.log(first, third);
+
+let a = 1;
+let b = 2;
+[a, b] = [b, a];
+console.log(a, b);
+
+function formatOrder({ id, items = [], status = "pending" } = {}) {
+  return `#${id}: ${items.length} items, ${status}`;
+}
+
+console.log(formatOrder({ id: 42, items: ["pen", "book"] }));
+console.log(formatOrder());
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `role = "student"` | `user.role` did not exist, so the default was used |
+| `address: { city }` | Pulled out the nested `city`, no `address` variable was created |
+| `...rest` | `{ id: 7 }`, the leftover properties |
+| `name: fullName` | Rename, the variable is called `fullName` |
+| `[first, , third = "none"]` | `red` and `none` (third was missing) |
+| `[a, b] = [b, a]` | Swap, `2 1` |
+| `= {}` on the parameter | No crash when called without an argument |
+
+### Interview tip
+
+A default value only applies for `undefined`, not for `null`. In `const { x = 5 } = { x: null }`, `x` stays `null`.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Destructuring undefined or null"
+  why="const { name } = undefined throws a TypeError, for example when a function is called without an argument."
+  better="Give the parameter a default object like function f({ name } = {}), and keep a fallback for API data."
+/>
+
+<Mistake
+  title="Expecting the default to apply for null"
+  why="A default only works for undefined, and null comes through as it is."
+  better="If you want a fallback for null too, use ??: const city = data.city ?? 'N/A'."
+/>
+
+<Mistake
+  title="Object destructuring assignment at the start of a statement without parentheses"
+  why="A curly brace at the start of a line is read as a block, which causes a SyntaxError."
+  better="For already declared variables, wrap the whole line in parentheses."
+/>
+
+<Mistake
+  title="Very deep nested destructuring"
+  why="A 4-level nested pattern on one line is hard to read, and one missing level makes it crash."
+  better="Pull values out in two steps, or use optional chaining."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Arrays](/courses/javascript/arrays), [Objects](/courses/javascript/objects) |
+| **Alongside** | [Spread & Rest](/courses/javascript/spread-and-rest), [Functions](/courses/javascript/functions) |
+| **After** | [Optional Chaining & Nullish Coalescing](/courses/javascript/optional-chaining-and-nullish), [Modules](/courses/javascript/modules) |
+
+<Flow title="Suggested order">
+
+Objects
+↓
+Destructuring
+↓
+Spread & Rest
+↓
+Optional Chaining & Nullish
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Object pattern | By name, `{ a, b }` |
+| Array pattern | By position, `[a, b]` |
+| Rename | `{ a: newName }` |
+| Default | `{ a = 5 }`, only for `undefined` |
+| Rest | `{ a, ...rest }` |
+| Parameter safety | `({ a } = {})` |
+
+<Callout variant="important" title="Remember">
+
+Destructuring makes code shorter and cleaner. Do not forget the default `= {}` on function parameters so that calling without an argument does not crash.
+
+</Callout>

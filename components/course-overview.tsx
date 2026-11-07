@@ -7,6 +7,8 @@ import { LevelBar } from "@/components/level-bar";
 import type { LevelShare, NumberedSection } from "@/lib/catalog";
 import type { CourseTheme } from "@/lib/course-themes";
 import { getChapterHref } from "@/lib/docs";
+import type { Locale } from "@/lib/i18n/config";
+import type { Dictionary } from "@/lib/i18n/dictionaries/ur";
 import { getCourseBadge } from "@/lib/docs-config";
 import { cn } from "@/lib/utils";
 import type { CourseMeta } from "@/types/course";
@@ -18,6 +20,9 @@ type CourseOverviewProps = {
   hours: number;
   startHref: string;
   theme: CourseTheme;
+  locale: Locale;
+  labels: Dictionary["overview"];
+  coursesCrumb: { label: string; href: string };
 };
 
 export function CourseOverview({
@@ -27,16 +32,19 @@ export function CourseOverview({
   hours,
   startHref,
   theme,
+  locale,
+  labels,
+  coursesCrumb,
 }: CourseOverviewProps) {
   const stats = [
-    { icon: BookOpen, label: "Chapters", value: String(course.chapters.length) },
-    { icon: Layers, label: "Sections", value: String(course.sections.length) },
-    { icon: Clock, label: "Parhai", value: `~${hours} ghante` },
+    { icon: BookOpen, label: labels.chaptersLabel, value: String(course.chapters.length) },
+    { icon: Layers, label: labels.sectionsLabel, value: String(course.sections.length) },
+    { icon: Clock, label: labels.readingLabel, value: labels.hours(hours) },
   ];
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 lg:px-10">
-      <Breadcrumbs items={[{ label: "Courses", href: "/courses" }, { label: course.title }]} />
+      <Breadcrumbs items={[coursesCrumb, { label: course.title }]} />
       <header className="relative mt-6 overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
         <div
           className={cn(
@@ -65,7 +73,7 @@ export function CourseOverview({
             </span>
             <div>
               <p className={cn("text-xs font-semibold uppercase tracking-[0.14em]", theme.text)}>
-                Course
+                {labels.eyebrow}
               </p>
               <h1 className="mt-1 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
                 {course.title}
@@ -96,7 +104,7 @@ export function CourseOverview({
             href={startHref}
             className="mt-7 inline-flex h-11 items-center gap-2 rounded-lg bg-accent px-5 text-sm font-semibold text-accent-foreground shadow-lg shadow-accent/20 transition-opacity duration-200 hover:opacity-90"
           >
-            Course shuru karein
+            {labels.start}
             <ArrowRight className="h-4 w-4" aria-hidden />
           </Link>
         </div>
@@ -118,14 +126,14 @@ export function CourseOverview({
               </span>
               {section.title}
               <span className="text-xs font-normal text-muted-foreground">
-                {section.chapters.length} chapters
+                {labels.chapterCount(section.chapters.length)}
               </span>
             </h2>
             <ol className="mt-4 divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
               {section.chapters.map((chapter) => (
                 <li key={chapter.slug}>
                   <Link
-                    href={getChapterHref(course.slug, chapter.slug)}
+                    href={getChapterHref(course.slug, chapter.slug, locale)}
                     className="group flex items-center gap-4 px-4 py-3.5 transition-colors duration-200 hover:bg-muted/50"
                   >
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border font-mono text-[11px] tabular-nums text-muted-foreground transition-colors duration-200 group-hover:border-transparent group-hover:bg-foreground group-hover:text-background">

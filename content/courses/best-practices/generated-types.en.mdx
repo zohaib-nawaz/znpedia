@@ -1,0 +1,195 @@
+---
+title: Generated Database Types
+description: Generated database types in TypeScript. Build row types from the schema, not by hand, so a column rename fails the build instead of giving undefined in production.
+keywords:
+  - generated database types typescript
+  - supabase gen types
+  - drizzle infer select
+  - prisma generated types
+  - type safe database
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Database row types are generated from the schema, never written by hand. Request, response and domain types are derived from these generated `Row`, `Insert` and `Update` types, and the types are regenerated with every migration in the same pull request.**
+
+</Callout>
+
+The database schema is the truth. A TypeScript type is a picture of that truth. A hand drawn picture goes out of date, but a generated picture is rebuilt from the schema every time.
+
+Every major tool offers this: the Supabase CLI `gen types`, Drizzle's `$inferSelect`, the Prisma generated client, and codegen tools for Kysely.
+
+## 2. Why does it matter?
+
+A migration renamed `phone` to `phone_number`. The hand written `User` type still says `phone`. TypeScript is happy, the build is green, and it deploys. In production every user's phone is `undefined`, and the signup form's insert fails because the `phone` column no longer exists.
+
+The opposite also happens: a column was `nullable` but the type said `string`. The code called `.toLowerCase()` and crashed on the first null value.
+
+<CompareTable leftTitle="Hand written types" rightTitle="Generated types">
+
+After a column rename the code keeps compiling | After a column rename the build fails
+A nullable column was written as string | The generated type clearly shows null
+Every developer makes their own copy | One file, everyone imports the same one
+Schema and type slowly drift apart | CI checks that the file matches the schema
+Required columns get forgotten in inserts | The insert type demands the required columns
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Good to have, setup is one command | You enjoy type safety from the start |
+| **Production code** | Required | Schema drift bugs only show up at runtime |
+| **Senior level** | Decide the CI check and how types are derived | The whole team works from one source of truth |
+
+When to learn it: the first time you connect a TypeScript project to a database. Understand [Strict Typing](/courses/best-practices/strict-typing) first.
+
+## 4. Bad vs good code
+
+### Bad: a hand written row type
+
+```ts
+export interface User {
+  id: string;
+  name: string;
+  phone: string;
+  createdAt: Date;
+}
+
+const { data } = await supabase.from("users").select("*");
+const users = data as User[];
+```
+
+The database has `phone_number` and `created_at` arrives as a string, but the type says something else. `as` shut the compiler's eyes.
+
+### Good: Supabase generated types
+
+The command, after every migration:
+
+```bash
+npx supabase gen types typescript --local > lib/supabase/database.types.ts
+```
+
+Derive, do not rewrite:
+
+```ts
+import type { Database } from "@/lib/supabase/database.types";
+
+type UsersTable = Database["public"]["Tables"]["users"];
+
+export type UserRow = UsersTable["Row"];
+export type NewUser = UsersTable["Insert"];
+export type UserPatch = UsersTable["Update"];
+
+export type PublicProfile = Pick<UserRow, "id" | "name" | "avatar_url">;
+```
+
+Give the client the generated `Database`, so every query is typed:
+
+```ts
+const supabase = createServerClient<Database>(url, anonKey, { cookies: cookieAdapter });
+
+const { data } = await supabase.from("users").select("id, name, phone_number");
+```
+
+Now if a migration renames `phone_number` and the types are regenerated, this line gives a compile error.
+
+### Good: in Drizzle the schema itself is the source
+
+```ts
+import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+
+export const users = pgTable("users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  phoneNumber: text("phone_number"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type UserRow = typeof users.$inferSelect;
+export type NewUser = typeof users.$inferInsert;
+```
+
+### What is the difference?
+
+| Thing | Bad | Good |
+| --- | --- | --- |
+| Source | The developer's memory | The database schema |
+| Rename | `undefined` at runtime | Compile error |
+| Null | Hidden | `string \| null` is clear |
+| Insert | No check | The `Insert` type demands required fields |
+| Cast | `as User[]` | Typed client, no cast needed |
+
+## 5. How to apply it
+
+<Flow title="The journey of the types">
+
+Write the migration
+↓
+Apply it to the local database
+↓
+Regenerate the types and commit them in the same PR
+↓
+Fix the compile errors in the code
+↓
+CI regenerates and checks the diff
+
+</Flow>
+
+A small CI step as a reminder:
+
+```bash
+npx supabase gen types typescript --local > lib/supabase/database.types.ts
+git diff --exit-code lib/supabase/database.types.ts
+```
+
+If the file changed, it means someone did not regenerate the types after a migration, and the build fails.
+
+## 6. Exceptions and common mistakes
+
+Not every type is generated. A shape built from several tables (like a dashboard summary), or one that never reaches the database (like a form draft), can have its own type. But even then, `Pick` fields from the generated types where possible. An API contract can also keep its own shape, through a mapper, so snake_case names do not reach the client.
+
+<Mistake
+  title="Editing the generated file by hand"
+  why="The next time it is regenerated your change disappears and the bug comes back."
+  better="Never touch the generated file, and if you need to, derive from it in a separate file."
+/>
+
+<Mistake
+  title="Migration and types in separate PRs"
+  why="In between, the code and schema on the main branch do not match and other people's builds break."
+  better="The migration and the regenerated types always go in one pull request."
+/>
+
+<Mistake
+  title="Casting a query result with as"
+  why="Even with a typed client, a cast silences the compiler and removes the benefit of generated types."
+  better="Pass the Database generic to the client and let select give the right type by itself."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Strict Typing](/courses/best-practices/strict-typing), [Database Naming & Design](/courses/best-practices/database-design) |
+| **Alongside** | [Safe Migrations](/courses/best-practices/migrations), [Types Beside Logic](/courses/best-practices/types-beside-logic) |
+| **After** | [Shared API Contracts](/courses/best-practices/shared-api-contracts), [Query Patterns & Transactions](/courses/best-practices/query-patterns) |
+
+## Final quick revision
+
+| Check | Question |
+| --- | --- |
+| Source | Is any row type written by hand? |
+| Derive | Are domain types built from `Row`, `Insert` and `Update`? |
+| Regenerate | Are types regenerated with every migration, in the same PR? |
+| CI | Does CI check the diff of the generated file? |
+| Cast | Is `as` used on query results? |
+
+<Callout variant="important" title="Remember">
+
+The schema is the one truth. Generate types from it and derive every other type from those, so that when the database changes, the compiler tells you first.
+
+</Callout>

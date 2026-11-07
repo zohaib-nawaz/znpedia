@@ -1,0 +1,221 @@
+---
+title: Design Tokens & UI Consistency
+description: Design tokens and UI consistency. Use semantic CSS variables, a Tailwind theme, no raw hex, a spacing scale and shared UI primitives so every screen looks alike.
+keywords:
+  - design tokens ui consistency
+  - semantic color tokens
+  - tailwind css variables theme
+  - no hardcoded hex colors
+  - reusable ui primitives
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**No raw hex or one-off values in components. Color, spacing, radius, shadow and motion come from semantic tokens defined in one place, and existing primitives are reused before a new component is built.**
+
+</Callout>
+
+A design token is a named design value: `primary`, `surface`, `destructive`, `border`. A component does not say "this is `#1e40af`", it says "this is primary". The real color of primary is decided in one place, in `globals.css`.
+
+It is the same idea as named constants in code, just for design.
+
+## 2. Why does it matter?
+
+A real story: the brand color changed. The codebase had hex values in 140 places, across 80 files, and three slightly different blues. It took two weeks and some screens still stayed in the old color. Adding dark mode was impossible, because every component had written its own white.
+
+Another story: two developers built different modals. One closed on Escape and the other did not, and keyboard users got trapped inside one modal.
+
+<CompareTable leftTitle="Raw values and ad hoc components" rightTitle="Tokens and shared primitives">
+
+A rebrand means search and replace across a hundred files | A rebrand means changing a token in one file
+Dark mode means redoing every component | Dark values for the tokens, components stay the same
+Three slightly different grays and radii | One scale, every step has a name
+Every developer has their own modal and button | One primitive that everyone uses
+Accessibility differs everywhere | Focus ring and contrast are fixed once in the primitive
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Use Tailwind's default scale, avoid arbitrary values | Staying inside the scale is the first step to consistency |
+| **Production code** | Semantic tokens and primitives are required. Hex in a component gets blocked in review | Rebrand, dark mode and accessibility all stand on this |
+| **Senior level** | Design and document token naming, scales and the primitive inventory | The team knows which primitive exists and what is forbidden |
+
+## 4. Bad vs good code
+
+### Bad: raw values and a custom button
+
+```tsx
+export function DeleteButton({ onDelete }: DeleteButtonProps) {
+  return (
+    <button
+      onClick={onDelete}
+      className="rounded-[7px] bg-[#dc2626] px-[13px] py-[9px] text-[#ffffff] outline-none"
+    >
+      Delete
+    </button>
+  );
+}
+```
+
+A hex color, odd spacing (`13px`), no dark mode, and `outline-none` removed the keyboard focus ring entirely.
+
+### Good: tokens in one place
+
+```css
+@import "tailwindcss";
+
+:root {
+  --surface: oklch(0.99 0 0);
+  --on-surface: oklch(0.21 0 0);
+  --primary: oklch(0.52 0.2 262);
+  --on-primary: oklch(0.99 0 0);
+  --destructive: oklch(0.58 0.22 27);
+  --on-destructive: oklch(0.99 0 0);
+  --border: oklch(0.92 0 0);
+}
+
+.dark {
+  --surface: oklch(0.18 0 0);
+  --on-surface: oklch(0.96 0 0);
+  --border: oklch(0.3 0 0);
+}
+
+@theme inline {
+  --color-surface: var(--surface);
+  --color-on-surface: var(--on-surface);
+  --color-primary: var(--primary);
+  --color-on-primary: var(--on-primary);
+  --color-destructive: var(--destructive);
+  --color-on-destructive: var(--on-destructive);
+  --color-border: var(--border);
+}
+```
+
+A helper for merging classes:
+
+```ts
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+```
+
+Now the feature component only uses a primitive:
+
+```tsx
+import { Button } from "@/components/ui/button";
+
+export function DeleteButton({ onDelete }: DeleteButtonProps) {
+  return (
+    <Button variant="destructive" onClick={onDelete}>
+      Delete
+    </Button>
+  );
+}
+```
+
+Inside the `Button` primitive, `bg-destructive text-on-destructive rounded-md px-4 py-2` and a visible focus ring are written only once.
+
+### What is the difference?
+
+| Thing | Bad | Good |
+| --- | --- | --- |
+| Color | `#dc2626` in the component | The `destructive` token |
+| Spacing | `13px`, `9px` | Steps of the scale, `px-4 py-2` |
+| Dark mode | Impossible | The token's dark value |
+| Focus | `outline-none`, ring gone | A visible ring in the primitive |
+| Reuse | A new button everywhere | One `Button`, with variants |
+
+## 5. How to apply it
+
+<Flow title="Setting up tokens and primitives">
+
+Name the roles: surface, primary, destructive, border, text tiers
+↓
+CSS variables in globals.css, light and dark
+↓
+Map them in the Tailwind theme
+↓
+Fixed scales for spacing, radius, shadow, type and motion
+↓
+Primitives in components/ui, and feature components use them
+
+</Flow>
+
+| Token group | Example |
+| --- | --- |
+| Color | `surface`, `on-surface`, `primary`, `destructive`, `border`, `muted` |
+| Spacing | A rhythm of 4 or 8: 4, 8, 12, 16, 24, 32 |
+| Type | One scale, like 12, 14, 16, 18, 24, 32, and two or three weights |
+| Radius, shadow, z-index | A small fixed scale for each, every step named |
+| Motion | Durations like 150ms for state, 200ms for reveal, 300ms for attention |
+
+Before you build a new component, look in `components/ui`. If you find a similar primitive, add a variant, do not make a new one. Every primitive should handle loading, empty, error and disabled states.
+
+## 6. Exceptions and common mistakes
+
+Many teams use the Tailwind palette directly in components (`bg-red-600`), and in small projects or prototypes that works fine. Semantic tokens add a layer. The trade-off: a little work at the start, but at rebrand, dark mode and multi-brand time, that same layer saves weeks.
+
+Chart data colors, a brand logo SVG, or a marketing illustration can sit outside the token system, but even charts should have a fixed palette token set.
+
+<Mistake
+  title="Naming tokens after colors, like blue-brand"
+  why="If a rebrand turns blue-brand green, the name starts lying."
+  better="Name them by role: primary, accent, destructive, surface."
+/>
+
+<Mistake
+  title="Arbitrary values like p-[13px] and text-[#333]"
+  why="Every one-off value breaks the scale, and screens slowly start to look different."
+  better="Use the nearest step of the scale. If you truly need a new value, add it to the tokens."
+/>
+
+<Mistake
+  title="Removing the focus ring because it does not look good in the design"
+  why="Keyboard users cannot tell where they are, and this is a blocking accessibility problem."
+  better="Style the ring with a token, do not remove it. Get it right once in the primitive."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Styling: CSS Modules & Tailwind](/courses/nextjs/styling), [Constants & Magic Values](/courses/best-practices/constants-and-magic-values) |
+| **Alongside** | [React Component Practices](/courses/best-practices/react-component-practices), [Following Existing Patterns](/courses/best-practices/following-existing-patterns) |
+| **After** | [Visual Hierarchy & Spacing](/courses/best-practices/visual-hierarchy-and-spacing), [Motion & Design Iteration](/courses/best-practices/motion-and-iteration) |
+
+<Flow title="Suggested order">
+
+Styling with Tailwind
+↓
+Design Tokens & UI Consistency
+↓
+Visual Hierarchy & Spacing
+↓
+Motion & Design Iteration
+
+</Flow>
+
+## Final quick revision
+
+| Check | Yes / No |
+| --- | --- |
+| Raw hex in a component | No |
+| Tokens named by role | Yes |
+| Light and dark values in one place | Yes |
+| Arbitrary spacing values | No, use the scale |
+| Looked in `components/ui` before building a new primitive | Yes |
+| Focus ring visible | Yes |
+
+<Callout variant="important" title="Remember">
+
+A component should know the name of the job, not the name of the color. Keep the value in one place and the primitive in one place, and the whole app speaks one language.
+
+</Callout>

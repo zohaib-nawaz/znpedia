@@ -1,0 +1,190 @@
+---
+title: Truthy, Falsy & Equality
+description: The list of JavaScript truthy and falsy values, the difference between == and ===, Object.is and how objects are compared by reference.
+keywords:
+  - javascript truthy falsy == vs ===
+  - falsy values javascript
+  - strict vs loose equality
+  - object.is javascript
+---
+
+## 1. What are truthy, falsy and equality?
+
+<Callout variant="tip" title="Short definition">
+
+**A truthy value behaves like `true` in a condition and a falsy value behaves like `false`. Equality tells you whether two values are the same: `===` is strict, while `==` converts types before comparing.**
+
+</Callout>
+
+In JavaScript, only these **8 values are falsy**. Everything else is truthy:
+
+| Falsy value | Type |
+| --- | --- |
+| `false` | boolean |
+| `0`, `-0` | number |
+| `0n` | bigint |
+| `""` | empty string |
+| `null` | null |
+| `undefined` | undefined |
+| `NaN` | number |
+
+Surprising **truthy** values: `"0"`, `"false"`, `" "` (a space), `[]`, `{}`.
+
+## 2. Why does it matter?
+
+`if (value)` is written everywhere. If you do not know that `0` is falsy, an item with quantity `0` wrongly becomes "missing". And the strange rules of `==` cause bugs that are hard to catch.
+
+<CompareTable leftTitle="Loose equality ==" rightTitle="Strict equality ===">
+
+Converts types first, then compares | If the types differ, it is simply false
+0 == empty string gives true | 0 === empty string is false
+You have to remember the rules | The result is what you see
+Hides bugs | Predictable and safe
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Situation | The right way |
+| --- | --- |
+| **Input is not empty** | `if (name.trim())` |
+| **The array has items** | `if (items.length > 0)`, because `[]` is truthy |
+| **Value is null or undefined** | `value == null` or `value ?? fallback` |
+| **Matching two values** | `===` |
+| **NaN check** | `Number.isNaN(x)` or `Object.is(x, NaN)` |
+| **Are two objects the same?** | `===` only checks the reference |
+
+## 4. How does it work?
+
+A condition (`if`, `while`, `&&`, `||`, `!`) converts the value to a **boolean** internally. It works like `Boolean(value)`.
+
+<Flow title="A value's journey in a condition">
+
+if (value)
+     ↓
+Boolean(value) runs internally
+     ↓
+Is it in the falsy list? Then false
+     ↓
+Otherwise true
+
+</Flow>
+
+`===` looks at the type first. If the types differ, it is `false` right away. `==` applies coercion rules when the types differ, like turning a string into a number.
+
+For objects and arrays, both operators compare the **reference**, not the content.
+
+<Callout variant="important" title="Mental model">
+
+**The falsy list is short, so memorize it. Everything else is truthy. In comparisons, always use `===`.**
+
+</Callout>
+
+## 5. Code example
+
+Truthy and falsy:
+
+```js
+const values = [0, "", "0", [], {}, null, NaN, " "];
+
+for (const v of values) {
+  console.log(JSON.stringify(v), Boolean(v));
+}
+```
+
+Output: `0 false`, `"" false`, `"0" true`, `[] true`, `{} true`, `null false`, `null false` (NaN shows as `null` in JSON), `" " true`.
+
+`==` vs `===`:
+
+```js
+console.log(0 == "");
+console.log(0 === "");
+console.log("1" == 1);
+console.log(null == undefined);
+console.log(null === undefined);
+console.log(null == 0);
+console.log(NaN === NaN);
+```
+
+Output: `true`, `false`, `true`, `true`, `false`, `false`, `false`.
+
+Objects and `Object.is`:
+
+```js
+const a = { id: 1 };
+const b = { id: 1 };
+const c = a;
+
+console.log(a === b);
+console.log(a === c);
+console.log(Object.is(NaN, NaN));
+console.log(Object.is(0, -0));
+```
+
+Output: `false`, `true`, `true`, `false`.
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `Boolean(v)` | The same conversion that `if` does internally |
+| `0 == ""` | `""` became the number `0`, so `true` |
+| `null == undefined` | A special rule, they are equal only to each other |
+| `NaN === NaN` | `NaN` is not equal to anything, not even itself |
+| `a === b` | Same content, but different objects, so `false` |
+| `Object.is()` | Like `===`, but handles `NaN` and `-0` correctly |
+
+### Interview tip
+
+The answer to `[] == false` is `true`, yet `if ([])` runs. The reason: `==` turns both into numbers (`[]` to `""` to `0`, and `false` to `0`), while `if` only looks at truthiness, and `[]` is truthy. This question is a great argument for avoiding `==`.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Using if (count) to check that a number exists"
+  why="If count is 0 it becomes falsy, and a valid 0 is treated as missing."
+  better="Write a direct check, like count !== undefined or typeof count === 'number'."
+/>
+
+<Mistake
+  title="Checking an empty array with if (arr)"
+  why="An empty array is also truthy, so the condition always passes."
+  better="Check arr.length > 0."
+/>
+
+<Mistake
+  title="Using =="
+  why="The coercion rules give strange results, like '0' == false being true."
+  better="Always use === and !==. If you need to check null and undefined together, value == null is fine."
+/>
+
+<Mistake
+  title="Comparing two objects with === to check their content"
+  why="=== only checks whether both are the same object, not the data inside."
+  better="Compare specific fields, like a.id === b.id."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Type Conversion](/courses/javascript/type-conversion), [Operators](/courses/javascript/operators), [Conditionals](/courses/javascript/conditionals) |
+| **After this** | [Functions](/courses/javascript/functions), [Objects](/courses/javascript/objects) |
+| **Further on** | [Optional Chaining & Nullish Coalescing](/courses/javascript/optional-chaining-and-nullish), [Map & Set](/courses/javascript/map-and-set) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Falsy | `false`, `0`, `-0`, `0n`, `""`, `null`, `undefined`, `NaN` |
+| Truthy surprises | `"0"`, `"false"`, `[]`, `{}` |
+| `===` | Same type and value, the default choice |
+| `==` | Does coercion, avoid it |
+| Objects | The reference is compared, not the content |
+| `Object.is` | Exact for `NaN` and `-0` |
+
+<Callout variant="important" title="Remember">
+
+**Memorize the falsy list, everything else is truthy.** Always use `===` for comparison, and check an empty array with `length`.
+
+</Callout>

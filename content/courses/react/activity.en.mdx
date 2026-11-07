@@ -1,0 +1,179 @@
+---
+title: Activity Component
+description: The React Activity component from React 19.2. Hide UI with visible and hidden modes, keep its state, and pre-render what the user will see next.
+keywords:
+  - react activity component
+  - react 19.2 activity
+  - activity mode hidden
+  - preserve state react
+---
+
+## 1. What is the Activity component?
+
+<Callout variant="tip" title="Short definition">
+
+**`Activity` is a React 19.2 component that can hide part of the UI without losing its state, and keep the hidden part ready in the background.**
+
+</Callout>
+
+You import `Activity` from `react` and give it a `mode` prop: `"visible"` or `"hidden"`. The default is `"visible"`.
+
+In hidden mode the children disappear from the screen (CSS `display: none`) and their Effects are cleaned up, but their **state and DOM** are kept. When you make it visible again, everything continues from where it was.
+
+## 2. Why does it matter?
+
+The old way was to remove a component with conditional rendering. That unmounted the component and its state, such as form text or scroll position, was lost.
+
+<CompareTable leftTitle="Conditional rendering" rightTitle="With Activity">
+
+isOpen && Component, unmounts when hidden | mode hidden, the component stays alive
+State and input text are lost | State and DOM are preserved
+Loads again when it comes back | Continues instantly from where it was
+The next screen is not ready in advance | Low-priority pre-render while hidden
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Use case | Benefit |
+| --- | --- |
+| **Tabs** | Switch tabs and the other tab's form text is still there |
+| **Sidebar or drawer** | Close and reopen it and the expanded sections are the same |
+| **Pre-render the next page** | Data and code are ready before the user clicks |
+| **Back navigation** | The previous screen returns with its state |
+| **Video or chat panel** | Effects stop while hidden, state is kept |
+
+## 4. How does it work?
+
+React still renders the children of a hidden Activity, but at **low priority**, so the visible UI does not slow down. Effects run only while it is visible.
+
+<Flow title="From visible to hidden and back">
+
+mode visible: the UI is shown, Effects are active
+↓
+mode hidden: display none
++
+Effects are cleaned up, state and DOM are preserved
+↓
+Updates keep rendering at low priority
+↓
+mode visible: Effects are set up again, the UI returns instantly
+
+</Flow>
+
+<Callout variant="note" title="Mental model">
+
+Think of a hidden Activity as a component that is "paused": you cannot see it and its Effects do not run, but it remembers everything.
+
+</Callout>
+
+## 5. Code example
+
+### Example 1: Tabs that remember their state
+
+```jsx
+import { Activity, useState } from "react";
+
+function Notes() {
+  const [text, setText] = useState("");
+  return (
+    <textarea value={text} onChange={(e) => setText(e.target.value)} />
+  );
+}
+
+function Profile() {
+  return <p>Profile details</p>;
+}
+
+export default function Tabs() {
+  const [tab, setTab] = useState("notes");
+
+  return (
+    <div>
+      <button onClick={() => setTab("notes")}>Notes</button>
+      <button onClick={() => setTab("profile")}>Profile</button>
+
+      <Activity mode={tab === "notes" ? "visible" : "hidden"}>
+        <Notes />
+      </Activity>
+      <Activity mode={tab === "profile" ? "visible" : "hidden"}>
+        <Profile />
+      </Activity>
+    </div>
+  );
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `import { Activity }` | A built-in component from React 19.2 |
+| `mode={...}` | Only `"visible"` or `"hidden"` |
+| `Notes` state | The text is still there after you visit the Profile tab |
+| Hidden tab | In the DOM but `display: none` |
+
+### Example 2: How Effects behave
+
+```jsx
+import { useEffect } from "react";
+
+function LiveClock() {
+  useEffect(() => {
+    const id = setInterval(() => console.log("tick"), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  return <p>The clock is running</p>;
+}
+```
+
+When `LiveClock` goes inside a hidden Activity, the cleanup runs and the interval stops. When it becomes visible, the Effect is set up again. That is why writing Effect cleanup correctly matters.
+
+### Interview tip
+
+Remember the difference: when you hide with CSS, Effects keep running, and with conditional rendering the state is lost. `Activity` is the middle path: state is kept and Effects are paused.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Not writing Effect cleanup"
+  why="React calls the cleanup when the UI is hidden, and without cleanup, subscriptions and timers leak."
+  better="Every Effect that subscribes to or starts something should return a cleanup function."
+/>
+
+<Mistake
+  title="Letting video or audio keep playing in hidden UI"
+  why="The DOM is preserved, so the media element does not pause on its own."
+  better="Pause the media in the cleanup of useLayoutEffect so it stops as soon as the UI is hidden."
+/>
+
+<Mistake
+  title="Putting everything inside Activity"
+  why="Hidden UI still uses memory and renders in the background."
+  better="Use it only where keeping state or pre-rendering truly helps, and use normal conditional rendering elsewhere."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Conditional Rendering](/courses/react/conditional-rendering), [State with useState](/courses/react/state), [useEffect](/courses/react/use-effect) |
+| **Alongside** | [Suspense & lazy()](/courses/react/suspense-and-lazy), [useTransition & useDeferredValue](/courses/react/use-transition) |
+| **After** | [Server Components](/courses/react/server-components), [Routing with React Router](/courses/react/react-router) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Import | `import { Activity } from "react"` |
+| Modes | `"visible"` (default) and `"hidden"` |
+| Hidden | `display: none`, Effects cleaned up, state preserved |
+| Background | Hidden children render at low priority |
+| Use cases | Tabs, drawers, pre-render, back navigation |
+
+<Callout variant="important" title="Remember">
+
+`Activity` **hides UI without unmounting it**. State and DOM are kept, Effects are paused, and when the UI comes back the user continues from where they were.
+
+</Callout>

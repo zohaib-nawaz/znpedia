@@ -1,0 +1,221 @@
+---
+title: Database Integration
+description: Next.js Prisma Drizzle database integration guide, covering the singleton client, queries in Server Components and mutations with Server Actions.
+keywords:
+  - next.js prisma drizzle database
+  - prisma singleton next.js
+  - drizzle orm next.js
+  - next.js postgres
+---
+
+## 1. What is database integration?
+
+<Callout variant="tip" title="Short definition">
+
+**Database integration means connecting your Next.js server code (Server Components, Server Actions, Route Handlers) to a database through an ORM, using one shared singleton client.**
+
+</Callout>
+
+An **ORM** (Object Relational Mapper) makes SQL tables feel like TypeScript objects. There are two popular choices with Next.js:
+
+| ORM | What it is known for |
+| --- | --- |
+| **Prisma** | A `schema.prisma` file, a generated typed client, a readable API like `findMany` |
+| **Drizzle** | The schema in TypeScript, an SQL-like API, light and fast |
+
+Both work with PostgreSQL, MySQL and SQLite.
+
+## 2. Why does it matter?
+
+Thanks to Server Components, you no longer need a separate backend. A component can talk to the database directly. But if you create the connection the wrong way, you run out of connections during development.
+
+<CompareTable leftTitle="A new client in every file" rightTitle="Singleton client">
+
+A new connection pool on every hot reload | One client reused on globalThis
+Too many connections error | Connections stay under control
+Raw SQL strings, no types | Typed queries, autocomplete
+Create an API route and fetch it | Query directly in a Server Component
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Place | What the database does |
+| --- | --- |
+| **Server Component** | Reads data, with `"use cache"` or inside Suspense |
+| **Server Action** | Create, update, delete, then `updateTag` |
+| **Route Handler** | Queries for a public API or a webhook |
+| **Data Access Layer** | All queries in one place, with auth checks |
+
+Client Components never touch the database directly. They call a Server Action or receive data in props.
+
+## 4. How does it work?
+
+<Flow title="Request flow with a database">
+
+Request
+↓
+Server Component or Server Action
+↓
+A DAL function checks auth
+↓
+The singleton ORM client runs the query
+↓
+Database result
+↓
+UI renders or the cache is invalidated
+
+</Flow>
+
+<Callout variant="important" title="Mental model">
+
+**One client for the whole app. Database code only on the server, and all queries behind the DAL.**
+
+</Callout>
+
+## 5. Code example
+
+### Example 1: Prisma singleton `lib/db.ts`
+
+```ts
+import "server-only";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "@/generated/prisma/client";
+
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+
+function createClient() {
+  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+  return new PrismaClient({ adapter });
+}
+
+export const db = globalForPrisma.prisma ?? createClient();
+
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.prisma = db;
+}
+```
+
+### Example 2: the same idea with Drizzle
+
+```ts
+import "server-only";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+
+export const posts = pgTable("posts", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const drizzleDb = drizzle(process.env.DATABASE_URL as string);
+```
+
+### Example 3: reading and writing
+
+```tsx
+import { cacheLife, cacheTag, updateTag } from "next/cache";
+import { db } from "@/lib/db";
+
+async function getPosts() {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("posts");
+  return db.post.findMany({ select: { id: true, title: true }, take: 20 });
+}
+
+async function addPost(formData: FormData) {
+  "use server";
+  const title = String(formData.get("title") ?? "").trim();
+  if (!title) return;
+  await db.post.create({ data: { title } });
+  updateTag("posts");
+}
+
+export default async function PostsPage() {
+  const posts = await getPosts();
+
+  return (
+    <main>
+      <form action={addPost}>
+        <input name="title" placeholder="Post title" />
+        <button type="submit">Add</button>
+      </form>
+      <ul>
+        {posts.map((post) => (
+          <li key={post.id}>{post.title}</li>
+        ))}
+      </ul>
+    </main>
+  );
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `import "server-only"` | The build fails if it is imported into the client bundle by mistake |
+| The client on `globalThis` | A hot reload in dev does not create a new client |
+| `PrismaPg` adapter | Prisma 7 connects to the database through a driver adapter |
+| `drizzle(process.env.DATABASE_URL)` | The Drizzle client, with the schema in TypeScript |
+| `select: { id, title }` | Only the needed columns, so less data |
+| `"use cache"` + `cacheTag` | The query result is cached, with a tag |
+| `updateTag("posts")` | The new post shows up in the list immediately |
+
+In a real app, `addPost` should also have an auth check, like `verifySession()` in the [Authentication](/courses/nextjs/authentication) chapter.
+
+### Interview tip
+
+"Why do you get a too many connections error in Next.js dev?" Answer: the module runs again on every hot reload and creates a new client. A `globalThis` singleton lets you reuse one client.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Creating a new PrismaClient in every file"
+  why="Each instance opens its own connection pool, and the database limit runs out quickly."
+  better="Create a singleton in one lib/db.ts and import the same one everywhere."
+/>
+
+<Mistake
+  title="Importing the database client in a Client Component"
+  why="Secrets and Node only code try to go into the browser bundle, and the build breaks."
+  better="Add server-only to the DB file and give data through a Server Component or a Server Action."
+/>
+
+<Mistake
+  title="Selecting the whole row and passing it to a Client Component"
+  why="A password hash or private columns can reach the browser."
+  better="Take only the needed fields with select or columns."
+/>
+
+<Mistake
+  title="Fetching your own API route from a Server Component"
+  why="It is an extra HTTP hop, slow and needlessly complex."
+  better="Call the DAL or an ORM function directly from the Server Component."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Data Fetching](/courses/nextjs/data-fetching), [Server Actions](/courses/nextjs/server-actions), [Environment Variables](/courses/nextjs/environment-variables) |
+| **Alongside** | [Cache Components & use cache](/courses/nextjs/cache-components), [Authentication](/courses/nextjs/authentication) |
+| **After** | [Testing Next.js Apps](/courses/nextjs/testing), [Deployment](/courses/nextjs/deployment) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| ORM | Prisma or Drizzle |
+| Client | A singleton, on `globalThis`, with `server-only` |
+| Reading | Server Component, `"use cache"` or Suspense |
+| Writing | A Server Action, then `updateTag` |
+| Security | Auth in the DAL, only the needed columns |
+
+<Callout variant="important" title="Remember">
+
+Only the server talks to the database. Create one singleton client, keep queries behind the DAL, and refresh the cache with `updateTag` after a mutation.
+
+</Callout>

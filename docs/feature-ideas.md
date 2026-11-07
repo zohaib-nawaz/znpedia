@@ -10,6 +10,7 @@ Content pehle add hua hai. Neeche wali list aage ke features ki hai. Har item ke
 - Course overview pages (`/courses/<course>`)
 - Heading anchor links
 - 404, error, About, Privacy aur Terms pages
+- Do languages: Roman Urdu (`/ur`) aur English (`/en`), switcher aur hreflang ke saath
 
 ## Basic
 
@@ -35,7 +36,6 @@ Content pehle add hua hai. Neeche wali list aage ke features ki hai. Har item ke
 | --- | --- | --- | --- |
 | 17 | User accounts | Login, cloud par progress aur bookmarks sync | L |
 | 18 | AI tutor | Chapter context ke saath sawal poochna, Roman Urdu jawab | L |
-| 19 | Language toggle | Roman Urdu, English aur Urdu script versions (i18n routes) | L |
 | 20 | Certificates | Course complete hone par quiz score ke saath certificate | L |
 | 21 | Practice projects | Har section ke end par guided mini project | L |
 | 22 | Interview prep mode | Sirf "Interview tip" sections aur quizzes ka ek collection | M |

@@ -1,0 +1,202 @@
+---
+title: Early Returns & Braces
+description: Remove the nested if pyramid with early return and guard clauses, and learn why every if, else and loop needs braces, with TypeScript examples.
+keywords:
+  - early return guard clause
+  - guard clauses javascript
+  - avoid nested if
+  - always use curly braces
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Push the wrong or special cases out at the start of a function with `return` or `throw`, so the real work sits below without nesting. And always use braces on every `if`, `else`, `for` and `while`.**
+
+</Callout>
+
+This practice has three parts:
+
+| Part | Meaning |
+| --- | --- |
+| **Guard clause / early return** | Send back a case that cannot continue right away |
+| **Braces always** | Even a one-line body goes inside `{ }`, never a statement on the same line as the condition |
+| **Truthy guard** | Write `if (!user)`, and use `if (user === null)` only when the difference between `null` and `undefined` is the whole point |
+
+## 2. Why does it matter?
+
+A nested `if` pyramid is a weight on your mind. At every level the reader has to remember which condition was true. And adding a line to an `if` without braces is a famous bug.
+
+<CompareTable leftTitle="Nested if and no braces" rightTitle="Early return and braces">
+
+The real logic is hidden 4 levels deep | The real logic is at the bottom of the function, direct
+You have to hunt for which if each else belongs to | Each guard is complete on its own
+A new line added to an if without braces always ran | Only what is inside the braces runs on the condition
+One line changed in the diff, and the indentation fools you | A clear diff, the edge of the block is visible
+
+</CompareTable>
+
+The bug without braces looks like this:
+
+```ts
+if (!user.isAdmin)
+  logDenied(user);
+  return forbidden();
+```
+
+The indentation says both lines belong to the `if`. In reality `return forbidden()` runs for **every user**, admins too.
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Very important, from the first week | The easiest rule, and it prevents the most bugs |
+| **Production code** | Enforce with lint | ESLint `curly: ["error", "all"]` does this for you |
+| **Senior level** | Flag nesting in review | Deep nesting is often a sign that a function does two jobs |
+
+## 4. Bad vs good code
+
+```ts
+function ship(order: Order | null) {
+  if (order) {
+    if (order.status === "paid") {
+      if (order.items.length > 0) {
+        if (order.address) {
+          return carrier.book(order);
+        } else {
+          throw new Error("Missing address");
+        }
+      } else {
+        throw new Error("Empty order");
+      }
+    } else return null;
+  }
+  return null;
+}
+```
+
+```ts
+function ship(order: Order | null) {
+  if (!order) {
+    return null;
+  }
+
+  if (order.status !== "paid") {
+    return null;
+  }
+
+  if (order.items.length === 0) {
+    throw new Error(`Order ${order.id} has no items`);
+  }
+
+  if (!order.address) {
+    throw new Error(`Order ${order.id} has no address`);
+  }
+
+  return carrier.book(order);
+}
+```
+
+| What is the difference? | Bad | Good |
+| --- | --- | --- |
+| Nesting | 4 levels | 1 level |
+| Real work | In the middle of the pyramid | The last line, clear |
+| Error placement | Hunt for which `if` the `else` belongs to | Each guard has its own error |
+| Braces | `else return null` without braces | Braces on every block |
+| Adding a new case | The pyramid gets deeper | One more guard |
+
+### A guard in React
+
+```tsx
+export function Profile({ user }: { user: User | null }) {
+  if (!user) {
+    return <SignInPrompt />;
+  }
+
+  return <ProfileCard user={user} />;
+}
+```
+
+## 5. How to apply it
+
+<Flow title="Flattening a nested function">
+
+Look at the outermost condition
+↓
+Invert it: turn if (order) into if (!order)
+↓
+Return or throw inside the inverted condition
+↓
+The rest of the code moves out one level
+↓
+Repeat the same for the next condition
+↓
+Check braces on every if and else
+
+</Flow>
+
+Make sure with lint:
+
+```json
+{
+  "rules": {
+    "curly": ["error", "all"]
+  }
+}
+```
+
+## 6. Exceptions and common mistakes
+
+Sometimes nesting shows the domain better, like two equal paths that both do a lot of work (`if` paid then this, `else` refund then that). In that case `if`/`else` is fine. The goal of early return is to pull **guards** out, not to get rid of every `else`.
+
+A truthy guard (`if (!count)`) is wrong when `0` or an empty string is a valid value. In that case write a clear check: `if (count === undefined)`.
+
+<Mistake
+  title="A one-line if without braces"
+  why="When someone adds another line later, it will run outside the condition, whatever the indentation says."
+  better="Always use braces and turn on the ESLint curly rule."
+/>
+
+<Mistake
+  title="Condition and statement on the same line"
+  why="if (!user) return; is easy to miss while scanning, and hard to put a breakpoint on in the debugger."
+  better="Put the statement on its own line inside braces."
+/>
+
+<Mistake
+  title="Writing else after a return"
+  why="If the if already returns, you do not need else, it only adds one level of nesting."
+  better="Remove the else and write its code directly below."
+/>
+
+<Mistake
+  title="A truthy guard everywhere when 0 is valid"
+  why="if (!quantity) treats a zero quantity as missing too."
+  better="When a falsy value is valid, write an explicit check for undefined or null."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Conditionals](/courses/javascript/conditionals), [Truthy, Falsy & Equality](/courses/javascript/truthy-falsy-and-equality) |
+| **Alongside** | [Naming Things](/courses/best-practices/naming) |
+| **After** | [Conditionals Without Ternaries](/courses/best-practices/conditionals-without-ternaries), [Fail Fast](/courses/best-practices/fail-fast-and-no-fallbacks), [Small Functions](/courses/best-practices/small-functions) |
+
+## Final quick revision
+
+| Check | Question |
+| --- | --- |
+| Guards | Did the invalid cases leave at the start? |
+| Nesting | Is the real logic on one level? |
+| Braces | Does every if, else, for and while have braces? |
+| One line | Is any statement on the same line as the condition? |
+| Truthy | Is if (!x) catching a valid 0 or empty string? |
+| Lint | Is the curly rule on? |
+
+<Callout variant="important" title="Remember">
+
+Take the bad case out first, then write the good work directly. And never skip braces, that one line saves you a whole night of debugging.
+
+</Callout>

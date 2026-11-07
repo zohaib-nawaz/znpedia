@@ -1,0 +1,222 @@
+---
+title: Query Patterns & Transactions
+description: SQL injection, parameterized queries, N+1 and transactions. Keep queries in the data layer, allow list dynamic columns and make multi step writes atomic.
+keywords:
+  - sql injection parameterized queries n+1
+  - database transactions
+  - n+1 query problem
+  - connection pooling serverless
+  - order by allow list
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**All queries live in the data layer and are always parameterized. Dynamic column names come from an allow list, no query runs inside a loop, and writes that must happen together run in one transaction.**
+
+</Callout>
+
+The data layer is the folder where only the database is talked to, like `lib/orders/orders.queries.ts`. Routes, pages and components call the functions there, and do not build SQL themselves.
+
+## 2. Why does it matter?
+
+Four classic bugs that this rule stops:
+
+- **SQL injection:** someone typed `' or 1=1 --` into a search box. The query was built by joining strings, so every user's data came back. This is still one of the most common breaches today.
+- **N+1:** a blog page shows 50 posts and runs a separate query for each post's author. That is 51 queries and a 3 second page. When traffic grew, the database got tired.
+- **Half done work:** in a money transfer the server crashed after taking money from one account and before adding it to the other. The money vanished.
+- **Too many connections:** on serverless every function call created a new pool. On launch day the database stopped giving out connections.
+
+<CompareTable leftTitle="Scattered queries" rightTitle="Data layer and patterns">
+
+SQL built by joining strings, an open door for injection | Parameters, data never becomes code
+Sort column straight from the URL | Column name from an allow list map
+A query in a loop, N+1 | One query with a join or in
+Two separate writes, half the work done on a crash | A transaction, all or nothing
+A new pool on every request | A small pool, created once and reused
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Parameterized queries are required | Kill the injection habit from the very start |
+| **Production code** | All the patterns are required | Data leaks, wrong balances and outages come from here |
+| **Senior level** | Query reviews, indexes and pool sizing | Reading `explain analyze` and planning for scale |
+
+When to learn it: parameters the moment you write your first SQL query. Transactions and N+1 once the app has relations and flows that involve money.
+
+## 4. Bad vs good code
+
+### Bad: injection, N+1 and no transaction
+
+```ts
+export async function GET(request: Request) {
+  const params = new URL(request.url).searchParams;
+  const search = params.get("q");
+  const sort = params.get("sort");
+
+  const posts = await pool.query(
+    `select * from posts where title ilike '%${search}%' order by ${sort}`,
+  );
+
+  for (const post of posts.rows) {
+    const author = await pool.query(`select * from users where id = '${post.author_id}'`);
+    post.author = author.rows[0];
+  }
+
+  return Response.json(posts.rows);
+}
+
+export async function transfer(fromId: string, toId: string, amount: number) {
+  await pool.query("update accounts set balance = balance - $1 where id = $2", [amount, fromId]);
+  await pool.query("update accounts set balance = balance + $1 where id = $2", [amount, toId]);
+}
+```
+
+### Good: parameters, allow list, one query
+
+File `lib/posts/posts.queries.ts`:
+
+```ts
+const SORT_COLUMNS = {
+  newest: "p.created_at desc",
+  title: "p.title asc",
+} as const;
+
+export type PostSort = keyof typeof SORT_COLUMNS;
+
+export async function searchPosts(search: string, sort: PostSort) {
+  const result = await pool.query<PostWithAuthorRow>(
+    `select p.id, p.title, p.created_at, u.name as author_name
+       from posts p
+       join users u on u.id = p.author_id
+      where p.title ilike $1
+      order by ${SORT_COLUMNS[sort]}
+      limit 50`,
+    [`%${search}%`],
+  );
+
+  return result.rows;
+}
+```
+
+`sort` was already validated in Zod with `z.enum(["newest", "title"])`, and only the value from our own map goes into the SQL, never the user's string.
+
+### Good: a transfer with a transaction
+
+```ts
+export async function transfer(fromId: string, toId: string, amountCents: number) {
+  const client = await pool.connect();
+
+  try {
+    await client.query("begin");
+
+    const debited = await client.query(
+      "update accounts set balance_cents = balance_cents - $1 where id = $2 and balance_cents >= $1",
+      [amountCents, fromId],
+    );
+    if (debited.rowCount === 0) {
+      throw new InsufficientFundsError(fromId);
+    }
+
+    await client.query("update accounts set balance_cents = balance_cents + $1 where id = $2", [amountCents, toId]);
+    await client.query("commit");
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+```
+
+In ORMs the same job looks like `db.transaction(async (tx) => { ... })`. Note that the balance check and the subtraction are in one statement, not a separate `select` followed by an `update`, otherwise two requests can pass the check at the same time.
+
+### What is the difference?
+
+| Thing | Bad | Good |
+| --- | --- | --- |
+| Search | Joined into the string | A `$1` parameter |
+| Sort | The URL's string goes into SQL | An allow list map |
+| Authors | A separate query per post | One `join` |
+| Columns | `select *` | Only the needed columns, with a `limit` |
+| Transfer | Two separate writes | A transaction, `rollback` on failure |
+| Balance check | None | `where balance_cents >= $1` in the same statement |
+
+## 5. How to apply it
+
+<Flow title="Before writing a query">
+
+Put the query in a data layer function
+↓
+Every value goes in as a parameter, never joined into a string
+↓
+Dynamic names come from an allow list
+↓
+A query in a loop? Turn it into one query with a join or in
+↓
+Several writes? Wrap them in a transaction
+
+</Flow>
+
+For connections:
+
+- On serverless keep the pool small (a few connections) and create it once at module level and reuse it, or use the provider's pooler.
+- Always verify TLS with a managed database. Never use `rejectUnauthorized: false` in production, give it the provider's CA certificate instead.
+- If a query is slow, do not guess. Use `explain analyze` to see whether an index is being used.
+
+## 6. Exceptions and common mistakes
+
+ORMs and query builders (Prisma, Drizzle, Kysely) apply parameters themselves, but joining strings inside their "raw" functions opens injection again. Admin reports that run only now and then can tolerate N+1, but user facing list pages cannot.
+
+<Mistake
+  title="User input in ORDER BY or a table name"
+  why="Column names cannot be parameters, so people join strings and injection comes back."
+  better="Keep a constant map and let the user pick only its key, so the value is always yours."
+/>
+
+<Mistake
+  title="Checking with a select first, then updating separately"
+  why="Two requests pass the check together and both updates run, and stock or balance goes negative."
+  better="Check and update in one statement, or let the database decide with a unique constraint and on conflict."
+/>
+
+<Mistake
+  title="A network call inside a transaction"
+  why="If the email or payment API is slow, the transaction holds its locks for a long time and other requests wait."
+  better="Keep the transaction short, and make outside calls after the commit or send them to a background job."
+/>
+
+<Mistake
+  title="Writing a query in a component or route"
+  why="The tenant filter and parameters have to be reviewed everywhere, and one place gets missed."
+  better="All queries in the data layer, and a query outside it is a review blocker."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Database Naming & Design](/courses/best-practices/database-design), [Database Integration](/courses/nextjs/database-integration), [Service Layer & Thin Controllers](/courses/best-practices/service-layer) |
+| **Alongside** | [Authorization & Multi-Tenancy](/courses/best-practices/authorization-and-tenancy), [Generated Database Types](/courses/best-practices/generated-types) |
+| **After** | [Common Vulnerabilities (OWASP)](/courses/best-practices/common-vulnerabilities), [Performance: Measure First](/courses/best-practices/performance-measure-first) |
+
+## Final quick revision
+
+| Check | Question |
+| --- | --- |
+| Place | Is the query only in the data layer? |
+| Parameters | Did any value go into SQL by string joining? |
+| Dynamic names | Are sort and columns from an allow list? |
+| N+1 | Is a query running inside a loop? |
+| Transaction | Several writes together, with rollback on failure? |
+| Connections | A small reused pool and verified TLS? |
+
+<Callout variant="important" title="Remember">
+
+User data is always a parameter, never part of the SQL. And work that does harm when it is only half done belongs in a transaction, so it either completes fully or not at all.
+
+</Callout>

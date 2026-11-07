@@ -1,0 +1,204 @@
+---
+title: Forms & Validation
+description: Learn Next.js forms with Zod validation, Server Actions and useActionState for errors, pending state and safe data handling.
+keywords:
+  - next.js forms zod validation
+  - useactionstate next.js
+  - zod safeparse server action
+  - next.js form errors
+---
+
+## 1. What are forms and validation?
+
+<Callout variant="tip" title="Short definition">
+
+**In Next.js, a form submits to a Server Action, the data is validated on the server with a Zod schema, and `useActionState` brings the errors and the pending state back to the UI.**
+
+</Callout>
+
+Validation means checking that what the user sent has the right shape: the email is valid, the password is long enough, the quantity is a number. The browser's `required` validation is only a convenience. **Real validation always happens on the server.**
+
+## 2. Why does it matter?
+
+<CompareTable leftTitle="Without server validation" rightTitle="Zod + Server Action">
+
+Checked only in the browser, can be bypassed | Schema on the server, cannot be bypassed
+if else for every field | One schema, all rules in one place
+Showing error messages is hard | fieldErrors go straight into the UI
+Writing TypeScript types separately | The type is inferred from the schema
+Risk of double submit | The button is disabled with isPending
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Form | Validation rules |
+| --- | --- |
+| **Signup** | Email format, password length, name required |
+| **Contact form** | Minimum message length, valid email |
+| **Checkout** | Address fields, positive quantity |
+| **Profile edit** | Unique username, maximum bio length |
+| **Search filters** | Price range numbers, category enum |
+
+## 4. How does it work?
+
+<Flow title="Form validation flow">
+
+The user submits the form
+↓
+useActionState calls the action
+↓
+The Server Action reads FormData
+↓
+Zod safeParse
+↓
+Fail: errors are returned and shown on the form
++
+Pass: save to the database + redirect
+
+</Flow>
+
+<Callout variant="important" title="Mental model">
+
+**Validation on the client is to help the user, validation on the server is to protect the app.**
+
+</Callout>
+
+## 5. Code example
+
+### Step 1: schema and action
+
+```ts
+"use server";
+
+import * as z from "zod";
+import { redirect } from "next/navigation";
+import { db } from "@/lib/db";
+
+const ContactSchema = z.object({
+  name: z.string().trim().min(2, { error: "Name must be at least 2 characters" }),
+  email: z.email({ error: "Enter a valid email" }),
+  message: z.string().trim().min(10, { error: "Write a slightly longer message" }),
+});
+
+export type ContactState = {
+  errors?: Partial<Record<"name" | "email" | "message", string[]>>;
+  message?: string;
+};
+
+export async function sendMessage(
+  prevState: ContactState,
+  formData: FormData,
+): Promise<ContactState> {
+  const result = ContactSchema.safeParse({
+    name: formData.get("name"),
+    email: formData.get("email"),
+    message: formData.get("message"),
+  });
+
+  if (!result.success) {
+    return { errors: z.flattenError(result.error).fieldErrors };
+  }
+
+  await db.message.create({ data: result.data });
+  redirect("/contact/thanks");
+}
+```
+
+### Step 2: client form with useActionState
+
+```tsx
+"use client";
+
+import { useActionState } from "react";
+import { sendMessage, type ContactState } from "./actions";
+
+const initialState: ContactState = {};
+
+export function ContactForm() {
+  const [state, formAction, isPending] = useActionState(sendMessage, initialState);
+
+  return (
+    <form action={formAction}>
+      <input name="name" placeholder="Name" />
+      {state.errors?.name && <p>{state.errors.name[0]}</p>}
+
+      <input name="email" type="email" placeholder="Email" />
+      {state.errors?.email && <p>{state.errors.email[0]}</p>}
+
+      <textarea name="message" placeholder="Message" />
+      {state.errors?.message && <p>{state.errors.message[0]}</p>}
+
+      <button type="submit" disabled={isPending}>
+        {isPending ? "Sending..." : "Send"}
+      </button>
+    </form>
+  );
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `z.object({...})` | The schema of the form, with rules for each field |
+| `safeParse(...)` | Does not throw an error, returns `success` as true or false |
+| `z.flattenError(...).fieldErrors` | An object with the error messages of each field |
+| `prevState` | With `useActionState`, the first argument of the action is the previous state |
+| `useActionState(action, initial)` | Returns `[state, formAction, isPending]` |
+| `isPending` | Disables the button while the submit is running |
+| `result.data` | Validated and typed data, save only this |
+
+### Interview tip
+
+When you use `useActionState`, the signature of the Server Action changes: the first argument is `prevState` and the second is `formData`. Forgetting this is the most common interview trap.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Relying only on client side validation"
+  why="Anyone can send bad data straight to the Server Action with DevTools or curl."
+  better="Always run safeParse with a Zod schema in every Server Action."
+/>
+
+<Mistake
+  title="Forgetting the prevState argument with useActionState"
+  why="The first argument is the state and FormData comes second, otherwise formData.get crashes."
+  better="Always write the signature with both prevState and formData."
+/>
+
+<Mistake
+  title="Using parse and leaving the error unhandled"
+  why="parse throws an error on failure, and the user sees a generic error page."
+  better="Use safeParse and return the errors in the state."
+/>
+
+<Mistake
+  title="Putting raw formData into the database"
+  why="Extra or wrong fields can also be saved, such as a role of admin."
+  better="Save only result.data, which has passed the schema."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Server Actions](/courses/nextjs/server-actions), [Server & Client Components](/courses/nextjs/server-and-client-components) |
+| **Alongside** | [Revalidation](/courses/nextjs/revalidation) |
+| **After** | [Authentication](/courses/nextjs/authentication), [Database Integration](/courses/nextjs/database-integration), [Testing Next.js Apps](/courses/nextjs/testing) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Validation library | Zod, with `safeParse` |
+| Field errors | `z.flattenError(error).fieldErrors` |
+| Hook | `useActionState(action, initialState)` |
+| Action signature | `(prevState, formData)` |
+| Loading | Disable the button with `isPending` |
+
+<Callout variant="important" title="Remember">
+
+The real guard of a form is the server. Validate with a Zod schema, return the errors in the state, and save only the validated `result.data`.
+
+</Callout>

@@ -1,0 +1,190 @@
+---
+title: Pull Requests & Code Review
+description: Code review best practices and what makes a good pull request, a small diff, a template-based description, reviewer duties and how to write review comments.
+keywords:
+  - code review best practices
+  - pull request description template
+  - small pull requests
+  - how to review code
+  - pr review checklist
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Every change goes into `main` through a small pull request: a description filled from the template, green CI, and approval from at least one person other than the author.**
+
+</Callout>
+
+A pull request (PR) does two jobs: it catches bugs before production, and it lets the team know what changed in the code and why. Review is not gatekeeping, it is a second pair of eyes.
+
+## 2. Why does it matter?
+
+Nobody really reviews a 2,000 line PR, they just scroll. Without a description the reviewer has to guess what the code is trying to do, so they comment only on style and miss the real problem (a missing auth check).
+
+<Callout variant="note" title="Real pattern">
+
+One PR contained a feature, a refactor and a dependency upgrade, all 1,800 lines. It was approved with "LGTM". After deploy, one mutation turned out to have no authorization. Later everyone admitted that nobody had actually opened and read that file.
+
+</Callout>
+
+<CompareTable leftTitle="Weak PR process" rightTitle="Strong PR process">
+
+1,500 lines, three jobs at once | Under 400 lines, one job
+Description: fixed stuff | What, why, how it was tested
+The author merges without review | Approval from someone else
+CI red but merged | No merge without green CI
+Comments get no reply | Every comment gets a reply, even just done
+Review pending for weeks | Within one working day
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Open a PR for yourself and write a description | You learn to explain your own work |
+| **Production code** | The full rule | Every merge goes to production |
+| **Senior level** | Being a good reviewer, owning sensitive areas | The team's quality bar is built by you |
+
+## 4. Bad vs good code
+
+### Bad PR description
+
+```bash
+title: Updates
+body: fixed some bugs and added the thing we discussed
+```
+
+### Good PR description
+
+```bash
+title: block expired coupons at checkout
+
+why
+  expired coupons were still applied because the check used the server
+  timezone, so customers in later timezones got a free extra day
+
+what changed
+  coupon expiry compared in utc in the coupon service
+  checkout returns 422 with a clear message for expired coupons
+
+how tested
+  unit tests for the expiry helper around midnight utc
+  endpoint tests: valid coupon, expired coupon (422), other store coupon (404)
+
+task: link to the tracker ticket
+screenshots: error message on checkout attached
+```
+
+### Review comments: bad vs good
+
+```bash
+hmm, not sure about this, maybe we could think about another approach?
+```
+
+```bash
+check the order belongs to the current store before updating
+
+  const order = await orders.findForStore(id, user.storeId)
+```
+
+A good comment says in one line what to do, and gives the fix with code.
+
+### What is the difference?
+
+| Thing | Bad | Good |
+| --- | --- | --- |
+| Title | `Updates` | What changed, in one line |
+| Why | Missing | The cause of the bug and its impact |
+| Testing | Missing | The exact cases |
+| Comment | A vague question | Clear instruction and code |
+
+## 5. How to apply it
+
+### For the author
+
+<Flow title="From opening the PR to merge">
+
+Keep the work the size of one PR (under 400 lines)
+↓
+Fill every section of the template, delete what does not apply
+↓
+Link the task or ticket
+↓
+CI green: typecheck, lint, build, tests, secret scan
+↓
+Approval from someone else
+↓
+Reply to every comment
+↓
+The author squash merges
+
+</Flow>
+
+For big work, build a stack of PRs: the migration first, then the service and tests, then the UI.
+
+### For the reviewer
+
+| Job | Why |
+| --- | --- |
+| Read the description before the diff | Know what the code is trying to do, and ask if the "why" is missing |
+| Look for an authorization check on every mutation | This is the most dangerous bug |
+| Tenant scoping on every query | One org's data must not show up for another |
+| New env vars in `.env.example`? | So the next deploy does not break |
+| Tests for new endpoints? | Definition of done |
+| Block only for correctness, security or standards | Not for likes and dislikes |
+| Review within one working day, otherwise hand it to someone else | PRs should not sit waiting |
+
+For a PR that touches auth, billing, migrations or deploy scripts, it is better to get approval from the owner of that area.
+
+## 6. Exceptions and common mistakes
+
+**When the rule does not apply:** a typo or a one-line docs fix does not need the full template, but it still needs a PR and green CI. AI review tools are helpful, but they do not replace a human approval.
+
+Teams differ on merge style: some prefer squash merge (one PR, one commit), others merge commits or rebase so every small commit stays on `main`. With squash, the PR title becomes the final commit message, so the title must be clear.
+
+<Mistake
+  title="LGTM without reading"
+  why="Approval means you took responsibility, and a missing auth check is on your name too."
+  better="Read at least the mutations, queries and tests, or say clearly that you cannot review it."
+/>
+
+<Mistake
+  title="A feature, a refactor and an upgrade in one PR"
+  why="The reviewer cannot focus on any one of them and a bug slips through."
+  better="A separate PR for each job, refactor first and behaviour change after."
+/>
+
+<Mistake
+  title="Merging while ignoring a comment"
+  why="The reviewer does not know whether they were heard, and trust drops."
+  better="Reply to every comment: you fixed it, or why you did not."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Git Branches & Commits](/courses/best-practices/git-branches-and-commits), [Definition of Done](/courses/best-practices/definition-of-done) |
+| **Alongside** | [Authorization & Multi-Tenancy](/courses/best-practices/authorization-and-tenancy), [Following Existing Patterns](/courses/best-practices/following-existing-patterns) |
+| **After** | [CI/CD & Environments](/courses/best-practices/ci-cd-and-environments), [Documentation & Decision Records](/courses/best-practices/documentation-and-decisions) |
+
+## Final quick revision
+
+| Check | Yes? |
+| --- | --- |
+| PR under 400 lines, one job | |
+| Template filled: why, what, how tested | |
+| Task linked | |
+| CI green | |
+| Approval from someone else | |
+| Every comment replied to | |
+| Reviewer checked auth and tenant scoping | |
+
+<Callout variant="important" title="Remember">
+
+A small PR, a clear "why", and a reviewer who reads the mutations. The goal of review is to make the code better, not to win.
+
+</Callout>

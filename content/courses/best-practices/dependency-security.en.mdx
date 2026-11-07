@@ -1,0 +1,203 @@
+---
+title: Dependencies & Supply Chain
+description: The basics of npm supply chain security. Use a lockfile and npm ci, automate updates, choose new packages carefully and keep your CI workflows safe.
+keywords:
+  - npm supply chain security
+  - package-lock npm ci
+  - dependabot renovate
+  - npm audit
+  - github actions permissions
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Every dependency is code you did not write but now run. Commit the lockfile, run `npm ci` in CI, keep updates automated and grouped, and add a new package only after thinking it through.**
+
+</Callout>
+
+Supply chain means everything that reaches your code from outside: npm packages, their dependencies, tools downloaded in CI, and GitHub Actions. If malicious code gets into any one of them, it reaches your server and your users.
+
+## 2. Why does it matter?
+
+Even if a typical Next.js project has 30 direct dependencies, `node_modules` holds hundreds of packages. The maintainer of each one can run code in your production.
+
+<Callout variant="note" title="Real incidents">
+
+In 2018 a popular npm package called `event-stream` got a new maintainer, who hid code in one of its dependencies that targeted a specific crypto wallet app. In September 2025 the maintainer accounts of some very heavily downloaded packages were hacked through phishing, and new versions started altering crypto transactions in the browser. Projects that installed without a lockfile, or on `latest`, got those versions immediately.
+
+</Callout>
+
+<CompareTable leftTitle="Without discipline" rightTitle="With discipline">
+
+A new version can arrive on every install | The lockfile fixes exact versions
+npm install in CI can change the lockfile | npm ci in CI installs strictly from the lockfile
+Updates once a year, and everything breaks | Small grouped updates every week
+A peer conflict hidden with a legacy flag | The conflict is resolved
+A workflow with full write permission | Minimum permissions
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Commit the lockfile and build the habit of choosing packages | A typosquatted package can do damage even on your laptop |
+| **Production code** | The full rule, with automated updates | A compromised package reaches your users' data |
+| **Senior level** | CI hardening, pinned tools, review process | The pipeline itself is an attack surface |
+
+## 4. Bad vs good code
+
+### Bad
+
+```bash
+npm install some-pakage
+git add package.json
+git commit -m "add lib"
+```
+
+```json
+{
+  "dependencies": {
+    "date-lib": "*",
+    "ui-kit": "latest"
+  }
+}
+```
+
+In CI:
+
+```bash
+npm install --legacy-peer-deps
+```
+
+A spelling mistake (`some-pakage`) opens the door to typosquatting, the lockfile was not committed, and `*` or `latest` means whatever is newest on every build.
+
+### Good
+
+```bash
+npm view some-package maintainers time.modified repository.url
+npm install some-package
+git add package.json package-lock.json
+git commit -m "add some-package for csv parsing"
+```
+
+In CI:
+
+```bash
+npm ci
+npm audit --audit-level=high
+```
+
+Minimum permissions in a GitHub Actions workflow:
+
+```yaml
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci
+      - run: npm test
+```
+
+### What is the difference?
+
+| Thing | Bad | Good |
+| --- | --- | --- |
+| Version | `*` or `latest` | Exact in the lockfile |
+| CI install | `npm install` | `npm ci` |
+| Peer conflict | `--legacy-peer-deps` | Resolve the real conflict |
+| New package | Without looking | Check maintainers, activity, repo |
+| Workflow | Default permissions | `contents: read` |
+
+## 5. How to apply it
+
+<Flow title="Before adding a new package">
+
+Can the platform or an existing package do this job?
+↓
+Confirm the spelling of the name and the official repo
+↓
+Look at the maintainers, last publish and open issues
+↓
+Look at install scripts and the dependency count
+↓
+Install it and commit it together with the lockfile
+
+</Flow>
+
+At the repo level:
+
+| Job | How |
+| --- | --- |
+| **Automated updates** | Dependabot or Renovate on, one grouped PR per week |
+| **Audit** | `npm audit` in CI, fail on high and critical |
+| **CI tools** | Pin the version of downloaded binaries and verify the checksum |
+| **PR workflows** | Use `pull_request`, not `pull_request_target`, when you need to run the PR's code |
+| **Third party scripts** | Pin vendored scripts in the repo by hash and review them like code |
+
+`pull_request_target` runs with the base repo's secrets. If it runs code from a PR that came from a fork, the attacker gets your secrets.
+
+## 6. Exceptions and common mistakes
+
+**When the rule does not apply:** a small throwaway script that is never deployed does not need this much process. But running a random package with `npx` also runs code on your machine, so check the name there too.
+
+<Mistake
+  title="Clearing an audit warning with npm audit fix --force"
+  why="Force changes major versions and the app can quietly break."
+  better="Read the report, check whether you actually use the vulnerable code path, then do a controlled upgrade."
+/>
+
+<Mistake
+  title="Not merging updates for months"
+  why="Then one day you have to upgrade ten major versions at once for a security fix."
+  better="Merge the weekly grouped update PRs the same week once CI is green."
+/>
+
+<Mistake
+  title="A big package for a small job"
+  why="Every package brings its own dependencies and maintainers with it."
+  better="Write a two or three line job yourself or use a platform API, like structuredClone or Intl."
+/>
+
+<Mistake
+  title="A deprecated package for security work"
+  why="Bugs in an unmaintained crypto or auth library will never be fixed."
+  better="Use the language or framework's built-in or an actively maintained library."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [npm & Packages](/courses/javascript/npm-and-packages), [Secrets Management](/courses/best-practices/secrets-management) |
+| **Alongside** | [Common Vulnerabilities (OWASP)](/courses/best-practices/common-vulnerabilities), [Security Baseline](/courses/best-practices/security-baseline) |
+| **After** | [CI/CD & Environments](/courses/best-practices/ci-cd-and-environments), [Production Readiness Checklist](/courses/best-practices/production-readiness-checklist) |
+
+## Final quick revision
+
+| Check | Yes? |
+| --- | --- |
+| `package-lock.json` committed | |
+| `npm ci` in CI | |
+| Dependabot or Renovate, weekly and grouped | |
+| No `--legacy-peer-deps` in CI | |
+| Minimum `permissions` in workflows | |
+| Checked before adding a new package | |
+
+<Callout variant="important" title="Remember">
+
+`npm install` is like handing a stranger the key to your server. Fewer packages, locked versions, and one minute of research on every new package.
+
+</Callout>

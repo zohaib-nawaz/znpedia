@@ -82,3 +82,32 @@ Koi aur JSX component use na karein.
 ```bash
 npm run check:content
 ```
+
+## English translation
+
+Har chapter ka English version usi folder mein `<slug>.en.mdx` hai. Tafseel: `docs/i18n.md`.
+
+- Roman Urdu file source hai. Structure bilkul wahi rakhein: utni hi `##` headings, utne hi code blocks, utne hi `<Mistake />`, wahi components wahi order mein.
+- `title` same rakhein. `description` naya English likhein (70 se 170 characters). `keywords` English search phrases, pehla wahi primary keyword, "in urdu" wale hata dein.
+- Natural, simple English likhein, lafz-ba-lafz tarjuma nahi. Audience: beginner aur junior developers.
+- Code blocks ka code same rakhein. Sirf code ke andar Roman Urdu text (strings, labels) English mein karein, identifiers na badlein.
+- Component props bhi translate karein: `Callout title`, `Flow` lines, `CompareTable` rows aur titles, `Mistake` ke `title`, `why`, `better`.
+- Internal links `/courses/...` hi rehne dein. Renderer language prefix khud lagata hai.
+- Em dash aur en dash nahi.
+
+Headings:
+
+| Roman Urdu | English |
+| --- | --- |
+| `## 1. <Topic> kya hai?` | `## 1. What is <topic>?` |
+| `## 2. Kyun zaroori hai?` | `## 2. Why does it matter?` |
+| `## 3. Kahan use hota hai?` | `## 3. Where is it used?` |
+| `## 4. Kaise kaam karta hai?` | `## 4. How does it work?` |
+| `## 5. Code example` | `## 5. Code example` |
+| `## 6. Common mistakes` | `## 6. Common mistakes` |
+| `## 7. Pehle aur baad mein kya seekhein?` | `## 7. What to learn before and after` |
+| `## Final quick revision` | `## Final quick revision` |
+
+Best Practices course: `## 1. What is this practice?`, `## 2. Why does it matter?`, `## 3. When to follow it`, `## 4. Bad vs good code`, `## 5. How to apply it`, `## 6. Exceptions and common mistakes`, `## 7. What to learn before and after`, `## Final quick revision`.
+
+Check: `npm run check:content <course>/<slug>` English file bhi check karta hai.

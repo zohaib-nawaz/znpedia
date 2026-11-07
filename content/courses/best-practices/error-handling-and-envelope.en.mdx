@@ -1,0 +1,227 @@
+---
+title: Error Handling & Error Envelope
+description: Keep your API error response format consistent, use the right status codes, never leak internals in a 500, and write the real cause to the server log.
+keywords:
+  - api error response format
+  - http status codes api
+  - error envelope json
+  - nextjs route handler errors
+  - error handling best practices
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Every API error goes out in one JSON shape (an envelope) with the right status code. The real cause of an unexpected error goes only to the server log, and the client gets a generic message.**
+
+</Callout>
+
+An envelope is a fixed wrapper. In this course the shape for Next.js is:
+
+```json
+{ "error": "Human readable message", "code": "OPTIONAL_MACHINE_CODE" }
+```
+
+The shape can be anything, like `{ message, errors, success }`. What matters is that there is **one** across the whole app, and that message strings are constants so tests assert the same constant the route returns.
+
+## 2. Why does it matter?
+
+One endpoint returns `{ message }`, another returns `{ err }`, and a third returns `{ success: false }` with status 200. The frontend developer writes a different `if` for every call and forgets one. The user gets a blank screen instead of "Something went wrong".
+
+The security bug is more dangerous. A catch block sent `error.message` to the client. Now the response says `duplicate key value violates unique constraint "users_email_key"`. The attacker learns the table name, the column, and also that this email is registered.
+
+<CompareTable leftTitle="Without the rule" rightTitle="With the rule">
+
+Every endpoint has its own error shape | One envelope, the client handles it in one place
+Status 200 even on an error | The status code itself tells what happened
+A 500 leaks a SQL error or stack trace | A generic message, the details go to the log
+A login error reveals that the account exists | Auth errors hide whether an account exists
+An empty catch swallows the error | The error is either handled or logged and passed up
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Learn to keep status codes right | This is where you understand the difference between 401, 403, 404 and 422 |
+| **Production code** | A must | The client, tests and monitoring all run on this shape |
+| **Senior level** | Design the envelope and the error classes | A new endpoint gives the right errors automatically |
+
+When to learn it: when your frontend first needs to show an API's error.
+
+## 4. Bad vs good code
+
+### Bad: its own way everywhere
+
+```ts
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const invite = await acceptInvite(body.token);
+    return Response.json({ success: true, invite });
+  } catch (e) {
+    const error = e as Error;
+    return Response.json({ success: false, message: error.message, stack: error.stack });
+  }
+}
+```
+
+The status is always 200. An expired invite and a database crash look the same. The stack trace and the internal message go straight to the browser.
+
+### Good: error classes and one mapper
+
+File `lib/errors/errors.ts`:
+
+```ts
+import { NextResponse } from "next/server";
+
+import { GENERIC_ERROR } from "./errors.types";
+
+export class AppError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code: string,
+  ) {
+    super(message);
+  }
+}
+
+export function toErrorResponse(error: unknown, scope: string) {
+  if (error instanceof AppError) {
+    return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });
+  }
+
+  console.error(`[${scope}]`, error);
+
+  return NextResponse.json({ error: GENERIC_ERROR }, { status: 500 });
+}
+```
+
+The service throws an `AppError` in expected situations:
+
+```ts
+export async function acceptInvite(token: string) {
+  const invite = await findInviteByTokenHash(hashToken(token));
+  if (!invite) {
+    throw new AppError(INVITE_MESSAGES.notFound, 404, "INVITE_NOT_FOUND");
+  }
+  if (invite.expiresAt < new Date()) {
+    throw new AppError(INVITE_MESSAGES.expired, 410, "INVITE_EXPIRED");
+  }
+
+  return markInviteAccepted(invite.id);
+}
+```
+
+The handler only maps:
+
+```ts
+export async function POST(request: Request) {
+  const parsed = acceptInviteSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: INVITE_MESSAGES.invalidInput }, { status: 422 });
+  }
+
+  try {
+    const invite = await acceptInvite(parsed.data.token);
+    return NextResponse.json({ invite });
+  } catch (error) {
+    return toErrorResponse(error, "invites:accept");
+  }
+}
+```
+
+### What is the difference?
+
+| Thing | Bad code | Good code |
+| --- | --- | --- |
+| Status | Always 200 | 404, 410, 422, 500, whichever is true |
+| Shape | `success`, `message`, `stack` | `error` and `code` |
+| Unexpected error | Message and stack go to the client | A generic message, the cause is logged with `[scope]` |
+| Messages | Inline strings | Constants, and tests use them too |
+
+### A small map of status codes
+
+| Status | When |
+| --- | --- |
+| 400 | The request itself is broken, like invalid JSON |
+| 401 | The caller is not authenticated |
+| 403 | Authenticated but not allowed |
+| 404 | The resource was not found |
+| 409 | A conflict, like a duplicate or out of stock |
+| 422 | The shape is fine, but the values fail validation |
+| 429 | Rate limited, with a `Retry-After` header |
+| 500 | A truly unexpected failure |
+| 502 / 503 | A problem with an upstream service or configuration |
+
+## 5. How to apply it
+
+<Flow title="The journey of an error">
+
+The service throws a typed error in expected situations
+↓
+Do not catch unexpected errors, let them go up
+↓
+The handler builds the envelope with a mapper
+↓
+A known error goes out with its own status
+↓
+Everything else is a 500, the cause goes to the log, the client gets a generic message
+
+</Flow>
+
+## 6. Exceptions and common mistakes
+
+Sometimes a 404 is returned on purpose instead of a 403, so an attacker cannot tell that the resource exists. That is fine if it is done deliberately and the team knows. In login and "forgot password" too, keep the response the same whether the account exists or not.
+
+<Mistake
+  title="Leaving a catch block empty"
+  why="The error disappears, the user sees a false success, and there is no trace in the logs."
+  better="Either handle the error and give the right response, or log it and throw it up."
+/>
+
+<Mistake
+  title="Sending error.message in a 500 response"
+  why="Internal details of the database, file paths and libraries reach the attacker."
+  better="Give the client a generic constant, and log the real error on the server with a scope prefix."
+/>
+
+<Mistake
+  title="Returning 401 for a signed in user without permission"
+  why="The client thinks the session expired and keeps sending the user back to the login page."
+  better="Use 401 only for missing or invalid credentials, and 403 when permission is missing."
+/>
+
+<Mistake
+  title="Logging and rethrowing at every layer"
+  why="The same error shows up three or four times in the log and the real place is hard to find."
+  better="Log the error in one place, usually where it is turned into a response."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Error Handling](/courses/javascript/error-handling), [Route Handlers (API)](/courses/nextjs/route-handlers), [API Handler Shape](/courses/best-practices/api-handler-shape) |
+| **Alongside** | [Input Validation at the Boundary](/courses/best-practices/input-validation), [Logging](/courses/best-practices/logging) |
+| **After** | [One Fetch Client](/courses/best-practices/single-fetch-client), [Shared API Contracts](/courses/best-practices/shared-api-contracts) |
+
+## Final quick revision
+
+| Check | Question |
+| --- | --- |
+| Envelope | Is every error in one shape? |
+| Status | Does the status code tell the truth? |
+| Leak | Does a 500 ever send `error.message` or a stack? |
+| Log | Is an unexpected error logged with `[scope]`? |
+| Constants | Are messages constants that tests use too? |
+| Auth | Do auth errors hide whether an account exists? |
+
+<Callout variant="important" title="Remember">
+
+Tell the client only as much as it needs to take the next step. Write the rest of the story in the log, where only your team can read it.
+
+</Callout>

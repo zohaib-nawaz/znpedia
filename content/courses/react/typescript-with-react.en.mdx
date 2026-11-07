@@ -1,0 +1,200 @@
+---
+title: TypeScript with React
+description: React TypeScript for beginners. Learn how to type props, useState generics, events, refs and children correctly, with simple examples.
+keywords:
+  - react typescript
+  - typescript props react
+  - react event types
+  - usestate typescript
+---
+
+## 1. What is TypeScript with React?
+
+<Callout variant="tip" title="Short definition">
+
+**TypeScript gives types to a React component's props, state, events and refs, so mistakes are caught in the editor before the code runs.**
+
+</Callout>
+
+TypeScript is a type system on top of JavaScript. React files are written with the `.tsx` extension. The Vite `react-ts` template and Next.js both come with TypeScript out of the box.
+
+You do not have to type everything. TypeScript **infers** a lot on its own, and your job is mostly to type props and a few edge cases.
+
+## 2. Why does it matter?
+
+In a big app it is hard to remember which component takes which props. In JavaScript a mistake shows up at runtime, often in front of the user.
+
+<CompareTable leftTitle="JavaScript only" rightTitle="With TypeScript">
+
+A wrong prop is found at runtime | A red line in the editor, immediately
+You have to remember prop names | Autocomplete tells you everything
+Crashes from undefined | Optional values must be checked
+Fear of breaking things in a refactor | Rename updates every place
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Thing | How to type it |
+| --- | --- |
+| **Props** | `type ButtonProps = { ... }` |
+| **Children** | `React.ReactNode` |
+| **State that can be null** | `useState<User \| null>(null)` |
+| **An input's onChange** | `React.ChangeEvent<HTMLInputElement>` |
+| **A DOM ref** | `useRef<HTMLInputElement>(null)` |
+| **Extending native props** | `ComponentProps<"button">` |
+
+## 4. How does it work?
+
+TypeScript works only at development and build time. Types are removed before the code reaches the browser, so there is no extra code at runtime.
+
+<Flow title="The journey of a type check">
+
+Write the component in .tsx
+↓
+Define the types for props and state
+↓
+The editor and tsc catch mismatches
+↓
+Types are stripped at build time
+↓
+Plain JavaScript runs in the browser
+
+</Flow>
+
+## 5. Code example
+
+### Example 1: Props, children and optional values
+
+```tsx
+import type { ReactNode } from "react";
+
+type CardProps = {
+  title: string;
+  variant?: "primary" | "danger";
+  children: ReactNode;
+};
+
+export function Card({ title, variant = "primary", children }: CardProps) {
+  return (
+    <section className={variant}>
+      <h2>{title}</h2>
+      {children}
+    </section>
+  );
+}
+```
+
+### Example 2: State, events and refs
+
+```tsx
+import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
+
+type User = { id: number; name: string };
+
+export function SearchForm() {
+  const [query, setQuery] = useState("");
+  const [user, setUser] = useState<User | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function handleChange(e: ChangeEvent<HTMLInputElement>) {
+    setQuery(e.target.value);
+  }
+
+  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setUser({ id: 1, name: query });
+    inputRef.current?.focus();
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input ref={inputRef} value={query} onChange={handleChange} />
+      <button type="submit">Search</button>
+      {user && <p>Found: {user.name}</p>}
+    </form>
+  );
+}
+```
+
+### Example 3: Extending native button props
+
+```tsx
+import type { ComponentProps } from "react";
+
+type ButtonProps = ComponentProps<"button"> & { loading?: boolean };
+
+export function Button({ loading = false, children, ...rest }: ButtonProps) {
+  return (
+    <button disabled={loading} {...rest}>
+      {loading ? "Please wait..." : children}
+    </button>
+  );
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `variant?:` | An optional prop, with the default value in the destructuring |
+| `"primary" \| "danger"` | A union type, only these two values are allowed |
+| `useState("")` | The type `string` is inferred automatically |
+| `useState<User \| null>(null)` | Null at first, a User later |
+| `useRef<HTMLInputElement>(null)` | In React 19, `useRef` requires an argument |
+| `ComponentProps<"button">` | You get `onClick`, `type`, `disabled` and every other native prop |
+
+### Interview tip
+
+In React 19, `ref` is a normal prop, so new components do not need `forwardRef`. `ComponentProps<"input">` includes `ref` too. `React.FC` is no longer needed, and typing the props directly is the common, clean way.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Using any everywhere"
+  why="any turns off type checking, and then TypeScript gives you no benefit."
+  better="Write the right type, or use unknown and check the value."
+/>
+
+<Mistake
+  title="Not giving a generic to nullable state"
+  why="The type of useState(null) becomes just null, and setting an object later gives an error."
+  better="Give the generic a union of User and null, as done in Example 2."
+/>
+
+<Mistake
+  title="Typing children as JSX.Element"
+  why="This rejects string, number, array or null children."
+  better="Use ReactNode for children."
+/>
+
+<Mistake
+  title="Writing any for an event"
+  why="You lose both autocomplete and safety on things like e.target.value."
+  better="Use ChangeEvent, FormEvent or MouseEvent with the element type."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Props](/courses/react/props), [State with useState](/courses/react/state), [Forms & Controlled Inputs](/courses/react/forms) |
+| **Alongside** | [useRef](/courses/react/use-ref), [Custom Hooks](/courses/react/custom-hooks), [Children & Composition](/courses/react/children-and-composition) |
+| **After** | [Testing React Apps](/courses/react/testing), [State Management Libraries](/courses/react/state-management) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| File | `.tsx` |
+| Props | `type Props = { ... }`, with `?` for optional |
+| Children | `ReactNode` |
+| State | Let it be inferred, use a generic for state that can be null |
+| Events | `ChangeEvent<HTMLInputElement>`, `FormEvent<HTMLFormElement>` |
+| Refs | `useRef<HTMLInputElement>(null)` |
+
+<Callout variant="important" title="Remember">
+
+Let TypeScript **infer** as much as it can, and keep your focus on **prop types**. Clear prop types work as documentation for the whole team.
+
+</Callout>

@@ -1,0 +1,183 @@
+---
+title: Small Functions & Single Responsibility
+description: How the single responsibility principle applies to functions - small functions, one job, one level of abstraction and keeping side effects separate.
+keywords:
+  - single responsibility principle functions
+  - small functions clean code
+  - function length best practice
+  - pure functions side effects
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Every function does one job. Keep a function under 40 lines, and under 20 where the logic allows. If describing the function needs the word "and", it is really two functions.**
+
+</Callout>
+
+Single Responsibility means a function should have **only one reason** to change. If a change in the email format and a change in the discount calculation both touch the same function, that function has two responsibilities.
+
+| Part | Meaning |
+| --- | --- |
+| **One job** | The name is one verb, and the sentence has no "and" |
+| **Size** | 40 lines max, 20 as a target |
+| **One level of abstraction** | High-level steps and low-level details are not mixed in one function |
+| **Pure where possible** | Transforming data is one function, database or network is another |
+| **Parameters** | If there are more than 3 related values, use one object |
+
+## 2. Why does it matter?
+
+A long function is a room with everything scattered in it. To find one thing you have to look through the whole room, and if you move something, something else falls over.
+
+<CompareTable leftTitle="One big function" rightTitle="Small focused functions">
+
+150 lines, risky to change anything without reading it all | 15 lines, clear at a glance
+To test it, you mock both the database and email | Test the pure calculation without any mock
+Where is the bug? Debug the whole function | The name tells you where to look
+To reuse one part, you copy and paste | A small function is simply imported
+Two people change different things in one function, merge conflict | Separate functions, separate changes
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Important, focus on "one job" more than line count | Learning to split functions is the foundation of programming |
+| **Production code** | Check the 40-line limit in review | A long function is a home for bugs and an enemy of tests |
+| **Senior level** | Recognize when to split and when not to | Forced splitting also creates coupling |
+
+## 4. Bad vs good code
+
+```ts
+export async function checkout(cartId: string, userId: string, couponCode?: string) {
+  const cart = await db.cart.findUnique({ where: { id: cartId }, include: { items: true } });
+  if (!cart) throw new Error("no cart");
+  let total = 0;
+  for (const item of cart.items) {
+    total += item.price * item.quantity;
+  }
+  if (couponCode) {
+    const coupon = await db.coupon.findUnique({ where: { code: couponCode } });
+    if (coupon && coupon.expiresAt > new Date()) {
+      total = total - total * coupon.percent / 100;
+    }
+  }
+  const order = await db.order.create({ data: { userId, total, cartId } });
+  const user = await db.user.findUnique({ where: { id: userId } });
+  await mailer.send(user!.email, `Order ${order.id} confirmed, total ${total}`);
+  return order;
+}
+```
+
+```ts
+export async function checkout(input: CheckoutInput) {
+  const cart = await carts.require(input.cartId);
+  const coupon = await coupons.find(input.couponCode);
+  const order = await orders.create(input.userId, cart, total(cart.items, coupon));
+
+  await notify(order);
+
+  return order;
+}
+```
+
+```ts
+function subtotal(items: CartItem[]) {
+  return items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+}
+
+function total(items: CartItem[], coupon: Coupon | null) {
+  if (!coupon || isCouponExpired(coupon)) {
+    return subtotal(items);
+  }
+
+  return subtotal(items) * (1 - coupon.percent / 100);
+}
+```
+
+| What is the difference? | Bad | Good |
+| --- | --- | --- |
+| Responsibilities | Load, calculate, coupon, save, email all in one place | `checkout` is only the order of steps |
+| Abstraction | A `for` loop mixed with the business flow | Flow on top, details below |
+| Testing | You need a database to test the calculation | `total` is pure, test it directly |
+| Parameters | 3 positional, you must remember the order | One `CheckoutInput` object |
+| Reading | 20 dense lines | Every function under 10 lines |
+
+`checkout` now reads like a story: get the cart, get the coupon, create the order, notify.
+
+## 5. How to apply it
+
+<Flow title="Breaking up a big function">
+
+Describe the function in one sentence
+↓
+Every "and" marks a separate function
+↓
+Pull the pure calculation out from the side effects
+↓
+Name each extracted part by its job
+↓
+The outer function only calls the steps
+↓
+Run the tests, the behavior should be the same
+
+</Flow>
+
+The same applies to a React component. A component that **fetches** data, **transforms** it and **renders** it does three jobs: a hook fetches, a pure function transforms, and the component renders.
+
+## 6. Exceptions and common mistakes
+
+The line count is a pointer to the rule, not the rule itself. **Let the logic decide:** a straight mapping of 25 fields is one idea and can stay whole. But an 8-line function that does two different jobs should become two functions.
+
+Forcing a complete domain flow into 10 pieces is also wrong. If each piece is called from only one place and cannot be understood without knowing the details inside another, you have increased coupling, not reduced it.
+
+<Mistake
+  title="Splitting a function only for the line count"
+  why="Pieces like part1 and part2 do no separate job, and the reader now jumps between three places."
+  better="Split when a part has its own name and its own reason to change."
+/>
+
+<Mistake
+  title="A database or network call in the middle of a calculation"
+  why="Now you need mocks to test pure logic, and a calculation mistake hides behind the side effect."
+  better="First get the data, then calculate with a pure function, then save the result."
+/>
+
+<Mistake
+  title="Doing two jobs with a boolean parameter"
+  why="Looking at send(order, true), you cannot tell what true does, and the function becomes two-pathed."
+  better="Make two separate functions whose names show the difference."
+/>
+
+<Mistake
+  title="Too many positional parameters"
+  why="In create(a, b, c, d, e), if the order is wrong even TypeScript cannot catch it when the types are the same."
+  better="Put related values in one typed object."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Functions](/courses/javascript/functions), [Naming Things](/courses/best-practices/naming) |
+| **Alongside** | [Early Returns & Braces](/courses/best-practices/early-returns-and-braces), [Breathing Room & Transient Locals](/courses/best-practices/readable-formatting) |
+| **After** | [File Size & Organization](/courses/best-practices/file-size-and-organization), [Service Layer](/courses/best-practices/service-layer), [Separation of Concerns](/courses/best-practices/separation-of-concerns) |
+
+## Final quick revision
+
+| Check | Question |
+| --- | --- |
+| One job | Can the function be described in one sentence without "and"? |
+| Size | Is it under 40 lines, better under 20? |
+| Abstraction | Are flow and details on different levels? |
+| Pure | Is the calculation separate from side effects? |
+| Parameters | Are more than 3 related values in an object? |
+| Forced splits | Was any piece created without a reason? |
+
+<Callout variant="important" title="Remember">
+
+A function's name should be one verb and its job should be one too. The moment you start saying "this function does this and...", split it right there.
+
+</Callout>

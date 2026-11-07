@@ -1,0 +1,199 @@
+---
+title: State Management Libraries
+description: React state management with Zustand and Redux. Learn when you need global state, how to set up Zustand v5 and Redux Toolkit, selectors, and how to choose.
+keywords:
+  - react state management zustand redux
+  - zustand v5
+  - redux toolkit
+  - global state react
+---
+
+## 1. What are State Management Libraries?
+
+<Callout variant="tip" title="Short definition">
+
+**A state management library gives you one central store that holds shared client state, so any component can read or update it without passing props.**
+
+</Callout>
+
+In React, state normally lives inside a component with `useState` or `useReducer`. When many distant components need the same state, a library helps.
+
+Two popular choices today are **Zustand** (small, simple, hook-based store) and **Redux Toolkit** (structured, for big teams and complex apps).
+
+## 2. Why does it matter?
+
+Keeping shared state at the top and passing props through every level (prop drilling) gets tiring. Context helps, but every consumer re-renders whenever the value changes.
+
+<CompareTable leftTitle="Props and Context" rightTitle="A store library">
+
+Props passed through every level | Any component reads straight from the store
+All consumers re-render when the Context value changes | Only the needed component re-renders, thanks to selectors
+Update logic scattered across components | Actions organized in one place
+Hard to debug | Every change can be traced with Redux DevTools
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| State | Better place |
+| --- | --- |
+| **Input value, modal open** | `useState` (local) |
+| **Theme, logged-in user** | Context or Zustand |
+| **Cart, filters, multi-step wizard** | Zustand or Redux Toolkit |
+| **Big team, strict patterns, undo** | Redux Toolkit |
+| **Data from an API** | TanStack Query (not a store) |
+
+## 4. How does it work?
+
+The store lives outside React. A component subscribes to a small part of the store through a **selector**. When an action changes the state, only the components whose selected part changed re-render.
+
+<Flow title="The data flow of a store">
+
+A component calls an action
+↓
+The store creates the new state (an immutable update)
+↓
+The store notifies its subscribers
+↓
+Each component runs its selector
+↓
+If the value changed, only that component re-renders
+
+</Flow>
+
+## 5. Code example
+
+### Example 1: Zustand v5
+
+```bash
+npm install zustand
+```
+
+```tsx
+import { create } from "zustand";
+
+type CartState = {
+  items: string[];
+  add: (item: string) => void;
+  clear: () => void;
+};
+
+export const useCart = create<CartState>()((set) => ({
+  items: [],
+  add: (item) => set((state) => ({ items: [...state.items, item] })),
+  clear: () => set({ items: [] }),
+}));
+
+export function CartBadge() {
+  const count = useCart((state) => state.items.length);
+  return <span>Cart: {count}</span>;
+}
+
+export function AddButton() {
+  const add = useCart((state) => state.add);
+  return <button onClick={() => add("Shoes")}>Add shoes</button>;
+}
+```
+
+### Example 2: Redux Toolkit
+
+```bash
+npm install @reduxjs/toolkit react-redux
+```
+
+```tsx
+import { configureStore, createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import { Provider, useDispatch, useSelector } from "react-redux";
+
+const counterSlice = createSlice({
+  name: "counter",
+  initialState: { value: 0 },
+  reducers: {
+    incrementBy: (state, action: PayloadAction<number>) => {
+      state.value += action.payload;
+    },
+  },
+});
+
+export const store = configureStore({ reducer: { counter: counterSlice.reducer } });
+type RootState = ReturnType<typeof store.getState>;
+
+function Counter() {
+  const value = useSelector((state: RootState) => state.counter.value);
+  const dispatch = useDispatch();
+  return <button onClick={() => dispatch(counterSlice.actions.incrementBy(1))}>{value}</button>;
+}
+
+export default function App() {
+  return (
+    <Provider store={store}>
+      <Counter />
+    </Provider>
+  );
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `create<CartState>()(...)` | Creates the Zustand store and hook together, the double call is for TS |
+| `set((state) => ...)` | The new state is merged in |
+| `useCart((state) => ...)` | A selector, re-renders only when this value changes |
+| `createSlice` | Creates reducers and actions in one place |
+| `state.value += ...` | Writing it like a "mutation" is safe because of Immer |
+| `Provider` | Makes the Redux store available to the whole app |
+
+### Interview tip
+
+For "Zustand or Redux?", the answer is: for a small to medium app, Zustand is enough and needs less code. Choose Redux Toolkit when you need strict structure, middleware, DevTools time travel and consistency across a big team. And for API data, use TanStack Query instead of either one.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Returning a new object from a Zustand selector every time"
+  why="In v5 a new object reference is different on every render, which causes extra re-renders or an infinite loop error."
+  better="Use separate selectors, or wrap it with useShallow from zustand/react/shallow."
+/>
+
+<Mistake
+  title="Selecting the whole store at once"
+  why="The component re-renders whenever any value in the store changes."
+  better="Select only the field the component needs."
+/>
+
+<Mistake
+  title="Keeping server data in a global store"
+  why="You have to do all the work of caching, refetching and stale data yourself."
+  better="Give API data to TanStack Query, and use the store only for client state."
+/>
+
+<Mistake
+  title="Making every piece of state global"
+  why="The code gets harder to understand and components become tightly coupled."
+  better="Start with local state, then lift state up, and use a global store only when needed."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Lifting State Up](/courses/react/lifting-state-up), [useContext](/courses/react/use-context), [useReducer](/courses/react/use-reducer) |
+| **Alongside** | [Data Fetching](/courses/react/data-fetching), [Custom Hooks](/courses/react/custom-hooks) |
+| **After** | [TypeScript with React](/courses/react/typescript-with-react), [Testing React Apps](/courses/react/testing) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| When you need it | Many distant components need the same client state |
+| Zustand | A hook from `create()`, selectors, little boilerplate |
+| Redux Toolkit | `createSlice`, `configureStore`, `Provider` |
+| Performance | Small selectors, do not return a new object |
+| API data | Not a store, use TanStack Query |
+
+<Callout variant="important" title="Remember">
+
+**Local state** first, then **Context**, and a **store library** only when needed. Keep only client state in the store, and leave server data to a data fetching library.
+
+</Callout>

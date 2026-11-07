@@ -1,6 +1,6 @@
 # ZnPedia
 
-JavaScript, React aur Next.js ke documentation-style courses, Roman Urdu mein. Next.js 16 App Router + MDX.
+JavaScript, React, Next.js aur Best Practices ke documentation-style courses, Roman Urdu aur English mein. Next.js 16 App Router + MDX.
 
 ## Run
 
@@ -14,7 +14,9 @@ npm run dev
 | Path | Kya hai |
 | --- | --- |
 | `content/courses/<course>/meta.json` | Course title, description aur sections ke andar chapters (sidebar order) |
-| `content/courses/<course>/<slug>.mdx` | Ek chapter |
+| `content/courses/<course>/<slug>.mdx` | Ek chapter (Roman Urdu) |
+| `content/courses/<course>/<slug>.en.mdx` | Wahi chapter English mein |
+| `docs/i18n.md` | Do languages ka setup, URLs aur nayi language add karne ka tareeqa |
 | `docs/topics.csv` | Tamam topics, level aur primary SEO keyword |
 | `docs/content-plan.md` | Wahi list readable form mein |
 | `docs/best-practices.csv` | Best Practices course ki har practice: rule, kyun, kab (learning, production, senior) |

@@ -1,0 +1,189 @@
+---
+title: Endpoint Tests First
+description: API testing with auth and validation. Write success, validation and auth failure tests for every endpoint before the frontend, and follow the test bypass token rules.
+keywords:
+  - api testing auth validation
+  - endpoint tests before frontend
+  - api contract testing
+  - seeded test user
+  - test bypass token security
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Every backend endpoint needs tests for its success path, every validation failure and every auth failure, and no frontend should call an endpoint until it is tested and approved.**
+
+</Callout>
+
+An endpoint is a contract: take this input, give this output, return these errors. The frontend stands on that contract. If the contract is not solid, the frontend is built on sand.
+
+## 2. Why does it matter?
+
+When the UI is built first, the endpoint is "tested" through the browser. Only the path the form sends is exercised. Wrong input, another user's token, an exhausted quota: none of these ever run, and this is where security bugs hide.
+
+<Callout variant="note" title="Real pattern">
+
+An endpoint was built together with its UI in one day and merged after someone saw it "working". Two weeks later it turned out that any logged in user's token could update another organization's data. The form always sent the right org ID, so nobody had tried a wrong ID.
+
+</Callout>
+
+<CompareTable leftTitle="UI first" rightTitle="Endpoint tests first">
+
+Only the form's path ran | A test for every branch
+Auth failure was never tried | Tests for 401, 403 or 404
+The contract keeps changing with the UI | Contract fixed first, UI after
+Hunting a bug in both UI and API | API proven on its own, a bug is in the UI only
+Fear of refactoring | Tests make refactoring safe
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | At least a success test and one validation test | The habit of thinking about the contract |
+| **Production code** | Every endpoint, all three paths | Only failure tests catch auth bugs |
+| **Senior level** | Test helpers, seed scripts, quota boundary tests | Making tests easy for the team to write |
+
+## 4. Bad vs good code
+
+### Bad: happy path only
+
+```ts
+test("updates project", async () => {
+  const res = await api.patch("/api/projects/p1", { name: "New" });
+  expect(res.status).toBe(200);
+});
+```
+
+### Good: success, validation, auth and limit
+
+```ts
+import { describe, expect, test } from "vitest";
+import { api, signInAsSeededUser, signInAsOtherOrgUser } from "../helpers";
+
+describe("PATCH /api/projects/:id", () => {
+  test("updates name and returns contract shape", async () => {
+    const token = await signInAsSeededUser();
+    const res = await api.patch("/api/projects/seed-project", { name: "New" }, token);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ id: "seed-project", name: "New", updatedAt: expect.any(String) });
+  });
+
+  test("rejects empty name with 422", async () => {
+    const token = await signInAsSeededUser();
+    const res = await api.patch("/api/projects/seed-project", { name: "" }, token);
+
+    expect(res.status).toBe(422);
+    expect(res.body.error.field).toBe("name");
+  });
+
+  test("returns 401 without a token", async () => {
+    const res = await api.patch("/api/projects/seed-project", { name: "New" });
+    expect(res.status).toBe(401);
+  });
+
+  test("returns 404 for another org's project", async () => {
+    const token = await signInAsOtherOrgUser();
+    const res = await api.patch("/api/projects/seed-project", { name: "New" }, token);
+    expect(res.status).toBe(404);
+  });
+});
+```
+
+A project of another org returns `404`, not `403`, so the attacker cannot even learn that the project exists.
+
+### What is the difference?
+
+| Test | What it proves |
+| --- | --- |
+| Success | The response shape is exactly what the contract says |
+| Validation | Every wrong input gets the documented status and message |
+| 401 | Nothing is returned without logging in |
+| 404 for another org | Tenant scoping works and existence is not leaked |
+| Limit (if any) | The quota trips at exactly the boundary, not one before or one after |
+
+## 5. How to apply it
+
+<Flow title="The order for an endpoint">
+
+Write the contract: input, output, errors
+↓
+Build the endpoint and its tests
+↓
+Success, validation, auth and limit tests green
+↓
+Review and approve
+↓
+Now the frontend can call it
+
+</Flow>
+
+How tests authenticate:
+
+- A seed script creates a test account whose email is already confirmed.
+- The test helper signs in as that account and sends a real bearer token or cookie.
+- So authorization, tenant scoping, row level security and quotas apply in tests the same way as in production.
+
+### Test bypass token: for one gate only
+
+Some gates cannot be passed programmatically by a seeded user, like an SMS one-time code. A bypass token is allowed only for those, with three conditions:
+
+| Condition | Why |
+| --- | --- |
+| Read from a secret, not a literal in the repo | Otherwise every clone has a backdoor |
+| Refused completely when `NODE_ENV` is production | It must never run in production |
+| It bypasses only that one gate | Auth, authorization, quota and validation still run |
+
+A bypass that turns off authorization is a backdoor with a friendly name.
+
+## 6. Exceptions and common mistakes
+
+**When the rule does not apply:** a small internal prototype that never touches production data can get its tests later. But as soon as it runs with real users, this rule applies. For a public read-only endpoint, validation and rate limit tests matter instead of auth tests.
+
+<Mistake
+  title="Running everything in tests as an admin user"
+  why="An admin is allowed to do everything, so authorization bugs never show up."
+  better="Test with a normal seeded user, and use a user from another org for the forbidden cases."
+/>
+
+<Mistake
+  title="Checking only the status code"
+  why="You get 200 but the body has wrong or extra fields, like a password hash, leaking out."
+  better="Compare the response body with the exact shape from the contract."
+/>
+
+<Mistake
+  title="Testing the quota only with an inside value"
+  why="Off by one bugs live at the boundary, like the 101st request on a limit of 100."
+  better="Test just before the limit, exactly at the limit and just after it."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [API Handler Shape](/courses/best-practices/api-handler-shape), [Testing Pyramid](/courses/best-practices/testing-pyramid) |
+| **Alongside** | [Input Validation at the Boundary](/courses/best-practices/input-validation), [Authorization & Multi-Tenancy](/courses/best-practices/authorization-and-tenancy) |
+| **After** | [Shared API Contracts](/courses/best-practices/shared-api-contracts), [Rate Limiting & Background Jobs](/courses/best-practices/rate-limiting-and-background-jobs) |
+
+## Final quick revision
+
+| Check | Yes? |
+| --- | --- |
+| Contract shape test for the success path | |
+| A test for every validation branch | |
+| 401 and 404 for another org | |
+| Limit boundary test | |
+| Signed in as a seeded real user | |
+| Bypass token refused in production | |
+| Frontend comes after the tests | |
+
+<Callout variant="important" title="Remember">
+
+Fix the contract first, then build the UI on it. The real test of an endpoint is the one that sends the wrong user and the wrong input.
+
+</Callout>

@@ -1,0 +1,186 @@
+---
+title: call, apply & bind
+description: Learn how to set a function's this yourself with JavaScript call, apply and bind, the difference between the three, partial application and real use cases.
+keywords:
+  - javascript call apply bind
+  - call vs apply vs bind
+  - function bind this
+  - partial application javascript
+---
+
+## 1. What are call, apply and bind?
+
+<Callout variant="tip" title="Short definition">
+
+**`call`, `apply` and `bind` are built-in methods of every function that let you say yourself what `this` will be inside the function.**
+
+</Callout>
+
+Normally `this` is decided by the call site. These three methods override that rule. `call` and `apply` run the function immediately, while `bind` returns a new function that will run later.
+
+## 2. Why does it matter?
+
+Sometimes you have to pass a method on its own, away from its object (callbacks, timers), and `this` is lost. Other times you need to run one object's method on another object.
+
+<CompareTable leftTitle="Without explicit binding" rightTitle="With call, apply, bind">
+
+this is undefined in a callback | bind keeps this fixed
+A method does not run on another object | call runs it on any object
+Hard to spread an array into separate arguments | apply turns an array into arguments
+Passing the same arguments again and again | bind fixes some arguments in advance
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Situation | Method |
+| --- | --- |
+| Passing a method to a callback or timer | `bind` |
+| Running one object's method on another object | `call` |
+| When the arguments are in an array | `apply` (or modern spread) |
+| Fixing some arguments in advance | `bind` (partial application) |
+| Library or polyfill code | `call` and `apply` |
+
+## 4. How does it work?
+
+| Method | Syntax | When it runs | Returns |
+| --- | --- | --- | --- |
+| `call` | `fn.call(obj, a, b)` | Immediately | The function's result |
+| `apply` | `fn.apply(obj, [a, b])` | Immediately | The function's result |
+| `bind` | `fn.bind(obj, a)` | Later | A new bound function |
+
+A trick to remember: **c**all = arguments with **c**ommas, **a**pply = arguments in an **a**rray, **bind** = tie it up and keep it for later.
+
+<Flow title="Flow of bind">
+
+The original function
+↓
+bind(obj, the first arguments)
+↓
+You get a new function, this is always obj
+↓
+Called later with the remaining arguments
+↓
+The original function runs, this = obj
+
+</Flow>
+
+<Callout variant="important" title="Mental model">
+
+**`call` / `apply` = run now. `bind` = get it ready and keep it.**
+
+</Callout>
+
+## 5. Code example
+
+### The basic difference between the three
+
+```js
+function introduce(city, role) {
+  return `${this.name} from ${city}, ${role}`;
+}
+
+const ali = { name: "Ali" };
+const sara = { name: "Sara" };
+
+console.log(introduce.call(ali, "Lahore", "developer"));
+console.log(introduce.apply(sara, ["Karachi", "designer"]));
+
+const introduceAli = introduce.bind(ali, "Islamabad");
+console.log(introduceAli("student"));
+```
+
+### Saving `this` in a callback
+
+```js
+const logger = {
+  prefix: "[app]",
+  log(message) {
+    console.log(`${this.prefix} ${message}`);
+  },
+};
+
+const messages = ["started", "ready"];
+messages.forEach(logger.log.bind(logger));
+
+const scores = [40, 85, 72];
+console.log(Math.max.apply(null, scores));
+console.log(Math.max(...scores));
+```
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `introduce.call(ali, ...)` | `this` = `ali`, arguments with commas |
+| `introduce.apply(sara, [...])` | `this` = `sara`, arguments in an array |
+| `bind(ali, "Islamabad")` | `this` and `city` are fixed, a new function |
+| `introduceAli("student")` | Only the remaining argument `role` is given |
+| `logger.log.bind(logger)` | `this.prefix` works inside `forEach` too |
+| `Math.max(...scores)` | Spread, the modern alternative to `apply` |
+
+### Interview tip
+
+You cannot change `this` of a bound function by calling `bind` or `call` on it again, the first bind stays. And the `this` part of `call`, `apply` and `bind` has no effect on arrow functions, because they have no `this` of their own.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Thinking bind is the same as call"
+  why="bind does not run the function, it only gives a new function. You get a function instead of a result."
+  better="Use call or apply when you want the result right away, and bind when you want to run it later."
+/>
+
+<Mistake
+  title="Trying to change this on an arrow function with bind"
+  why="An arrow's this is lexical, and the first argument of bind is ignored."
+  better="If you need to change this, use a normal function or a method."
+/>
+
+<Mistake
+  title="Creating a new bind on every render or loop"
+  why="A new function is made every time, and removeEventListener does not work because the reference is different."
+  better="Create the bound function once, keep it in a variable and use the same one in add and remove."
+/>
+
+<Mistake
+  title="Pushing apply instead of spread"
+  why="In modern code, fn.apply(null, arr) is harder to read."
+  better="When you do not need this, write fn(...arr). Use apply only when you need an array together with this."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [The this Keyword](/courses/javascript/this-keyword), [Functions](/courses/javascript/functions) |
+| **Alongside** | [Spread & Rest](/courses/javascript/spread-and-rest), [Closures](/courses/javascript/closures) |
+| **Later** | [Classes](/courses/javascript/classes), [DOM Events](/courses/javascript/dom-events) |
+
+<Flow title="Suggested order">
+
+The this Keyword
+↓
+call, apply & bind
+↓
+Higher-Order Functions
+↓
+Classes
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `call` | Sets `this`, comma arguments, runs immediately |
+| `apply` | Sets `this`, array arguments, runs immediately |
+| `bind` | A new function, `this` fixed permanently |
+| Partial application | Fix the first arguments with `bind` |
+| Arrow functions | `this` does not change |
+
+<Callout variant="important" title="Remember">
+
+When `this` is getting lost, use `bind` or an arrow wrapper. When the arguments are in an array, spread (`...`) is the cleaner way these days.
+
+</Callout>

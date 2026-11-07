@@ -1,21 +1,22 @@
 import { ChevronDown } from "lucide-react";
 
-import { SectionHeading } from "@/components/landing/section-heading";
+import { SectionHeading, type SectionCopy } from "@/components/landing/section-heading";
 import type { FaqItem } from "@/lib/landing-content";
 
 type FaqProps = {
   items: FaqItem[];
+  copy: SectionCopy;
 };
 
-export function Faq({ items }: FaqProps) {
+export function Faq({ items, copy }: FaqProps) {
   return (
     <section aria-labelledby="faq-heading" className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
       <div className="grid gap-10 lg:grid-cols-[1fr_1.6fr]">
         <SectionHeading
           id="faq-heading"
-          eyebrow="FAQ"
-          title="Aksar pooche jane wale sawal"
-          description="Kuch aur poochna hai? About page par ZnPedia ke baare mein sab likha hai."
+          eyebrow={copy.eyebrow}
+          title={copy.title}
+          description={copy.description}
         />
         <div className="divide-y divide-border rounded-xl border border-border bg-card">
           {items.map((item) => (

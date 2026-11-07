@@ -1,0 +1,222 @@
+---
+title: API Handler Shape
+description: REST API handler best practices. Every route handler runs in the same order, from auth to response, and keeps business logic in a service.
+keywords:
+  - rest api handler best practices
+  - nextjs route handler structure
+  - thin controller
+  - api endpoint pattern
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Every API handler runs in the same order from top to bottom: authenticate, rate limit, validate, call one service function, then respond. A handler contains no business logic.**
+
+</Callout>
+
+By handler we mean a Next.js route handler (`app/api/.../route.ts`), a server action, or a controller method in a backend framework (like AdonisJS). It is the first place where an HTTP request touches your code.
+
+Think of the handler as a traffic officer, not a kitchen. It sees who came, what they brought, and hands the job to the right department. Calculating a price, deciding a status or building a query is not its job.
+
+A good rule of thumb: if a handler grows past 40 lines, it is hiding logic that belongs in a service.
+
+## 2. Why does it matter?
+
+Imagine a 150 line handler. The auth check is on line 60, and a query has already run before it. Tomorrow a developer adds an early return on line 30 and the endpoint quietly becomes public. Nobody spots it in review because the handler is hard to read.
+
+Another real problem: the discount calculation is inside the handler. Then a cron job needs the same calculation, so the code gets copied. A bug is fixed in one copy and not the other, and customers get different bills.
+
+<CompareTable leftTitle="Without the rule" rightTitle="With the rule">
+
+The auth check is somewhere in the middle, and sometimes forgotten | Auth is always the first line, visible at a glance in review
+Logic is tied to HTTP, testing needs a server | A service function is unit tested without HTTP
+Cron or a script has to copy the logic | Cron, scripts and the handler all call one function
+Every endpoint is written in its own style | Every endpoint looks the same, a new developer understands it right away
+Expensive work happens before the rate limit | The rate limit applies before the body is parsed
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | A good habit, but not strict | Keeping the order even in two or three endpoints pays off later |
+| **Production code** | A must | Missing security checks get caught here |
+| **Senior level** | Enforce it across the team | In review, move logic from a long handler into a service |
+
+When to learn it: once you have written your first route handler or server action and understand the idea of a [Service Layer](/courses/best-practices/service-layer).
+
+## 4. Bad vs good code
+
+### Bad: everything inside the handler
+
+```ts
+export async function POST(request: Request) {
+  const body = await request.json();
+  const product = await db.query("select * from products where id = $1", [body.productId]);
+
+  let price = product.rows[0].price * body.quantity;
+  if (body.quantity > 10) {
+    price = price * 0.9;
+  }
+
+  const user = await getCurrentUser();
+  if (!user) {
+    return Response.json({ message: "please log in" }, { status: 401 });
+  }
+
+  const order = await db.query(
+    "insert into orders (user_id, product_id, total) values ($1, $2, $3) returning *",
+    [user.id, body.productId, price],
+  );
+
+  return Response.json(order.rows[0]);
+}
+```
+
+Here the query runs before auth, the body is not validated, the discount rule is stuck inside the handler, and the whole database row goes to the client.
+
+### Good: the handler only handles the order of steps
+
+File `app/api/orders/route.ts`:
+
+```ts
+import { NextResponse } from "next/server";
+
+import { getCurrentUser } from "@/lib/auth/auth";
+import { createOrder } from "@/lib/orders/orders";
+import { OutOfStockError } from "@/lib/orders/orders.errors";
+import { createOrderSchema, ORDER_MESSAGES } from "@/lib/orders/orders.types";
+import { limitByKey } from "@/lib/rate-limit/rate-limit";
+
+export async function POST(request: Request) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: ORDER_MESSAGES.unauthorized }, { status: 401 });
+  }
+
+  const limit = await limitByKey(`orders:create:${user.id}`);
+  if (!limit.allowed) {
+    return NextResponse.json({ error: ORDER_MESSAGES.rateLimited }, { status: 429 });
+  }
+
+  const parsed = createOrderSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: ORDER_MESSAGES.invalidInput }, { status: 422 });
+  }
+
+  try {
+    const order = await createOrder(user.id, parsed.data);
+    return NextResponse.json({ order }, { status: 201 });
+  } catch (error) {
+    if (error instanceof OutOfStockError) {
+      return NextResponse.json({ error: ORDER_MESSAGES.outOfStock }, { status: 409 });
+    }
+    throw error;
+  }
+}
+```
+
+The discount and the insert now live in `lib/orders/orders.ts`:
+
+```ts
+export async function createOrder(userId: string, input: CreateOrderInput) {
+  const product = await findProductById(input.productId);
+  if (product.stock < input.quantity) {
+    throw new OutOfStockError(product.id);
+  }
+
+  const total = calculateTotal(product.price, input.quantity);
+
+  return insertOrder({ userId, productId: product.id, total });
+}
+```
+
+### What is the difference?
+
+| Thing | Bad code | Good code |
+| --- | --- | --- |
+| Auth | After the query | First of all |
+| Rate limit | None | Before the body is parsed |
+| Validation | None, `body.quantity` could be anything | A Zod schema, 422 on failure |
+| Business logic | In the handler | In the `createOrder` service |
+| Errors | A crash or a 500 | Known errors mapped to 409 |
+| Response | The whole DB row | Only the `order` from the contract |
+
+## 5. How to apply it
+
+<Flow title="The order of every handler">
+
+Authenticate and authorize (with a shared helper)
+↓
+Rate limit (before parsing the body)
+↓
+Parse and validate the input (400 or 422)
+↓
+Call one service function
+↓
+Respond with the contract, or map a known error to a status
+
+</Flow>
+
+A checklist when writing a new endpoint:
+
+- The first line resolves the caller, or the endpoint clearly states that it is public.
+- No `select`, `insert` or domain `if` in the handler.
+- One service call. If you need to combine two or three services, that combining is the service's job.
+- For a server action the order is the same, only a return value replaces the response.
+
+## 6. Exceptions and common mistakes
+
+Some endpoints skip some steps. A health check is public and needs little rate limiting. A webhook has no session, so authentication there means verifying the signature. But the order stays the same, only the shape of the step changes.
+
+<Mistake
+  title="Applying the rate limit after validation"
+  why="An attacker sends a large body and makes you pay for parsing and validation, and the server tires out before the limit is even reached."
+  better="Apply the rate limit as soon as you resolve the caller, then parse the body."
+/>
+
+<Mistake
+  title="Writing helper functions in the route file"
+  why="The handler file turns into a mini service again, and the same logic cannot be reused elsewhere."
+  better="Keep the helper in the service module or its library file, and let the handler only import it."
+/>
+
+<Mistake
+  title="Orchestrating three services in the handler"
+  why="Create the order, send the email, reduce inventory: this flow cannot be reused from cron, and partial failure is not handled."
+  better="Let one service function run the whole flow, and let the handler only call it."
+/>
+
+<Mistake
+  title="Catching every error and returning 500"
+  why="Even an expected case like out of stock looks like a server error, and the client cannot show the right message."
+  better="Create specific classes for known errors and map them to 404, 409 or 422, and let the rest bubble up."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Route Handlers (API)](/courses/nextjs/route-handlers), [Service Layer & Thin Controllers](/courses/best-practices/service-layer), [Small Functions](/courses/best-practices/small-functions) |
+| **Alongside** | [Input Validation at the Boundary](/courses/best-practices/input-validation), [Error Handling & Error Envelope](/courses/best-practices/error-handling-and-envelope) |
+| **After** | [Authorization & Multi-Tenancy](/courses/best-practices/authorization-and-tenancy), [Rate Limiting & Background Jobs](/courses/best-practices/rate-limiting-and-background-jobs), [Endpoint Tests First](/courses/best-practices/endpoint-tests-first) |
+
+## Final quick revision
+
+| Check | Question |
+| --- | --- |
+| Auth first | Does the first line resolve the caller? |
+| Rate limit | Is it applied before the body is parsed? |
+| Validation | Is the input parsed into a typed value with a schema? |
+| One service call | Is there any query or domain `if` in the handler? |
+| Response | Are only the fields from the contract going back? |
+| Length | Is the handler within 40 lines? |
+
+<Callout variant="important" title="Remember">
+
+The handler is a door, not a room. It checks, parses, hands the work to one function and returns the answer. The real decisions happen in the service, where they can be tested and reused.
+
+</Callout>

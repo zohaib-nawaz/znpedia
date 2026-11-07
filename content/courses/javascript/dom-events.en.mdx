@@ -1,0 +1,198 @@
+---
+title: DOM Events
+description: Listen to click, input and keydown events with addEventListener in JavaScript. Learn the event object, preventDefault, once and removing listeners with AbortSignal.
+keywords:
+  - javascript addeventlistener events
+  - dom events
+  - event object javascript
+  - preventdefault
+  - removeeventlistener
+---
+
+## 1. What are DOM events?
+
+<Callout variant="tip" title="Short definition">
+
+**An event is a signal from the browser that something happened, and an event listener is the function that runs when that signal arrives.**
+
+</Callout>
+
+When the user clicks, types, scrolls, or the page loads, the browser fires an **event** each time. With `addEventListener` you attach a "listening" function to an element.
+
+When the event happens, the browser passes your function an **event object** with all the details: which element it happened on, which key was pressed, where the mouse was.
+
+## 2. Why does it matter?
+
+An interactive page means responding to what the user does. Without events, JavaScript has no idea what the user did.
+
+<CompareTable leftTitle="Old inline onclick" rightTitle="addEventListener">
+
+HTML and JavaScript mixed together | JavaScript stays clean in a separate file
+Only one handler per element | Many listeners on one event
+No control over options | once, passive and signal options
+Hard to remove | removeEventListener or abort
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Event | Use case |
+| --- | --- |
+| `click` | Buttons, menus, cards |
+| `input` | Live search, character counter |
+| `change` | Select, checkbox, file input |
+| `submit` | Sending a form |
+| `keydown` | Shortcuts, closing a modal with Escape |
+| `DOMContentLoaded` | Setup once the DOM is ready |
+
+## 4. How does it work?
+
+<Flow title="From click to handler">
+
+Register a listener with addEventListener
+↓
+The user clicks the button
+↓
+The browser creates an event object
+↓
+The listener runs from the task queue
+↓
+The handler works with the event object
+
+</Flow>
+
+| Event object property | Meaning |
+| --- | --- |
+| `event.target` | The element the event actually happened on |
+| `event.currentTarget` | The element the listener is attached to |
+| `event.key` | Which key was pressed, such as `"Enter"` |
+| `event.preventDefault()` | Stop the browser's default action |
+| `event.stopPropagation()` | Stop the event from travelling up to parents |
+
+<Callout variant="important" title="Mental model">
+
+**Element + event type + function.** "When this button is clicked, run this function."
+
+</Callout>
+
+## 5. Code example
+
+### Click and input
+
+```js
+const counterBtn = document.querySelector("#counter");
+const search = document.querySelector("#search");
+let count = 0;
+
+counterBtn.addEventListener("click", () => {
+  count++;
+  counterBtn.textContent = `Clicked ${count}`;
+});
+
+search.addEventListener("input", (event) => {
+  console.log("Search:", event.target.value);
+});
+```
+
+### Keyboard, preventDefault and once
+
+```js
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeModal();
+  if (event.ctrlKey && event.key === "s") {
+    event.preventDefault();
+    saveDraft();
+  }
+});
+
+welcomeBtn.addEventListener("click", showTour, { once: true });
+```
+
+### Removing all listeners with AbortController
+
+```js
+const controller = new AbortController();
+const { signal } = controller;
+
+window.addEventListener("resize", onResize, { signal });
+window.addEventListener("scroll", onScroll, { signal, passive: true });
+
+controller.abort();
+```
+
+### How does the code work?
+
+| Line | What happens |
+| --- | --- |
+| `"click"` listener | The count goes up on every click |
+| `event.target.value` | The input's current text |
+| `event.preventDefault()` | The browser's "Save page" dialog does not open |
+| `{ once: true }` | The listener removes itself after the first run |
+| `{ signal }` | Listeners are removed on `controller.abort()` |
+| `passive: true` | Tells the browser the scroll will not be blocked |
+
+### Interview tip
+
+`event.target` vs `event.currentTarget` is a common question. If you click a `span` inside a button, `target` is the `span`, but `currentTarget` is the element the listener is attached to.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Calling the handler instead of passing it"
+  why="In addEventListener('click', save()), save runs immediately, not on click."
+  better="Pass a reference: addEventListener('click', save)."
+/>
+
+<Mistake
+  title="Removing an anonymous function with removeEventListener"
+  why="Every arrow function is a new function, so the reference does not match and the listener is not removed."
+  better="Keep a reference to a named function, or use AbortController with the signal option."
+/>
+
+<Mistake
+  title="Adding a separate listener to every item"
+  why="A hundred items means a hundred listeners, and items added later get no listener at all."
+  better="Add one listener on the parent, which is event delegation."
+/>
+
+<Mistake
+  title="Calling stopPropagation everywhere"
+  why="The event never reaches other listeners, such as analytics or dropdown-closing code."
+  better="Use it only when needed. Checking event.target is often enough."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [DOM Basics](/courses/javascript/dom-basics), [Callbacks](/courses/javascript/callbacks), [Arrow Functions](/courses/javascript/arrow-functions) |
+| **After** | [Event Bubbling & Delegation](/courses/javascript/event-delegation), [Forms & Validation](/courses/javascript/forms-and-validation), [Debounce & Throttle](/courses/javascript/debounce-and-throttle) |
+
+<Flow title="Suggested order">
+
+DOM Basics
+↓
+DOM Events
+↓
+Event Delegation
+↓
+Forms and Validation
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `addEventListener(type, fn, options)` | Attach a listener |
+| Event object | `target`, `currentTarget`, `key` |
+| `preventDefault()` | Stop the default browser behaviour |
+| `once` | Runs one time, then removes itself |
+| `signal` | Remove listeners with AbortController |
+| `passive` | Smoother performance for scroll and touch |
+
+<Callout variant="important" title="Remember">
+
+Pass the function **reference**, do not call it. Keep a named function or a `signal` so you can remove the listener.
+
+</Callout>

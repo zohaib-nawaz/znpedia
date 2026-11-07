@@ -1,0 +1,196 @@
+---
+title: The this Keyword
+description: Learn how the JavaScript this keyword gets its value, with the rules for method calls, new, call/bind and arrow functions, and simple examples.
+keywords:
+  - javascript this keyword
+  - this in javascript
+  - this binding rules
+  - arrow function this
+---
+
+## 1. What is the this keyword?
+
+<Callout variant="tip" title="Short definition">
+
+**`this` is a special keyword whose value depends on how a function was called, not on where it was written.**
+
+</Callout>
+
+In simple words, `this` asks the function: "who called me?" If you write `user.greet()`, then `this` is `user`. Call the same function in some other way and `this` changes.
+
+Only arrow functions are outside this rule. Their `this` is decided by the place where they are written.
+
+## 2. Why does it matter?
+
+Because of `this`, a single method can work with many objects. But if you do not understand the rules, you get `undefined` errors.
+
+<CompareTable leftTitle="Without this" rightTitle="With this">
+
+A separate function for every object | One method that works on every object
+The object's name is hardcoded | this tells you the current object by itself
+Accessing class instance data is hard | this gives each instance its own data
+Copy and pasted code | Reusable methods and classes
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Area | What `this` is |
+| --- | --- |
+| **Object methods** | The object the method was called on |
+| **Classes** | The newly created instance |
+| **DOM event listener** (normal function) | The element the listener is attached to |
+| **Callbacks with arrow** | The `this` of the outer function |
+| **Library code** | A `this` you set yourself with `call`, `apply`, `bind` |
+
+## 4. How does it work?
+
+The rules for `this`, in order of priority:
+
+| Rule | Shape of the call | `this` |
+| --- | --- | --- |
+| **new binding** | `new User()` | The new object |
+| **Explicit** | `fn.call(obj)`, `fn.bind(obj)` | `obj` |
+| **Implicit** | `obj.fn()` | The `obj` before the dot |
+| **Default** | `fn()` | `undefined` in strict mode |
+| **Arrow** | `() => this` | The `this` of the outer scope |
+
+<Flow title="How to find the value of this">
+
+Is it an arrow function? Then the outer this
+↓
+Was it called with new? Then the new object
+↓
+Was call, apply or bind used? Then the given object
+↓
+Does it look like obj.method()? Then obj
+↓
+Otherwise undefined in strict mode
+
+</Flow>
+
+Modules and classes always run in strict mode, so in modern code a plain `fn()` call has `this` as `undefined`.
+
+<Callout variant="important" title="Mental model">
+
+**Look at the call site: what is before the dot? That is `this`.**
+
+</Callout>
+
+## 5. Code example
+
+### Implicit binding and a lost `this`
+
+```js
+const user = {
+  name: "Ayesha",
+  greet() {
+    return `Hi, I am ${this.name}`;
+  },
+};
+
+console.log(user.greet());
+
+const greetFn = user.greet;
+try {
+  console.log(greetFn());
+} catch (error) {
+  console.log(error.message);
+}
+
+const bound = user.greet.bind(user);
+console.log(bound());
+```
+
+### Class and arrow callback
+
+```js
+class Cart {
+  items = [];
+
+  add(item) {
+    this.items.push(item);
+    return this;
+  }
+
+  total() {
+    return this.items.reduce((sum, item) => sum + item.price, 0);
+  }
+}
+
+const cart = new Cart();
+cart.add({ price: 300 }).add({ price: 200 });
+console.log(cart.total());
+```
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `user.greet()` | Implicit binding, `this` = `user` |
+| `greetFn()` | The method came apart, `this` is `undefined`, an error is thrown (in a module) |
+| `bind(user)` | A new function whose `this` is always `user` |
+| `new Cart()` | `this` is the new cart instance |
+| `return this` | Makes method chaining possible |
+| Arrow in `reduce` | It has no `this` of its own, but it does not need one here |
+
+### Interview tip
+
+`this` is decided at call time, not at definition time (except for arrows). In an interview, find the call site first when you look at code, then apply the priority list above.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Passing a method directly as a callback"
+  why="In setTimeout(user.greet, 100), the method is separated from the object and this is lost."
+  better="Give an arrow wrapper, like setTimeout(() => user.greet(), 100), or use user.greet.bind(user)."
+/>
+
+<Mistake
+  title="Making an object method an arrow function"
+  why="An arrow's this is not the object but the outer scope, so this.name is undefined."
+  better="Write method shorthand for methods: greet() and use this inside."
+/>
+
+<Mistake
+  title="Expecting this to be the element in an event listener arrow"
+  why="An arrow function's this is not the element, so this.classList does not work."
+  better="Use event.currentTarget for the element, which is correct in both arrow and normal functions."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Functions](/courses/javascript/functions), [Arrow Functions](/courses/javascript/arrow-functions), [Objects](/courses/javascript/objects) |
+| **Alongside** | [call, apply & bind](/courses/javascript/call-apply-bind) |
+| **Later** | [Classes](/courses/javascript/classes), [Prototypes & Inheritance](/courses/javascript/prototypes) |
+
+<Flow title="Suggested order">
+
+Objects
+↓
+The this Keyword
+↓
+call, apply & bind
+↓
+Classes
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| When `this` is decided | At call time |
+| `obj.fn()` | `this` = `obj` |
+| `new Fn()` | `this` = the new object |
+| `call` / `apply` / `bind` | Set `this` yourself |
+| Plain `fn()` in strict mode | `undefined` |
+| Arrow function | The outer `this` |
+
+<Callout variant="important" title="Remember">
+
+Always solve a `this` question from the call site. As soon as you separate a method from its object, `this` is lost, so use an arrow wrapper or `bind` in callbacks.
+
+</Callout>

@@ -1,0 +1,178 @@
+---
+title: useMemo & useCallback
+description: Learn how useMemo and useCallback cache expensive calculations and functions between renders, and when you still need them with React Compiler.
+keywords:
+  - react usememo usecallback
+  - usememo vs usecallback
+  - react memoization
+  - react performance hooks
+---
+
+## 1. What are useMemo and useCallback?
+
+<Callout variant="tip" title="Short definition">
+
+**`useMemo` caches the result of a calculation, and `useCallback` keeps a function the same between renders.**
+
+</Callout>
+
+On every re-render, the whole component function runs again. That means every calculation is repeated and every function created inside is a **new** function.
+
+These two hooks tell React: "unless the dependencies change, give me the previous result."
+
+## 2. Why do they matter?
+
+<CompareTable leftTitle="Without memoization" rightTitle="With useMemo / useCallback">
+
+Filter 10,000 items on every render | Filter only when the list or query changes
+A new function on every render | The same function while deps stay the same
+A memo child still re-renders | The child's props are the same, so the re-render is skipped
+An effect runs on every render | The effect runs only on real changes
+
+</CompareTable>
+
+<Callout variant="note" title="After React Compiler">
+
+React Compiler 1.0 memoizes automatically. If the Compiler is on in your project, you mostly do not need to write `useMemo` and `useCallback`. You should still understand them, because they are everywhere in older codebases and in interviews.
+
+</Callout>
+
+## 3. Where are they used?
+
+| Situation | Hook |
+| --- | --- |
+| Filtering or sorting a big list | `useMemo` |
+| Passing a function prop to a `memo` child | `useCallback` |
+| An object or function in an effect's dependencies | `useMemo` / `useCallback` |
+| Keeping a Context value object stable | `useMemo` |
+
+## 4. How do they work?
+
+<Flow title="The memoization flow">
+
+The component renders
+↓
+React compares the dependencies with the previous render
+↓
+If they are the same, it returns the cached value or function
+↓
+If they changed, it calculates a new one and caches it
+
+</Flow>
+
+The comparison uses `Object.is`. So if a dependency is itself a new object on every render, the cache will never work.
+
+`useCallback(fn, deps)` is really a shortcut for `useMemo(() => fn, deps)`.
+
+## 5. Code example
+
+### useMemo: expensive filtering
+
+```tsx
+import { useMemo, useState } from "react";
+
+type Product = { id: number; name: string };
+
+export function ProductSearch({ products }: { products: Product[] }) {
+  const [query, setQuery] = useState("");
+  const [dark, setDark] = useState(false);
+
+  const visible = useMemo(
+    () => products.filter((p) => p.name.toLowerCase().includes(query.toLowerCase())),
+    [products, query]
+  );
+
+  return (
+    <div className={dark ? "dark" : ""}>
+      <button onClick={() => setDark(!dark)}>Theme</button>
+      <input value={query} onChange={(e) => setQuery(e.target.value)} />
+      <p>{visible.length} products found</p>
+    </div>
+  );
+}
+```
+
+When you toggle the theme, the component re-renders, but the filtering does not run again because `products` and `query` are the same.
+
+### useCallback: with a memo child
+
+```tsx
+import { memo, useCallback, useState } from "react";
+
+const SaveButton = memo(function SaveButton({ onSave }: { onSave: () => void }) {
+  return <button onClick={onSave}>Save</button>;
+});
+
+export function Editor() {
+  const [text, setText] = useState("");
+  const [count, setCount] = useState(0);
+
+  const handleSave = useCallback(() => {
+    console.log("Saving", text);
+  }, [text]);
+
+  return (
+    <>
+      <textarea value={text} onChange={(e) => setText(e.target.value)} />
+      <button onClick={() => setCount(count + 1)}>Clicks: {count}</button>
+      <SaveButton onSave={handleSave} />
+    </>
+  );
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `useMemo(() => ..., [products, query])` | The filter result stays cached while the deps stay the same |
+| `memo(SaveButton)` | The child skips re-rendering when its props are the same |
+| `useCallback(..., [text])` | `handleSave` stays the same when `count` changes |
+| Result | `SaveButton` does not re-render when the click count goes up |
+
+## 6. Common mistakes
+
+<Mistake
+  title="Wrapping every small thing in useMemo"
+  why="Memoization has its own cost, and for a cheap calculation it only makes the code more complex."
+  better="Measure first. Use it only for expensive calculations or for the props of a memo child, or turn on React Compiler."
+/>
+
+<Mistake
+  title="Using useCallback without a memo child"
+  why="If the child is not wrapped in memo, it re-renders anyway, so a stable function gives no benefit."
+  better="Pair useCallback with a memo child or with an effect dependency."
+/>
+
+<Mistake
+  title="Leaving things out of the dependency array"
+  why="The cached function holds on to old state, which is called a stale closure."
+  better="Put every value used inside the function in the deps, and follow the eslint-plugin-react-hooks warnings."
+/>
+
+### Interview tip
+
+The difference in one line: `useMemo` caches a **value**, `useCallback` caches a **function**. Also mention that since React Compiler arrived, new code needs much less manual memoization.
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [How React Renders](/courses/react/how-react-renders), [useEffect](/courses/react/use-effect), [State with useState](/courses/react/state) |
+| **Alongside** | [React.memo & Performance](/courses/react/memo-and-performance) |
+| **After** | [React Compiler](/courses/react/react-compiler), [useTransition & useDeferredValue](/courses/react/use-transition) |
+
+## Final quick revision
+
+| Point | `useMemo` | `useCallback` |
+| --- | --- | --- |
+| What it caches | The result of a calculation | The function itself |
+| Signature | `useMemo(() => value, deps)` | `useCallback(fn, deps)` |
+| Common pairing | Expensive calculation | `memo` child, effect deps |
+| With the Compiler | Often not needed | Often not needed |
+
+<Callout variant="important" title="Remember">
+
+Memoization is a **performance tool**, not a correctness tool. Your code should work correctly without it. Measure first, then optimize.
+
+</Callout>

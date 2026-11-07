@@ -1,0 +1,177 @@
+---
+title: Debounce & Throttle
+description: Learn what JavaScript debounce and throttle are, how they differ, and how to control search input, scroll and resize events.
+keywords:
+  - javascript debounce throttle
+  - debounce vs throttle
+  - search input debounce
+  - scroll event performance
+---
+
+## 1. What are debounce and throttle?
+
+<Callout variant="tip" title="Short definition">
+
+**Debounce runs a function only after events have stopped for a while. Throttle runs a function at most once in a fixed amount of time.**
+
+</Callout>
+
+Both techniques are for events that **fire very fast**, such as typing, scroll, resize and mouse move. Both wrap a function and return a new one.
+
+## 2. Why do they matter?
+
+If a user types "javascript" in a search box, that is 10 keystrokes. If every keystroke makes an API call, 10 requests go out, when you only need the last one.
+
+<CompareTable leftTitle="Without control" rightTitle="With debounce or throttle">
+
+An API call on every keystroke | Just one call when typing stops
+Over 100 handler calls per second on scroll | One call every 200ms
+Wasted load on the server | Fewer requests, lower cost
+The UI can lag | A smooth UI
+
+</CompareTable>
+
+## 3. Where are they used?
+
+| Situation | Technique | Reason |
+| --- | --- | --- |
+| **Search suggestions** | Debounce | Search only after typing stops |
+| **Form auto save** | Debounce | Save when the user pauses |
+| **Window resize** | Debounce | Calculate the layout for the final size |
+| **Infinite scroll** | Throttle | Regular checks while scrolling |
+| **Mouse move tracking** | Throttle | Update the position at a fixed rate |
+| **Button double click** | Throttle | Only one submit at a time |
+
+## 4. How do they work?
+
+Both have a **closure** inside that remembers the timer or the time of the last call.
+
+<Flow title="Debounce flow">
+
+An event arrives
+↓
+Cancel the old timer
+↓
+Set a new timer, say 300ms
+↓
+No new event arrives for 300ms
+↓
+The function runs
+
+</Flow>
+
+<Flow title="Throttle flow">
+
+An event arrives
+↓
+Has 200ms passed since the last call?
+↓
+If yes, run the function and note the time
+↓
+If not, ignore this event
+
+</Flow>
+
+An easy example: debounce is an elevator door that waits again for every new person. Throttle is a bus that leaves every 10 minutes, no matter how many people show up.
+
+## 5. Code example
+
+### Debounce
+
+```js
+function debounce(fn, delay = 300) {
+  let timerId;
+  return (...args) => {
+    clearTimeout(timerId);
+    timerId = setTimeout(() => fn(...args), delay);
+  };
+}
+
+const search = debounce((query) => {
+  console.log("API call for:", query);
+}, 400);
+
+input.addEventListener("input", (e) => search(e.target.value));
+```
+
+### Throttle
+
+```js
+function throttle(fn, interval = 200) {
+  let lastRun = 0;
+  return (...args) => {
+    const now = Date.now();
+    if (now - lastRun >= interval) {
+      lastRun = now;
+      fn(...args);
+    }
+  };
+}
+
+const onScroll = throttle(() => {
+  console.log("scrollY:", window.scrollY);
+}, 200);
+
+window.addEventListener("scroll", onScroll);
+```
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `let timerId` | The closure remembers the timer ID |
+| `clearTimeout(timerId)` | The old timer is cancelled on every new event |
+| `setTimeout(..., delay)` | The real function runs only after the delay |
+| `lastRun` | Throttle remembers the time of the last call |
+| `now - lastRun >= interval` | The function runs only if enough time has passed |
+| `...args` | The event or query reaches the real function |
+
+In production you can also use `debounce` and `throttle` from `lodash-es`. They have options like leading, trailing and cancel.
+
+### Interview tip
+
+"Write debounce and throttle yourself" is a very common question. Remember the code above, and mention that both are based on closures and timers.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Creating a new debounced function on every event"
+  why="Each time a new closure and a new timer are created, so the old timer is never cancelled and debounce does not work."
+  better="Create the debounced function once and reuse it in the event listener."
+/>
+
+<Mistake
+  title="Picking the wrong technique"
+  why="Debounce on scroll means nothing updates while the user is scrolling, only after they stop."
+  better="Use debounce when you need the final value, and throttle when you need regular updates along the way."
+/>
+
+<Mistake
+  title="Making the delay too long"
+  why="A 1 second debounce makes search feel slow and broken."
+  better="Around 250 to 400ms for search and 100 to 200ms for scroll is usually fine."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Closures](/courses/javascript/closures), [Timers](/courses/javascript/timers), [DOM Events](/courses/javascript/dom-events) |
+| **Alongside** | [Higher-Order Functions](/courses/javascript/higher-order-functions), [Event Loop](/courses/javascript/event-loop) |
+| **After** | [Fetch API](/courses/javascript/fetch-api), [React useEffect](/courses/react/use-effect) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Debounce | One call after events stop |
+| Throttle | At most one call in a fixed interval |
+| What is inside | Closure + `setTimeout` or a timestamp |
+| Debounce use | Search, auto save, resize |
+| Throttle use | Scroll, mouse move, drag |
+
+<Callout variant="important" title="Remember">
+
+**Debounce = wait, then run. Throttle = run only once per interval.**
+
+</Callout>

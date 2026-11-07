@@ -1,0 +1,198 @@
+---
+title: Optional Chaining & Nullish Coalescing
+description: Learn JavaScript optional chaining and nullish coalescing, using ?. and ?? to handle missing data safely, how they differ from ||, and the ??= operator.
+keywords:
+  - javascript optional chaining nullish coalescing
+  - optional chaining javascript
+  - nullish coalescing operator
+  - difference between ?? and ||
+  - nullish assignment operator
+---
+
+## 1. What are Optional Chaining & Nullish Coalescing?
+
+<Callout variant="tip" title="Short definition">
+
+**`?.` returns `undefined` instead of crashing on a missing object, and `??` gives a fallback value only for `null` or `undefined`.**
+
+</Callout>
+
+Data coming from an API is often incomplete. Sometimes `user.address` does not exist at all, and writing `user.address.city` throws a `TypeError`. Optional chaining (`?.`) prevents this crash.
+
+Nullish coalescing (`??`) gives a default value, but only when the value is **truly missing** (`null` or `undefined`). It does not touch valid values like `0`, `""`, and `false`.
+
+## 2. Why does it matter?
+
+Before, you had to write `&&` checks at every level, and giving defaults with `||` made correct values like `0` disappear too.
+
+<CompareTable leftTitle="The old way" rightTitle="With ?. and ??">
+
+user && user.address && user.address.city | One short chain, safe at every level
+The OR operator turns 0 into the default too | ?? only for null and undefined
+A separate if check for whether a method exists | An optional call works with methods too
+Long, repeated conditions | One clean expression
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Situation | Example |
+| --- | --- |
+| Nested API data | `res.data?.user?.name` |
+| Optional callback | `props.onClose?.()` |
+| First item of an array | `orders?.[0]?.id` |
+| Default for a setting | `settings.volume ?? 50` |
+| An empty form field | `input.value ?? ""` |
+| Setting a lazy default | `cache.items ??= []` |
+
+## 4. How does it work?
+
+### Three forms of optional chaining
+
+| Syntax | When to use |
+| --- | --- |
+| `obj?.prop` | Property access |
+| `obj?.[key]` | A dynamic key or array index |
+| `fn?.()` | Call the function if it exists |
+
+<Flow title="Optional chaining flow">
+
+user?.address?.city
+↓
+Is user null or undefined? If yes, the whole chain is undefined
+↓
+Otherwise read address
+↓
+Is address null or undefined? If yes, undefined
+↓
+Otherwise return city
+
+</Flow>
+
+### `??` vs `||`
+
+| Value | `value \|\| "default"` | `value ?? "default"` |
+| --- | --- | --- |
+| `undefined` | `"default"` | `"default"` |
+| `null` | `"default"` | `"default"` |
+| `0` | `"default"` | `0` |
+| `""` | `"default"` | `""` |
+| `false` | `"default"` | `false` |
+
+`??=` (logical nullish assignment) sets a value only when it is `null` or `undefined`.
+
+<Callout variant="important" title="Mental model">
+
+**`?.` = "if it exists, keep going". `??` = "if it is truly missing, use this".**
+
+</Callout>
+
+## 5. Code example
+
+### Reading API data safely
+
+```js
+const response = {
+  user: {
+    name: "Ali",
+    stats: { followers: 0 },
+    tags: [],
+  },
+};
+
+const city = response.user?.address?.city ?? "Unknown";
+const followers = response.user?.stats?.followers ?? 100;
+const wrong = response.user?.stats?.followers || 100;
+const firstTag = response.user?.tags?.[0] ?? "no tags";
+
+console.log(city, followers, wrong, firstTag);
+```
+
+### Optional call and `??=`
+
+```js
+function closeModal(options = {}) {
+  options.onClose?.();
+  return "closed";
+}
+
+console.log(closeModal());
+console.log(closeModal({ onClose: () => console.log("cleanup") }));
+
+const config = { retries: 0 };
+config.retries ??= 3;
+config.timeout ??= 5000;
+console.log(config);
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `user?.address?.city` | `address` is missing, so `undefined` instead of a crash, then `Unknown` |
+| `followers ?? 100` | `0` is a valid value, so you get `0` |
+| `followers \|\| 100` | `0` is falsy, so `100` appeared by mistake |
+| `tags?.[0]` | An empty array, `undefined`, then `no tags` |
+| `onClose?.()` | If there is no function, nothing happens |
+| `retries ??= 3` | `0` is not nullish, so it stayed `0` |
+| `timeout ??= 5000` | It was missing, so `5000` was set |
+
+### Interview tip
+
+You cannot mix `??` with `||` or `&&` without parentheses, `a || b ?? c` is a SyntaxError. Add parentheses: `(a || b) ?? c`.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Using the OR operator for number and boolean defaults"
+  why="0, an empty string, and false are falsy, so OR replaces them with the default too, like a volume of 0 becoming 50."
+  better="If you want a default only for missing values, use ??."
+/>
+
+<Mistake
+  title="Putting ?. everywhere"
+  why="Where data should always exist, ?. hides the real bug and the problem shows up somewhere else later."
+  better="Use ?. only on truly optional data. If required data is missing, a clear error is better."
+/>
+
+<Mistake
+  title="Using ?. on the left side of an assignment"
+  why="user?.name = 'Ali' is a SyntaxError, optional chaining is only for reading."
+  better="Check first: if (user) user.name = 'Ali'."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Objects](/courses/javascript/objects), [Truthy, Falsy & Equality](/courses/javascript/truthy-falsy-and-equality), [Operators](/courses/javascript/operators) |
+| **Alongside** | [Destructuring](/courses/javascript/destructuring), [JSON](/courses/javascript/json) |
+| **After** | [Fetch API](/courses/javascript/fetch-api), [Error Handling](/courses/javascript/error-handling) |
+
+<Flow title="Suggested order">
+
+Truthy, Falsy & Equality
+↓
+Objects
+↓
+Optional Chaining & Nullish
+↓
+Fetch API
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `?.` | Stops the chain on `null` / `undefined` and gives `undefined` |
+| `?.[ ]` and `?.()` | Dynamic key and optional function call |
+| `??` | Fallback only for `null` / `undefined` |
+| `\|\|` | Fallback for every falsy value |
+| `??=` | Set the value only if it is missing |
+
+<Callout variant="important" title="Remember">
+
+Use `?.` and `??` together for missing data. Where `0`, `""`, or `false` are valid values, write `??`, not `||`.
+
+</Callout>

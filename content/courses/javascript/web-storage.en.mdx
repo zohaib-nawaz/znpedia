@@ -1,0 +1,202 @@
+---
+title: localStorage, sessionStorage & Cookies
+description: Learn how to save data in the browser with JavaScript localStorage and sessionStorage, store objects with JSON, and how they differ from cookies.
+keywords:
+  - javascript localstorage sessionstorage
+  - localstorage
+  - cookies vs localstorage
+  - web storage api
+---
+
+## 1. What is web storage?
+
+<Callout variant="tip" title="Short definition">
+
+**Web storage is a place inside the browser to save small key-value data: localStorage, sessionStorage and cookies.**
+
+</Callout>
+
+`localStorage` data stays even after you close the browser. `sessionStorage` data lasts only as long as that tab is open. Close the tab and the data is gone.
+
+**Cookies** are also stored in the browser, but they are sent to the server automatically with every request. That is why login sessions often live in cookies.
+
+## 2. Why does it matter?
+
+If the user's theme, cart or form draft disappears on every reload, the experience is bad. With storage, the browser remembers small things for you.
+
+<CompareTable leftTitle="Without storage" rightTitle="With storage">
+
+Dark mode goes back to light on reload | The theme is remembered
+The form draft is lost | The draft comes back
+Every small setting goes to the server | Small settings stay in the browser
+Log in again on every page | The session continues through a cookie
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Data | Better place |
+| --- | --- |
+| **Theme, language** | `localStorage` |
+| **Guest cart** | `localStorage` |
+| **A multi-step form in one tab** | `sessionStorage` |
+| **Login session** | `HttpOnly` cookie (set by the server) |
+| **Large data, offline app** | IndexedDB |
+
+| Feature | localStorage | sessionStorage | Cookies |
+| --- | --- | --- | --- |
+| How long | Until deleted | Until the tab closes | Until `Expires` / `Max-Age` |
+| Size | About 5 MB | About 5 MB | About 4 KB |
+| Sent to the server | No | No | With every request |
+| Readable from JavaScript | Yes | Yes | Only if not `HttpOnly` |
+
+## 4. How does it work?
+
+<Flow title="Saving and loading an object">
+
+A JavaScript object
+↓
+Turn it into a string with JSON.stringify
+↓
+Save it with localStorage.setItem
+↓
+After a reload, get the string with getItem
+↓
+Turn it back into an object with JSON.parse
+
+</Flow>
+
+<Callout variant="important" title="Mental model">
+
+**Storage only holds strings.** If you have an object, array or number, convert it to JSON first.
+
+</Callout>
+
+Storage is per **origin**, which means another site cannot read the data of `https://site.com`.
+
+## 5. Code example
+
+### Remembering the theme
+
+```js
+const saved = localStorage.getItem("theme") ?? "light";
+document.body.dataset.theme = saved;
+
+themeBtn.addEventListener("click", () => {
+  const next = document.body.dataset.theme === "dark" ? "light" : "dark";
+  document.body.dataset.theme = next;
+  localStorage.setItem("theme", next);
+});
+```
+
+### Safe helpers for objects
+
+```js
+function save(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.warn("Could not save:", error.name);
+  }
+}
+
+function load(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw === null ? fallback : JSON.parse(raw);
+  } catch {
+    return fallback;
+  }
+}
+
+save("cart", [{ id: 7, qty: 2 }]);
+console.log(load("cart", []));
+
+sessionStorage.setItem("step", "2");
+localStorage.removeItem("cart");
+```
+
+### Reading and writing a cookie
+
+```js
+document.cookie = "lang=en; Max-Age=2592000; Path=/; SameSite=Lax; Secure";
+console.log(document.cookie);
+```
+
+### How does the code work?
+
+| Line | What happens |
+| --- | --- |
+| `getItem("theme") ?? "light"` | It is `null` on the first visit, so the default is used |
+| `JSON.stringify(value)` | Turned the object into a string |
+| `try / catch` | Errors can happen when storage is full or in private mode |
+| `JSON.parse(raw)` | Turns the string back into an object |
+| `removeItem("cart")` | Deletes one key |
+| `document.cookie = ...` | Sets one cookie for 30 days |
+
+### Interview tip
+
+Keeping an auth token in `localStorage` is risky, because any script can read it if XSS happens. For sessions, a server-set cookie with `HttpOnly`, `Secure` and `SameSite` is better.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Passing an object straight to setItem"
+  why="It turns into the string [object Object] and the data is lost."
+  better="Save with JSON.stringify and load with JSON.parse."
+/>
+
+<Mistake
+  title="Keeping passwords or tokens in localStorage"
+  why="Every script running on the page, including XSS, can read this data."
+  better="Keep sensitive session data in an HttpOnly cookie, set by the server."
+/>
+
+<Mistake
+  title="Calling JSON.parse without try"
+  why="With corrupted or old data, a SyntaxError crashes the page."
+  better="Keep a try catch and a fallback value in the load helper."
+/>
+
+<Mistake
+  title="Treating storage like a database"
+  why="It has a 5 MB limit, the user can clear it any time, and it works synchronously."
+  better="Use storage for small settings, and the server or IndexedDB for large data."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [JSON](/courses/javascript/json), [DOM Events](/courses/javascript/dom-events), [Optional Chaining & Nullish Coalescing](/courses/javascript/optional-chaining-and-nullish) |
+| **Alongside** | [Forms & Validation](/courses/javascript/forms-and-validation), [Error Handling](/courses/javascript/error-handling) |
+| **After** | [Modules](/courses/javascript/modules), [Debugging JavaScript](/courses/javascript/debugging) |
+
+<Flow title="Suggested order">
+
+JSON
+↓
+DOM Events
+↓
+Forms and Validation
+↓
+Web Storage
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `localStorage` | Stays forever, until deleted |
+| `sessionStorage` | Only for that tab |
+| Cookies | Sent to the server with every request, small size |
+| Strings only | Use JSON for objects |
+| Methods | `setItem`, `getItem`, `removeItem`, `clear` |
+| Security | No secrets in storage, use an `HttpOnly` cookie |
+
+<Callout variant="important" title="Remember">
+
+Keep only **small, non-sensitive** things in storage. Save with JSON and always parse inside `try / catch`.
+
+</Callout>

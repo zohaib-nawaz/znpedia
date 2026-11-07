@@ -1,0 +1,209 @@
+---
+title: "CI/CD & Environments"
+description: CI CD pipeline and environment setup, with typecheck, lint, build and tests on every PR, safe deploys, health checks and a separate staging database.
+keywords:
+  - ci cd pipeline environments
+  - github actions ci pipeline
+  - staging vs production environment
+  - health check endpoint
+  - zero downtime deploy
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Every pull request runs one pipeline: install, secret scan, typecheck, lint, build, migration dry run and tests. Production and staging are separate, each with its own database, and a deploy never deletes the running release first.**
+
+</Callout>
+
+**CI** (Continuous Integration) checks every change automatically. **CD** (Continuous Delivery/Deployment) automatically carries code that passes to an environment. **Environments** are the separate places where the app runs: local, preview or staging, and production.
+
+## 2. Why does it matter?
+
+A check that a human has to remember will be forgotten some day. A pipeline does not remember, it just runs every time.
+
+<Callout variant="note" title="Real incidents">
+
+One repo's test workflow lived in `frontend/.github/workflows/`. GitHub reads only `.github/workflows/` at the repo root, so that workflow never ran, and for months the team believed tests were running in CI. Another project's deploy script ran `rm -rf` on the server folder before the new build. The build failed and the site was left completely empty.
+
+</Callout>
+
+<CompareTable leftTitle="Without a pipeline" rightTitle="With a pipeline">
+
+The build worked on my laptop | Built on a clean machine on every PR
+Forgot to run the tests | Tests are required on every PR
+Staging and production share one database | Each environment has its own database
+Deploy deletes the old folder first | The new release goes in a separate folder, then switch
+No idea if the deploy worked | If the health check fails, the deploy fails
+Secrets in the script | Secrets in CI's encrypted settings
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | One simple workflow: install, lint, build | The idea of a pipeline makes sense in your first project |
+| **Production code** | The full pipeline, staging, health check | Lower risk on every deploy |
+| **Senior level** | Deploy strategy, rollback, migration gates | Avoiding downtime and data loss |
+
+## 4. Bad vs good code
+
+### Bad: deploy script
+
+```bash
+ssh server "rm -rf /var/www/app"
+scp -r ./build server:/var/www/app
+ssh server "cd /var/www/app && npm run migrate && npm run seed"
+```
+
+The old folder is deleted first, the migration runs without a backup, and seed data goes into production.
+
+### Good: CI workflow
+
+```yaml
+name: ci
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npx eslint . --max-warnings=0
+      - run: npx prettier --check .
+      - run: npm run build
+      - run: npm test
+```
+
+The secret scan and migration dry run come into this same file as separate steps.
+
+### Good: health endpoint
+
+```ts
+export async function GET() {
+  const missing = ["DATABASE_URL", "SESSION_SECRET"].filter((key) => !process.env[key]);
+  if (missing.length > 0) {
+    return Response.json({ ok: false, missing }, { status: 503 });
+  }
+
+  try {
+    await db.$queryRaw`SELECT 1`;
+  } catch {
+    return Response.json({ ok: false, database: "down" }, { status: 503 });
+  }
+
+  return Response.json({ ok: true });
+}
+```
+
+### What is the difference?
+
+| Thing | Bad | Good |
+| --- | --- | --- |
+| Deploy | Delete the old, then put the new | New in a separate folder, then switch |
+| Migration | No backup | Backup, then migration |
+| Seed | On production | Only local and test |
+| Verify | Hope | Poll `/api/health`, fail the job if it fails |
+
+## 5. How to apply it
+
+### Pipeline stages, in this order
+
+| Stage | Next.js example | Why |
+| --- | --- | --- |
+| Install | `npm ci` | Exact versions from the lockfile |
+| Secret scan | gitleaks (version pinned) | A leak is caught before merge |
+| Typecheck | `npx tsc --noEmit` | Type errors |
+| Lint and format | `eslint --max-warnings=0`, `prettier --check` | Warnings fail too |
+| Build | `npm run build` | The build must not only work on a laptop |
+| Migrations | Dry run when migrations change | Wrong SQL is caught before production |
+| Tests | `npm test` | Contract and logic |
+
+CI's Node version should match `.nvmrc`. Secrets come only from CI's secret settings, in the job level env.
+
+<Flow title="Safe deploy">
+
+Tests pass
+↓
+Build once, upload the artifact
+↓
+New release in a separate folder
+↓
+Database backup
+↓
+Migrations
+↓
+Switch traffic to the new release
+↓
+Poll the health check, fail the job if it fails
+
+</Flow>
+
+### Environments
+
+- At least production and one preview or staging, each with a **separate database**.
+- Keep `APP_ENV` (`local`, `staging`, `production`) separate from `NODE_ENV`. Staging also runs with `NODE_ENV=production`, so identifying the environment from `NODE_ENV` alone is wrong.
+- Every variable is set on the hosting and mirrored by name in `.env.example`.
+
+### Scheduled jobs
+
+Cron calls a guarded endpoint (with a secret). Have a way to prevent overlapping runs. A cron that spends money (AI calls, SMS) should be idempotent and check a kill switch env variable before it works.
+
+## 6. Exceptions and common mistakes
+
+**When the rule does not apply:** hosting platforms that deploy from git on their own (like Vercel) handle release folders and switching themselves. There your job is to keep the pipeline and env variables correct. Mobile store builds run from a manual trigger, not from a commit.
+
+<Mistake
+  title="Making lint and tests an optional stage"
+  why="Optional means they stop running after the first week."
+  better="Required stages on every PR, and merging is blocked when red."
+/>
+
+<Mistake
+  title="One database for staging and production"
+  why="A delete tested on staging wipes production data."
+  better="Each environment gets its own database and its own secrets."
+/>
+
+<Mistake
+  title="Treating a deploy as successful without a health check"
+  why="The process started but cannot reach the database, and users are getting 500s."
+  better="The deploy job polls the health endpoint and fails if it fails."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Secrets Management](/courses/best-practices/secrets-management), [Pull Requests & Code Review](/courses/best-practices/pull-requests-and-code-review) |
+| **Alongside** | [Safe Migrations](/courses/best-practices/migrations), [Deployment](/courses/nextjs/deployment) |
+| **After** | [Dependencies & Supply Chain](/courses/best-practices/dependency-security), [Production Readiness Checklist](/courses/best-practices/production-readiness-checklist) |
+
+## Final quick revision
+
+| Check | Yes? |
+| --- | --- |
+| Workflow in the repo root `.github/workflows/` | |
+| Typecheck, lint, build, tests on every PR | |
+| Secret scan and migration dry run | |
+| A separate database per environment | |
+| Deploy does not delete the old release | |
+| Migration after a backup | |
+| `/api/health` returns 503 when something is missing | |
+
+<Callout variant="important" title="Remember">
+
+Do not leave to human memory what a machine can check. And do not count a deploy as successful until the health check says so.
+
+</Callout>

@@ -9,9 +9,14 @@ import type { NavLink } from "@/lib/site-nav";
 
 type SiteMobileNavProps = {
   links: NavLink[];
+  start: NavLink;
+  labels: {
+    open: string;
+    close: string;
+  };
 };
 
-export function SiteMobileNav({ links }: SiteMobileNavProps) {
+export function SiteMobileNav({ links, start, labels }: SiteMobileNavProps) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -54,11 +59,11 @@ export function SiteMobileNav({ links }: SiteMobileNavProps) {
             </Link>
           ))}
           <Link
-            href="/courses/javascript/introduction"
+            href={start.href}
             onClick={close}
             className="mt-4 rounded-lg bg-accent px-4 py-3 text-center text-base font-semibold text-accent-foreground"
           >
-            Start learning
+            {start.label}
           </Link>
         </nav>
       </div>,
@@ -76,10 +81,10 @@ export function SiteMobileNav({ links }: SiteMobileNavProps) {
 
   const describe = () => {
     if (open) {
-      return "Close menu";
+      return labels.close;
     }
 
-    return "Open menu";
+    return labels.open;
   };
 
   return (

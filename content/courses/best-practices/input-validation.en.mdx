@@ -1,0 +1,209 @@
+---
+title: Input Validation at the Boundary
+description: Input validation with Zod in your API. Parse all outside data at the boundary to stop mass assignment, crashes and oversized payloads.
+keywords:
+  - input validation zod api
+  - zod safeparse next.js
+  - validate request body
+  - mass assignment vulnerability
+  - server side validation
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Any data that comes from outside the system is parsed by a schema at the very first place and becomes a typed shape. The code inside only sees parsed data, never raw input.**
+
+</Callout>
+
+The "boundary" is where your code meets someone else's data: a request body, a query string, route params, headers, form data, a webhook payload, an uploaded file, environment variables, and a response from a third party API.
+
+TypeScript types exist only at compile time. Writing `request.json() as User` does not make the data a User, you are just lying to the compiler. At runtime only a schema checks the data, like Zod (in Next.js) or VineJS (in AdonisJS).
+
+## 2. Why does it matter?
+
+The most famous bug is **mass assignment**. A signup form sends `name` and `email`, and the server puts the whole body into the database. An attacker adds `"role": "admin"` to the body and makes themselves an admin.
+
+Other bugs: `-5` arrives in `quantity` and it becomes a refund. A 50MB string arrives in the `bio` field and fills the server's memory. A file named `photo.png` has an HTML script inside.
+
+<CompareTable leftTitle="Without validation" rightTitle="Schema at the boundary">
+
+Extra fields go straight into the database, even the role can change | The schema keeps only the allow listed fields
+A wrong type gets inside and crashes far away | Wrong input stops on the first line with a 422
+No limit on strings and arrays | A max length on every string and array
+A file type is trusted from the extension | The real bytes and size of the file are checked
+Fake type safety from an as cast | Real type safety after the parse
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Important | Zod is easy to learn and the habit forms here |
+| **Production code** | A must, on every endpoint | This is the first wall of security |
+| **Senior level** | Define shared rules and limits | The same email, phone and slug rules across the whole codebase |
+
+When to learn it: as soon as you build your first form or API. Client side validation is only UX, and the server always validates separately.
+
+## 4. Bad vs good code
+
+### Bad: cast and straight into the database
+
+```ts
+type SignupInput = { name: string; email: string };
+
+export async function POST(request: Request) {
+  const body = (await request.json()) as SignupInput;
+
+  const user = await db.insert(users).values(body).returning();
+
+  return Response.json(user);
+}
+```
+
+If the body contains `role: "admin"` or `isVerified: true`, those get inserted too. It makes no difference whether `name` is empty or a hundred thousand characters long.
+
+### Good: parse with a schema, then use only the parsed data
+
+File `lib/users/users.types.ts`:
+
+```ts
+import { z } from "zod";
+
+export const signupSchema = z.object({
+  name: z.string().trim().min(2).max(80),
+  email: z.email().max(254),
+  password: z.string().min(12).max(128),
+});
+
+export type SignupInput = z.infer<typeof signupSchema>;
+```
+
+File `app/api/signup/route.ts`:
+
+```ts
+import { NextResponse } from "next/server";
+import { z } from "zod";
+
+import { registerUser } from "@/lib/users/users";
+import { signupSchema, USER_MESSAGES } from "@/lib/users/users.types";
+
+export async function POST(request: Request) {
+  const body: unknown = await request.json().catch(() => undefined);
+  if (body === undefined) {
+    return NextResponse.json({ error: USER_MESSAGES.malformedBody }, { status: 400 });
+  }
+
+  const parsed = signupSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: USER_MESSAGES.invalidInput, fields: z.flattenError(parsed.error).fieldErrors },
+      { status: 422 },
+    );
+  }
+
+  const user = await registerUser(parsed.data);
+
+  return NextResponse.json({ user: { id: user.id, name: user.name } }, { status: 201 });
+}
+```
+
+For query params, `z.coerce` helps, because everything in a URL is a string:
+
+```ts
+export const listQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+const query = listQuerySchema.safeParse(Object.fromEntries(new URL(request.url).searchParams));
+```
+
+### What is the difference?
+
+| Thing | Bad code | Good code |
+| --- | --- | --- |
+| Type | An `as` cast, just for show | `z.infer`, with a runtime check |
+| Extra fields | They reach the database | `z.object` strips them |
+| Limits | None | `min`, `max`, `trim` |
+| Bad JSON | A 500 crash | 400 malformed |
+| Bad fields | A crash somewhere inside | 422 with field by field errors |
+
+## 5. How to apply it
+
+<Flow title="Validation at the boundary">
+
+Treat the raw input as unknown
+↓
+One schema per endpoint, in the types file
+↓
+safeParse, and on failure return 400 or 422
+↓
+Give the service only parsed.data
+↓
+Do not validate again inside
+
+</Flow>
+
+Check these things in every schema:
+
+- `trim` and `max` on every string, `max` on every array.
+- `int()`, `positive()` or `min` / `max` on numbers where they make sense.
+- `z.enum([...])` for closed sets, not free text.
+- Uploads: a size cap, and check the MIME type from the file's first bytes (magic bytes), not from the name extension.
+- In server actions, parse `FormData` into the schema too, with `Object.fromEntries(formData)`.
+
+## 6. Exceptions and common mistakes
+
+Validation happens once at the boundary. Inside the service, when one typed function calls another typed function, there is no need to run a schema at every layer. You need it where data comes from outside again, like a response from a third party API.
+
+<Mistake
+  title="Relying only on client side validation"
+  why="Bypassing a browser form takes one curl command, and any body can be sent to the server."
+  better="Use the same Zod schema on both client and server, but never skip the server check."
+/>
+
+<Mistake
+  title="Casting the result of request.json() with as"
+  why="The compiler is happy but at runtime the data can be anything, and the bug blows up far away in another file."
+  better="Keep the raw input as unknown and let it get a type only after safeParse."
+/>
+
+<Mistake
+  title="Putting the whole request object into the model"
+  why="With create(body) or update(body), the caller can set things like role, ownerId or price themselves."
+  better="Keep only the fields the caller may change in the schema, and take ownerId from the session."
+/>
+
+<Mistake
+  title="No limit on strings and arrays"
+  why="One big payload fills memory, the database and the logs all at once, and it is an easy denial of service."
+  better="Set a max length on every field and also set a body size limit on the platform."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Forms & Validation](/courses/nextjs/forms-and-validation), [Strict Typing](/courses/best-practices/strict-typing), [API Handler Shape](/courses/best-practices/api-handler-shape) |
+| **Alongside** | [Error Handling & Error Envelope](/courses/best-practices/error-handling-and-envelope), [Fail Fast, No Defensive Fallbacks](/courses/best-practices/fail-fast-and-no-fallbacks) |
+| **After** | [Shared API Contracts](/courses/best-practices/shared-api-contracts), [Common Vulnerabilities (OWASP)](/courses/best-practices/common-vulnerabilities) |
+
+## Final quick revision
+
+| Check | Question |
+| --- | --- |
+| Every boundary | Are the body, query, params, headers, files and webhooks all parsed? |
+| Schema | Does every endpoint have its own schema in the types file? |
+| Status | Bad JSON gets 400, bad fields get 422? |
+| Allow list | Do extra fields stop before the database? |
+| Limits | Is there a limit on every string, array and upload? |
+| Cast | Is there any place where `as` gives the input a type? |
+
+<Callout variant="important" title="Remember">
+
+Outside data is a stranger until a schema has parsed it. Check it strictly once at the boundary, and then all the code inside can run on typed data with confidence.
+
+</Callout>

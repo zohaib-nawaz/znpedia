@@ -1,0 +1,221 @@
+---
+title: DRY Without Tight Coupling
+description: Apply the DRY principle without the wrong abstraction. Learn when to remove duplication, when to leave it, and why shared functions full of flags cause harm.
+keywords:
+  - dry principle wrong abstraction
+  - dont repeat yourself
+  - duplication vs abstraction
+  - rule of three refactoring
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Extract duplication when the repeated code is one idea that will change from one place. Code that only looks similar today should stay separate.**
+
+</Callout>
+
+DRY means "Don't Repeat Yourself". But DRY is not about lines of code, it is about **knowledge**. A business rule (like "the free plan gets 3 projects") should have exactly one home.
+
+| Part | Meaning |
+| --- | --- |
+| **Extract the second time** | Strict house rule: when you write the same idea a second time, create a shared function |
+| **Not similar, the same** | Do not merge things that will change for different reasons |
+| **Small shared piece** | A small function or constant instead of a big abstraction full of flags |
+| **Search first** | Before writing a new function, check whether one already exists |
+
+## 2. Why does it matter?
+
+The real cost of duplication: a rule changes, you update one place and forget the other. Now the app gives two different answers. But the cost of a wrong abstraction is just as big.
+
+<CompareTable leftTitle="Wrong DRY: merge everything" rightTitle="Right DRY: merge only one idea">
+
+Two different screens in one shared component with 6 boolean props | Each screen has its own component, only the truly shared part is separate
+One change means checking every caller | Each caller stays independent
+A function with if (mode === a) and if (mode === b) | Two clear functions and one small shared helper
+A new caller arrives, one more flag | The new caller writes the code it needs
+
+</CompareTable>
+
+Plain duplication is a problem too:
+
+<CompareTable leftTitle="One rule in three places" rightTitle="One rule in one place">
+
+The limit goes from 3 to 5, two places are updated, one is forgotten | One constant changes, everything follows
+The UI says you can create a project, the API refuses | The UI and the API ask the same function
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | When you see copy paste, start thinking | Learn the idea of DRY, but do not build big abstractions yet |
+| **Production code** | Never duplicate business rules | A rule in two places means two answers, which means a bug |
+| **Senior level** | Tell one idea apart from a coincidence | A wrong merge keeps costing you for years |
+
+## 4. Bad vs good code
+
+**Bad 1: duplicated business rule**
+
+```ts
+function NewProjectButton({ user }: { user: User }) {
+  if (user.plan === "free" && user.projectCount >= 3) {
+    return <UpgradePrompt />;
+  }
+
+  return <CreateButton />;
+}
+
+export async function POST(request: Request) {
+  const user = await session.require(request);
+
+  if (user.plan === "free" && user.projectCount >= 3) {
+    return Response.json({ error: "limit" }, { status: 403 });
+  }
+
+  return Response.json(await projects.create(user, await request.json()));
+}
+```
+
+**Good 1: one home for the rule**
+
+```ts
+const FREE_PROJECT_LIMIT = 3;
+
+export function canCreateProject(user: User) {
+  if (user.plan !== "free") {
+    return true;
+  }
+
+  return user.projectCount < FREE_PROJECT_LIMIT;
+}
+```
+
+Now both the button and the API ask `canCreateProject(user)`.
+
+**Bad 2: abstraction full of flags**
+
+```tsx
+function Card({ item, isProduct, isUser, showPrice, compact }: CardProps) {
+  if (isProduct) {
+    return <div>{item.title} {renderPrice(item, showPrice)}</div>;
+  }
+
+  if (isUser) {
+    return <div className={cardClass(compact)}>{item.name}</div>;
+  }
+
+  return null;
+}
+```
+
+**Good 2: separate things stay separate, with a small shared piece**
+
+```tsx
+function ProductCard({ product }: { product: Product }) {
+  return <CardShell title={product.title} footer={<Price amount={product.price} />} />;
+}
+
+function UserCard({ user }: { user: User }) {
+  return <CardShell title={user.name} />;
+}
+```
+
+| What is the difference? | Bad | Good |
+| --- | --- | --- |
+| Business rule | In two places, they will drift apart one day | One function, one constant |
+| Abstraction | One `Card` that tries to be everything | `CardShell` only shares the layout |
+| Flags | `isProduct`, `isUser`, `compact` | No flags |
+| Changes | Change the product card, the user card may break | Each card is independent |
+
+### Construction in one place too: `Foo.make()`
+
+The strict house style applies DRY to one more thing: how objects are created. Instead of writing `new Mailer(apiKey, region, retries)` at every call site, use one static factory:
+
+```ts
+export class Mailer {
+  static make() {
+    return new Mailer(env.MAIL_API_KEY, env.MAIL_REGION, MAIL_RETRIES);
+  }
+
+  private constructor(
+    private readonly apiKey: string,
+    private readonly region: string,
+    private readonly retries: number,
+  ) {}
+}
+
+const mailer = Mailer.make();
+```
+
+Now when the region or retries rule changes, only `make()` changes. Many teams use plain `new Foo()` or a simple `createMailer()` function, and that is fine too. What matters is that the creation rule lives in one place, whatever you name it.
+
+## 5. How to apply it
+
+<Flow title="Deciding when you see duplication">
+
+You see the same looking code a second time
+↓
+Ask: is this one idea, or just a similar look?
+↓
+Will both always change together and for the same reason?
+↓
+Yes: extract a small shared function or constant
+↓
+No: keep them separate, it is a coincidence
+↓
+Does the shared function need a flag? Stop, these are two functions
+
+</Flow>
+
+**Search** before writing a new function. Look in the same module for a function with the same verb and the same entity, or a helper that does 80 percent of the job. Making a second copy feels fastest and ends up costing the most.
+
+## 6. Exceptions and common mistakes
+
+**An honest note:** "extract the second time" is a strict rule. Many teams follow the **Rule of Three** instead: wait until the third time so the pattern becomes clear. The trade-off: extracting on the second time means a rule never ends up with two homes, but the risk of a wrong abstraction goes up. Waiting for the third time gives a better abstraction, but you risk forgetting a copy in between. For business rules and constants, the second-time rule is almost always right. For UI and flows, pause and think a little longer.
+
+A bit of duplication in tests is often fine. It matters more that each test is readable on its own.
+
+<Mistake
+  title="Merging code because it looks alike"
+  why="Two functions look the same today but serve different business needs. Tomorrow they will diverge and the merged code fills up with flags."
+  better="Merge only what changes for the same reason."
+/>
+
+<Mistake
+  title="Adding mode or type flags to a shared function"
+  why="Every flag doubles the code paths, and every caller has to carry the weight of the other callers."
+  better="Break the abstraction back into separate functions and share only the truly common part."
+/>
+
+<Mistake
+  title="Writing a new helper without searching"
+  why="The codebase ends up with three functions for the same job, and they slowly start giving different answers."
+  better="Search the module and the nearby code first, and extend what you find."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Small Functions](/courses/best-practices/small-functions), [Constants & Magic Values](/courses/best-practices/constants-and-magic-values) |
+| **Alongside** | [Refactoring Safely](/courses/best-practices/refactoring-safely) |
+| **After** | [Service Layer](/courses/best-practices/service-layer), [Loose Coupling & Dependency Injection](/courses/best-practices/dependency-injection), [Following Existing Patterns](/courses/best-practices/following-existing-patterns) |
+
+## Final quick revision
+
+| Check | Question |
+| --- | --- |
+| Knowledge | Is a business rule written in more than one place? |
+| One idea | Will both places change for the same reason? |
+| Flags | Does the shared function have mode or boolean flags? |
+| Size | Is the shared piece a small function or constant? |
+| Search | Did you search before writing something new? |
+
+<Callout variant="important" title="Remember">
+
+Duplication is cheap, a wrong abstraction is expensive. Keep one idea in one place, but do not join two ideas just because they look alike today.
+
+</Callout>

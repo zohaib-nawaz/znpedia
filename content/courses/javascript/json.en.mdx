@@ -1,0 +1,207 @@
+---
+title: JSON
+description: Learn JavaScript JSON parse and stringify to turn data into text and back into objects, the JSON rules, pretty printing, revivers, and common errors.
+keywords:
+  - javascript json parse stringify
+  - json in javascript
+  - json.parse error handling
+  - json format rules
+---
+
+## 1. What is JSON?
+
+<Callout variant="tip" title="Short definition">
+
+**JSON (JavaScript Object Notation) is a text format for writing data that every language and every API understands.**
+
+</Callout>
+
+JSON looks like a JavaScript object, but it is actually a **string**. JavaScript has two built-in methods: `JSON.stringify()` turns an object into JSON text, and `JSON.parse()` turns JSON text back into an object.
+
+## 2. Why does it matter?
+
+You cannot send an object directly over the network or into `localStorage`, only text goes through. JSON is the common language that the frontend, backend, and database all speak.
+
+<CompareTable leftTitle="Without JSON" rightTitle="With JSON">
+
+Every system has its own data format | One standard format for everyone
+Your own code to turn an object into text | JSON.stringify in one line
+Hard to get data out of text | JSON.parse gives an object directly
+localStorage holds only strings | Stringify the object and save it
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Area | What JSON does |
+| --- | --- |
+| **APIs** | Request body and response, `res.json()` |
+| **localStorage** | Saving a cart or settings as a string |
+| **Config files** | `package.json`, `tsconfig.json` |
+| **Databases** | MongoDB documents, Postgres `jsonb` columns |
+| **Logs** | Structured logging |
+
+## 4. How does it work?
+
+<Flow title="The journey of data">
+
+A JavaScript object
+↓
+JSON.stringify
+↓
+A JSON string (network or storage)
+↓
+JSON.parse
+↓
+A new JavaScript object
+
+</Flow>
+
+### JSON rules
+
+| Rule | Correct | Wrong |
+| --- | --- | --- |
+| Keys in double quotes | `{"name": "Ali"}` | `{name: "Ali"}` |
+| Strings in double quotes | `"hello"` | `'hello'` |
+| No trailing comma | `[1, 2]` | `[1, 2,]` |
+| No comments | | `// comment` |
+| Allowed values | string, number, boolean, `null`, array, object | `undefined`, function, `Date` object |
+
+### What stringify changes
+
+| JavaScript value | In JSON |
+| --- | --- |
+| `undefined` / function (inside an object) | The property disappears |
+| `Date` | An ISO string, like `"2026-11-01T00:00:00.000Z"` |
+| `NaN`, `Infinity` | `null` |
+| `Map`, `Set` | `{}` (empty) |
+| `BigInt` | `TypeError` |
+
+<Callout variant="important" title="Mental model">
+
+**Stringify = pack the object into text. Parse = unpack the text back into an object.**
+
+</Callout>
+
+## 5. Code example
+
+### Stringify and parse
+
+```js
+const order = {
+  id: 42,
+  items: ["pen", "book"],
+  paid: false,
+  note: undefined,
+  createdAt: new Date("2026-11-01"),
+};
+
+const text = JSON.stringify(order);
+console.log(typeof text);
+console.log(text);
+
+console.log(JSON.stringify({ id: 1, tags: ["a"] }, null, 2));
+
+const back = JSON.parse(text);
+console.log(back.items[1], typeof back.createdAt);
+```
+
+### Safe parse and reviver
+
+```js
+function safeParse(text, fallback = null) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return fallback;
+  }
+}
+
+console.log(safeParse("{bad json}", {}));
+
+const saved = '{"name":"Ali","joined":"2026-01-15T00:00:00.000Z"}';
+const user = JSON.parse(saved, (key, value) =>
+  key === "joined" ? new Date(value) : value
+);
+console.log(user.joined.getFullYear());
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `typeof text` | `"string"`, JSON is always text |
+| `note: undefined` | Disappeared in stringify |
+| `createdAt` | The Date became an ISO string, and is still a string after parse |
+| `JSON.stringify(obj, null, 2)` | Pretty print with 2 spaces |
+| `safeParse` | A fallback instead of a crash on bad JSON |
+| Reviver function | Turned `joined` back into a `Date` during parse, `2026` |
+
+### Interview tip
+
+`JSON.parse(JSON.stringify(obj))` is the old deep copy trick, but it breaks `Date`, `undefined`, `Map`, and `Set`. For a modern deep copy, use `structuredClone(obj)`.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Running JSON.parse without try/catch"
+  why="User input or a broken API response throws a SyntaxError and the whole app crashes."
+  better="Parse text that comes from outside inside try/catch and give a fallback."
+/>
+
+<Mistake
+  title="Saving an object directly to localStorage"
+  why="localStorage.setItem('cart', cart) saves [object Object], and the data is lost."
+  better="Use JSON.stringify(cart) when saving and JSON.parse when loading."
+/>
+
+<Mistake
+  title="Treating a Date as a Date object after parse"
+  why="In JSON a Date is only a string, so methods like getFullYear do not work."
+  better="Turn it back into a Date with a reviver function or new Date(value)."
+/>
+
+<Mistake
+  title="Parsing an already parsed object again"
+  why="JSON.parse(object) turns the object into a string and parses that, which throws a SyntaxError."
+  better="First check whether the value is a string or an object. fetch's res.json() already parses for you."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Objects](/courses/javascript/objects), [Arrays](/courses/javascript/arrays), [Strings & Template Literals](/courses/javascript/strings) |
+| **Alongside** | [Error Handling](/courses/javascript/error-handling), [Map & Set](/courses/javascript/map-and-set) |
+| **After** | [Fetch API](/courses/javascript/fetch-api), [localStorage, sessionStorage & Cookies](/courses/javascript/web-storage) |
+
+<Flow title="Suggested order">
+
+Objects
+↓
+JSON
+↓
+Promises
+↓
+Fetch API
+↓
+Web Storage
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| JSON | A text format for data, always a string |
+| `JSON.stringify` | Object to string |
+| `JSON.parse` | String to object |
+| Pretty print | `JSON.stringify(obj, null, 2)` |
+| Things that disappear | `undefined`, functions |
+| Safety | Keep parse inside `try/catch` |
+
+<Callout variant="important" title="Remember">
+
+JSON is only text. Use `stringify` before sending or saving, `parse` before using it again, and always parse JSON from outside safely.
+
+</Callout>

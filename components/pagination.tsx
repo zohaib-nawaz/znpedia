@@ -6,9 +6,14 @@ import type { AdjacentChapter } from "@/types/course";
 type PaginationProps = {
   previous: AdjacentChapter;
   next: AdjacentChapter;
+  labels: {
+    previous: string;
+    next: string;
+    navigation: string;
+  };
 };
 
-export function Pagination({ previous, next }: PaginationProps) {
+export function Pagination({ previous, next, labels }: PaginationProps) {
   if (!previous && !next) {
     return null;
   }
@@ -16,7 +21,7 @@ export function Pagination({ previous, next }: PaginationProps) {
   return (
     <nav
       className="mt-6 grid gap-3 pt-2 sm:grid-cols-2"
-      aria-label="Chapter navigation"
+      aria-label={labels.navigation}
     >
       {previous ? (
         <Link
@@ -25,7 +30,7 @@ export function Pagination({ previous, next }: PaginationProps) {
         >
           <span className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
             <ChevronLeft className="h-3 w-3" aria-hidden />
-            Previous
+            {labels.previous}
           </span>
           <span className="mt-1 text-[14px] font-semibold text-foreground">
             {previous.title}
@@ -40,7 +45,7 @@ export function Pagination({ previous, next }: PaginationProps) {
           className="group flex flex-col rounded-md bg-muted/25 p-3 text-right transition-colors hover:bg-muted/40 sm:col-start-2"
         >
           <span className="flex items-center justify-end gap-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-            Next
+            {labels.next}
             <ChevronRight className="h-3 w-3" aria-hidden />
           </span>
           <span className="mt-1 text-[14px] font-semibold text-foreground">

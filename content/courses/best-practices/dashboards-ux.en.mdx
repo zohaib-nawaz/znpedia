@@ -1,0 +1,300 @@
+---
+title: Dashboards
+description: Dashboard UX rules covering three questions on the first screen, stat cards, scan order, the right charts, table density and loading states that keep the layout still.
+keywords:
+  - dashboard ux design
+  - stat cards kpi layout
+  - skeleton loading layout shift
+  - data table ux
+  - dashboard chart types
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**The first screen of a dashboard, without scrolling, should answer three questions: does anything need my attention right now, how am I doing, and what should I do next.**
+
+</Callout>
+
+A dashboard (overview, console, admin home) is the screen a user looks at most during the day. Its job is to show the situation at a glance, not to make people read a report. The rules in short:
+
+| Group | Rules |
+| --- | --- |
+| **What to show** | Three questions in this order: attention, status, next action. A block that answers none of them goes lower down or off the page |
+| **Stat cards** | One row, at most 4 cards, each with a label, one value, one delta and a comparison period |
+| **Order** | The most important block at the top left, alerts before trends |
+| **Charts** | Bars or lines for quantities, no pie or donut, color is never the only signal |
+| **Tables** | 40, 48 or 56 px rows, a human-readable name in the first column, right aligned numbers, sticky header, at most 2 actions per row |
+| **States** | Loading and empty states at final size, an error for each widget on its own, a failure is never shown as "No data" |
+| **Messages** | A notification weighs as much as its job, all banners share one budget |
+
+## 2. Why does it matter?
+
+Nielsen Norman Group describes a dashboard as a single-screen view that gives information at a glance so the user can act on it right away. Research on data design patterns has the same principle: overview first, details on demand. People scan a screen in an F shape: the top line, then the left side, and they read less and less as they go down. That is why an alert placed at the bottom right often goes unnoticed.
+
+Research on charts says people read length and position fast and accurately, but read area and angle poorly. With a donut of seven slices you have to guess which one is biggest. In a bar chart it is obvious immediately. Loading also has research thresholds: up to about 1 second the user does not feel their flow break, and after about 10 seconds attention is gone. A skeleton only works when it looks like the final layout.
+
+<CompareTable leftTitle="Typical dashboard" rightTitle="Dashboard with the rules">
+
+A welcome paragraph and a checklist fill the first screen | An alert, then 4 stat cards, then a list
+9 stat cards in 3 rows, some with a pie chart | One row, 4 cards, value + delta + period
+Overdue items on the right side, under two charts | "Needs attention" right below the stat row
+One spinner, then the page grows by 600 px | A skeleton for each widget, same size
+The request fails and it says "No orders yet" | "Could not load orders" and Try again
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | A skeleton that does not shift the layout, separate empty and error states, right aligned numbers | These three things apply to every screen with data and are easy to learn |
+| **Production code** | All the rules, especially the three questions and per-widget errors | Users make decisions on the dashboard every day, so wrong or hidden information is expensive |
+| **Senior level** | Agree with the product on what "attention" means and which comparison period to use | Which 4 numbers to show is a business decision, not a design one |
+
+When to learn it: when you are building your first admin or analytics screen, and you already understand Suspense and streaming.
+
+## 4. Bad vs good code
+
+### Bad dashboard
+
+```tsx
+"use client";
+
+export default function Overview() {
+  const { data, error, isLoading } = useDashboard();
+  if (isLoading) return <Spinner />;
+  if (error) return <p>Something went wrong</p>;
+
+  return (
+    <div>
+      <h1>Welcome back! Here is everything happening in your workspace today.</h1>
+      <SetupChecklist />
+      <div className="grid grid-cols-3 gap-4">
+        {data.stats.map((stat) => (
+          <div key={stat.label} className="h-52 border p-4">
+            <DonutChart data={stat.breakdown} />
+          </div>
+        ))}
+      </div>
+      <OrdersTable orders={data.orders} />
+    </div>
+  );
+}
+```
+
+### Good dashboard
+
+Each widget sits in its own Suspense boundary, with its own skeleton:
+
+```tsx
+import Link from "next/link";
+import { Suspense } from "react";
+
+export default function OverviewPage() {
+  return (
+    <main className="flex flex-col gap-6 p-6">
+      <header className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Overview</h1>
+        <Link href="/invoices/new" className="rounded-md bg-primary px-4 py-2 text-primary-foreground">Create invoice</Link>
+      </header>
+      <Suspense fallback={<AttentionSkeleton />}>
+        <NeedsAttention />
+      </Suspense>
+      <Suspense fallback={<StatRowSkeleton />}>
+        <StatRow />
+      </Suspense>
+      <Suspense fallback={<TableSkeleton rows={8} />}>
+        <RecentOrders />
+      </Suspense>
+    </main>
+  );
+}
+```
+
+The stat card and its skeleton have the same size:
+
+```tsx
+export function StatCard({ stat }: { stat: Stat }) {
+  return (
+    <div className="flex h-28 flex-col justify-between rounded-lg border p-4">
+      <p className="text-sm text-muted-foreground">{stat.label}</p>
+      <p className="text-2xl font-semibold tabular-nums">{stat.value}</p>
+      <p className="text-xs text-muted-foreground">{stat.delta} vs {stat.period}</p>
+    </div>
+  );
+}
+
+export function StatRowSkeleton() {
+  return (
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {[1, 2, 3, 4].map((key) => (
+        <div key={key} className="h-28 animate-pulse rounded-lg bg-muted" />
+      ))}
+    </div>
+  );
+}
+```
+
+Error, empty and data are three separate states:
+
+```tsx
+export async function RecentOrders() {
+  const result = await getRecentOrders();
+
+  if (!result.ok) {
+    return <WidgetError title="Recent orders" message="Could not load orders." />;
+  }
+  if (result.orders.length === 0) {
+    return <OrdersEmpty />;
+  }
+  return <OrdersTable orders={result.orders} />;
+}
+```
+
+`WidgetError` is a small client component that shows the message and a "Try again" button (using `router.refresh()`) inside the same frame. The rest of the dashboard keeps rendering normally.
+
+A table that can be scanned:
+
+```tsx
+export function OrdersTable({ orders }: { orders: Order[] }) {
+  return (
+    <div className="max-h-[480px] overflow-auto rounded-lg border">
+      <table className="w-full text-sm">
+        <thead className="sticky top-0 bg-background">
+          <tr className="h-12 text-left">
+            <th className="px-4">Customer</th>
+            <th className="px-4 text-right">Amount</th>
+            <th className="px-4"><span className="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {orders.map((order) => (
+            <tr key={order.id} className="h-12 border-t">
+              <td className="px-4">{order.customerName}</td>
+              <td className="px-4 text-right tabular-nums">{order.amountLabel}</td>
+              <td className="px-4">
+                <div className="flex items-center justify-end gap-2">
+                  <Link href={`/orders/${order.id}`}>Open</Link>
+                  <OrderRowMenu orderId={order.id} />
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+```
+
+### What is the difference?
+
+| Bad | Good | Rule |
+| --- | --- | --- |
+| One spinner for the whole page | Suspense + skeleton for each widget | Loading holds the final layout |
+| The whole page disappears on error | Error + retry inside the widget | Errors are per widget |
+| Welcome paragraph and checklist on top | Header, alerts, stats | Three questions on the first screen |
+| `h-52` cards with a donut inside | `h-28` cards, value + delta + period | Stat card at most 120 px |
+| `grid-cols-3` and several rows | `grid-cols-2 lg:grid-cols-4`, one row | At most 4 per row, 2 on a phone |
+| No primary action | One "Create invoice" | One primary action |
+| Left aligned amounts | `text-right tabular-nums` | A column of numbers reads straight down |
+| Header scrolls away | `sticky top-0` | Orientation stays |
+
+## 5. How to apply it
+
+<Flow title="How to build a dashboard">
+
+Write down the answers to the three questions with the product team
+↓
+Put the attention block at the top left
+↓
+At most 4 key numbers, each with a comparison period
+↓
+Give each widget loading, empty and error states at the same size
+↓
+Check at 1440 by 900: all three answers visible without scrolling
+
+</Flow>
+
+The detailed rules:
+
+| Rule | Detail |
+| --- | --- |
+| **Table rows** | 40 (condensed), 48 (regular) or 56 (relaxed) px. Admin tables default to 48. At 1440 by 900 at least 8 rows should be visible after the header |
+| **Stat cards** | At most 4 per row at 1024 px and up, 2 per row at 390, height at most 120 px. A sparkline is fine, a full chart is not. All values in one size |
+| **Scan order** | The most important at the top left, the next on the top line, then down the left side. Nothing time-critical below the first row in the right third |
+| **Charts** | Bars (length) or lines (position) for comparison. No pie, donut, gauge, treemap or 3D. Add a label or pattern next to color |
+| **Row actions** | At most 2 visible, the rest in one overflow menu. For actions on many rows, use checkboxes and a bulk bar above the table |
+| **Banners** | Onboarding, announcements, upgrade prompts and banners together take at most 25 percent of the first viewport. If two collide, the one closer to value wins |
+
+What to show while loading:
+
+| Wait | What to show |
+| --- | --- |
+| Under about 1 second | Nothing, an indicator itself causes flicker |
+| 1 to 10 seconds | A skeleton (better) or a spinner, at the final layout size |
+| More than 10 seconds | A progress bar, so the user has an idea of how long |
+
+The weight of a notification:
+
+| Situation | The right way |
+| --- | --- |
+| Status of one element | An inline indicator, like a dot with a count on "Orders" |
+| System event | A notification or banner |
+| Passive success | A toast, like "Saved" |
+| Error | Never a toast, it fades away and gets missed. Inline or banner |
+| A big, expensive decision | A modal, only here |
+
+## 6. Exceptions and common mistakes
+
+| Situation | What to do |
+| --- | --- |
+| **Part-to-whole with only 2 parts** | A simple progress bar or stacked bar, still no donut |
+| **A monitoring wall screen** | More cards are fine, but each card shows one value and one status |
+
+<Mistake
+  title="Showing No data on a failed request"
+  why="The user thinks nothing really happened and makes the wrong decision, and when data shows up later they stop trusting the dashboard."
+  better="Error and empty are separate states. The error sits inside the widget with a message and Try again."
+/>
+
+<Mistake
+  title="One spinner for the whole page"
+  why="The page grows by 600 px when data arrives, things shift, and the slowest widget blocks the whole page."
+  better="Each widget gets its own Suspense boundary and a skeleton at its final size."
+/>
+
+<Mistake
+  title="An error like Payment failed in a toast"
+  why="The toast is gone in 5 seconds, the user never saw it and the problem stays exactly where it was."
+  better="Show errors inline or in a banner that stays until the user closes it. Toasts only for news like Saved."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Visual Hierarchy & Spacing](/courses/best-practices/visual-hierarchy-and-spacing), [Suspense & lazy()](/courses/react/suspense-and-lazy) |
+| **Alongside** | [Streaming & Suspense](/courses/nextjs/streaming-and-suspense), [Loading, Error & Not Found UI](/courses/nextjs/loading-and-error-ui), [Onboarding & Empty States](/courses/best-practices/onboarding-and-empty-states) |
+| **After** | [Performance & Core Web Vitals](/courses/nextjs/performance), [Motion & Design Iteration](/courses/best-practices/motion-and-iteration) |
+
+## Final quick revision
+
+| Check | What to remember |
+| --- | --- |
+| First screen | Attention, status, next action, without scrolling |
+| Stat cards | One row, at most 4, label + value + delta + period, at most 120 px |
+| Order | Important things top left, alerts first |
+| Charts | Bars or lines, no pie or donut |
+| Table | 48 px rows, name first, numbers right, sticky header, at most 2 row actions |
+| Loading | Skeleton at final size, zero layout shift |
+| Error | One per widget, never "No data", never a toast |
+| Banners | At most 25 percent all together |
+
+<Callout variant="important" title="Remember">
+
+A dashboard is not a report, it is an answer at a glance. First say what is broken, then how things are, then the next step, and even while loading or on error the layout should not move from its place.
+
+</Callout>

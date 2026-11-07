@@ -16,8 +16,14 @@ export default function ErrorPage({ reset }: ErrorPageProps) {
         <h1 className="mt-3 text-3xl font-bold tracking-tight text-foreground">
           Kuch ghalat ho gaya
         </h1>
+        <p className="mt-1 text-lg font-medium text-muted-foreground" lang="en">
+          Something went wrong
+        </p>
         <p className="mt-4 text-base leading-relaxed text-muted-foreground">
           Yeh page abhi load nahi ho saka. Dobara try karein, ya home par wapas jayein.
+          <span className="mt-1 block" lang="en">
+            This page could not load. Try again, or go back home.
+          </span>
         </p>
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <button
@@ -26,7 +32,7 @@ export default function ErrorPage({ reset }: ErrorPageProps) {
             className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-lg bg-accent px-5 text-sm font-semibold text-accent-foreground transition-opacity duration-200 hover:opacity-90"
           >
             <RotateCcw className="h-4 w-4" aria-hidden />
-            Dobara try karein
+            Dobara try karein / Try again
           </button>
           <Link
             href="/"

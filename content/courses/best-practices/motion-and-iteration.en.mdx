@@ -1,0 +1,281 @@
+---
+title: Motion & Design Iteration
+description: UI animation duration and easing rules, one duration scale, one curve with no bounce, reduced motion, and a way to compare design alternatives properly.
+keywords:
+  - ui animation duration easing
+  - css transition best practices
+  - prefers reduced motion
+  - design tokens motion
+  - design iteration process
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Motion is a system: one duration scale, one curve, no bounce. And design decisions are made by measuring and comparing at real size, not by guessing.**
+
+</Callout>
+
+This chapter has two parts. The first is **motion**: how long animations run, which curve to use, what to animate and what not to. The second is **design iteration**: how to create several design options for one screen, name them and compare them.
+
+| Group | Rules |
+| --- | --- |
+| **Duration** | Only one scale: 115, 185, 300, 485, 785 ms. Exit is shorter than entrance |
+| **Curve** | One curve everywhere, in both CSS and JS. No overshoot or bounce |
+| **What to animate** | Only `transform` and `opacity`. Not width, height, top or left |
+| **Behavior** | Every animation shows cause and effect, can be interrupted midway, and respects reduced motion |
+| **Lists** | A clean clip, not a fade mask |
+| **Debugging** | Do not guess, read the size, computed style and animations from the browser |
+| **Iteration** | A new direction gets a number, a variation gets a letter (2a, 2b), compare at real size with the same data, match references exactly, variations come from a prop, not a copied file |
+
+## 2. Why does it matter?
+
+Nielsen Norman Group's old but still valid research on response times says: about 0.1 second feels instant, and up to 1 second the user's flow is not broken. That is why animations of roughly 100 to 500 ms feel "responsive", and longer ones feel "slow".
+
+The scale is built around 300 ms (about the length of a blink) and moves up and down by the golden ratio (1.618): divide 300 by 1.618 to get 185, then 115. Multiply to get 485, then 785. When every duration comes from one scale, the whole app feels made of one "material". If every component has its own timing and curve, it feels like four different products stuck on one screen.
+
+Bounce and overshoot grab attention, feel like a toy and slow down work. Some users get dizzy or nauseous from motion, so respecting the operating system's "reduce motion" setting is part of accessibility.
+
+There is a performance reason too: animating `width` or `height` makes the browser recalculate layout on every frame, and the animation stutters. `transform` and `opacity` run on the compositor and stay smooth.
+
+<CompareTable leftTitle="Motion without a system" rightTitle="With a scale and one curve">
+
+transition: all 0.2s in one file, 250ms ease-in-out in another | Every duration comes from a token
+The card bounces, the toast is linear | One curve everywhere
+The drawer's width is animated, scrolling stutters | The drawer's transform is animated, smooth
+Reduce motion is on, yet everything still spins | Movement stops when reduce motion is on
+A gradient fade at the end of a list | A clean clip, the last row is fully visible
+dashboard-final-v3-new.html | 1, 2a, 2b, old ones in an archive
+Decision made from three small screenshots | Two options at 1440, with the same data
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Only `transform` and `opacity`, `prefers-reduced-motion`, and avoiding `transition: all` | These three habits protect both performance and accessibility |
+| **Production code** | Duration and curve tokens, no hardcoded ms, short exits | When every developer adds their own timing, the product feels scattered |
+| **Senior level** | Define the motion scale, run the design options process, ask for measured numbers in reviews | A design system usually decays through small "just a little" changes |
+
+When to learn it: after learning CSS transitions and Tailwind, when you are animating your first drawer, dialog or dropdown. Learn the iteration process when you work on two design options for one screen.
+
+## 4. Bad vs good code
+
+### Bad motion
+
+```css
+.card {
+  transition: all 0.2s ease-in-out;
+}
+
+.drawer {
+  width: 0;
+  transition: width 250ms cubic-bezier(0.68, -0.55, 0.27, 1.55);
+}
+
+.drawer.open {
+  width: 400px;
+}
+
+.list {
+  mask-image: linear-gradient(to bottom, black 80%, transparent);
+}
+```
+
+### Good motion
+
+Tokens in one place:
+
+```css
+:root {
+  --duration-press: 115ms;
+  --duration-quick: 185ms;
+  --duration-blink: 300ms;
+  --duration-glide: 485ms;
+  --duration-drift: 785ms;
+  --ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.drawer {
+  width: 400px;
+  transform: translateX(100%);
+  transition: transform var(--duration-quick) var(--ease-standard);
+}
+
+.drawer[data-state="open"] {
+  transform: translateX(0);
+  transition-duration: var(--duration-blink);
+}
+
+.list {
+  overflow: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer {
+    transition-property: opacity;
+  }
+}
+```
+
+`--ease-standard` is a curve like a critically damped spring: fast start, gentle stop, and it never goes past the target. The y values of the bezier never go above 1, so there is no overshoot.
+
+The drawer takes 300 ms to open and 185 ms to close, because a transition always uses the duration of the new state. Exit should be shorter than entrance: the user has already closed it, so why make them wait. CSS transitions can be interrupted midway and reversed, so the user can close the drawer halfway through.
+
+JS animations should read the same tokens, not their own values:
+
+```ts
+export function slideIn(element: HTMLElement) {
+  const styles = getComputedStyle(document.documentElement);
+  const duration = Number.parseFloat(styles.getPropertyValue("--duration-blink"));
+  const easing = styles.getPropertyValue("--ease-standard").trim();
+
+  return element.animate(
+    [{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }],
+    { duration, easing }
+  );
+}
+```
+
+In Tailwind too, use only the values from the scale: `duration-115`, `duration-185`, `duration-300`, `duration-485`, `duration-785`, and define the curve in the theme as `--ease-standard` and use it with the `ease-standard` utility. The `motion-reduce:` variant handles reduced motion.
+
+### What is the difference?
+
+| Bad | Good | Rule |
+| --- | --- | --- |
+| `transition: all 0.2s` | `transition: transform` + token | One scale, only the needed property |
+| Animating `width` | Animating `transform` | Layout is not rebuilt every frame |
+| -0.55 and 1.55 in the bezier | y values between 0 and 1 | No bounce |
+| Open and close at the same speed | Open 300, close 185 | Short exit |
+| No mention of reduced motion | Only opacity in the media query | Accessibility |
+| `mask-image` fade | `overflow: auto` | Clean clip |
+
+## 5. How to apply it
+
+<Flow title="How to add an animation">
+
+Ask: what cause is this motion showing the effect of?
+↓
+Pick a duration from the scale: small element, short duration
+↓
+Animate only transform and opacity
+↓
+Apply the shared curve token
+↓
+Keep the exit one step shorter
+↓
+Check with reduce motion turned on
+
+</Flow>
+
+| Token | Duration | Where |
+| --- | --- | --- |
+| **press** | 115 ms | Hover, button press feedback |
+| **quick** | 185 ms | Tooltip, small state change, exits |
+| **blink** | 300 ms | Opening a drawer, dialog or panel |
+| **glide** | 485 ms | Page transition, large surface |
+| **drift** | 785 ms | Rarely, large background movement or one turn of a spinner |
+
+When an animation does not run at all or something feels "off", measure first. In the DevTools console:
+
+```js
+const drawer = document.querySelector("[data-drawer]");
+const styles = getComputedStyle(drawer);
+
+console.log(drawer.getBoundingClientRect());
+console.log(styles.transitionDuration, styles.transitionTimingFunction);
+console.log(drawer.getAnimations().map((animation) => animation.transitionProperty ?? animation.animationName));
+```
+
+A common cause is a typo in a custom property, like `var(--duration-blinkk)`. The browser gives no error, the property falls back to its initial value of `0s`, and the animation silently disappears. One `getComputedStyle` call shows this immediately, so you do not need to stare at a screenshot.
+
+### Design iteration rules
+
+| Rule | Detail |
+| --- | --- |
+| **Number and letter** | A new direction gets the next number (1, 2, 3). A variation of the same direction gets number + letter (2a, 2b). Numbers never change, even for archived ones. Archive, do not delete, unless the owner says so |
+| **Compare at real size** | Options at the target viewport (1440 by 900 and 390 by 844), side by side, with the same data. Thumbnails only for navigation |
+| **Match references exactly** | When working from a screenshot or design, spacing, type, color, icons and copy must match exactly. List what you deliberately changed in the PR |
+| **Variation from a prop** | A variation is an option (flag or prop) of the base component, not a copied file. If the last variation is dropped, remove the option too |
+
+A layout that wins in a thumbnail often breaks the first viewport budget at real size. So the decision is always made at the real size.
+
+A good way to do variations, one component and one prop:
+
+```tsx
+export function Checklist({ steps, compact = false }: { steps: SetupStep[]; compact?: boolean }) {
+  return (
+    <ol data-compact={compact} className="group flex flex-col gap-3 data-[compact=true]:gap-2">
+      {steps.map((step) => (
+        <li key={step.id} className="text-sm group-data-[compact=true]:text-xs">{step.title}</li>
+      ))}
+    </ol>
+  );
+}
+```
+
+If `Checklist.tsx` and `ChecklistCompact.tsx` are two files with 80 copied lines, every bug fix must be made in two places, and the two files slowly drift apart. A component with one prop removes this problem.
+
+## 6. Exceptions and common mistakes
+
+| Situation | What to do |
+| --- | --- |
+| **A spinner or continuous rotation** | The rotation stays linear, but the duration of one turn comes from the scale |
+| **Header or dock blur** | Only when the designer asks for it |
+| **Reduced motion** | Remove movement, a light opacity fade or an instant state change is enough |
+
+<Mistake
+  title="Using transition: all"
+  why="Every changing property is animated, layout ones included, and things that should not animate start moving too."
+  better="Write only the property you want to animate, usually transform and opacity, together with a duration token."
+/>
+
+<Mistake
+  title="Opening an accordion by animating height"
+  why="Layout is rebuilt on every frame, all the content below gets pushed, and the animation stutters."
+  better="Use transform or opacity, or open the content without animation. Motion is not required, smoothness is."
+/>
+
+<Mistake
+  title="A curve with bounce or overshoot"
+  why="The interface feels like a toy, grabs attention every time, and mixed curves on one screen feel like different products."
+  better="One shared curve token that stops at the target, across the whole app."
+/>
+
+<Mistake
+  title="Choosing a design from small screenshots"
+  why="What looks clean in a small image can break the first screen budget at real size."
+  better="Open the options at the target size, with the same data, side by side, then decide."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Styling in React](/courses/react/styling), [Design Tokens & UI Consistency](/courses/best-practices/design-tokens-and-ui), [Visual Hierarchy & Spacing](/courses/best-practices/visual-hierarchy-and-spacing) |
+| **Alongside** | [Dashboards](/courses/best-practices/dashboards-ux), [DRY Without Tight Coupling](/courses/best-practices/dry-without-coupling) |
+| **After** | [Performance & Core Web Vitals](/courses/nextjs/performance), [Pull Requests & Code Review](/courses/best-practices/pull-requests-and-code-review) |
+
+## Final quick revision
+
+| Check | What to remember |
+| --- | --- |
+| Duration | Only 115, 185, 300, 485, 785 ms, from tokens |
+| Curve | One shared curve, no bounce or overshoot |
+| Property | Only transform and opacity |
+| Exit | Shorter than entrance |
+| Accessibility | Respect `prefers-reduced-motion` |
+| Lists | Clean clip, no fade mask |
+| Debugging | `getBoundingClientRect`, `getComputedStyle`, `getAnimations` |
+| Naming | 1, 2, 2a, 2b, archive, never delete |
+| Compare | Real size, side by side, same data |
+| Reference | Exact match, or list the changes in the PR |
+| Variation | A prop or flag, not a copied file |
+
+<Callout variant="important" title="Remember">
+
+Good motion is not noticed, the app just feels "smooth". One scale, one curve, only transform and opacity. And every design decision made at real size, with measured numbers.
+
+</Callout>

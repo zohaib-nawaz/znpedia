@@ -6,8 +6,9 @@ import rehypeSlug from "rehype-slug";
 import remarkGfm from "remark-gfm";
 
 import { estimateReadingMinutes } from "@/lib/catalog";
-import { getChapterPath } from "@/lib/courses";
-import { mdxComponents } from "@/components/mdx-components";
+import { resolveChapterSource } from "@/lib/courses";
+import { getMdxComponents, type MdxLabels } from "@/components/mdx-components";
+import type { Locale } from "@/lib/i18n/config";
 import { filterTocHeadings } from "@/lib/docs-config";
 import {
   normalizeHeadingId,
@@ -44,8 +45,15 @@ function extractHeadingsFromSource(source: string): TocHeading[] {
   return headings;
 }
 
-export async function getChapterMDX(courseSlug: string, chapterSlug: string) {
-  const filePath = getChapterPath(courseSlug, chapterSlug);
+type ChapterMdxInput = {
+  courseSlug: string;
+  chapterSlug: string;
+  locale: Locale;
+  labels: MdxLabels;
+};
+
+export async function getChapterMDX({ courseSlug, chapterSlug, locale, labels }: ChapterMdxInput) {
+  const { filePath, isFallback } = resolveChapterSource(courseSlug, chapterSlug, locale);
   if (!fs.existsSync(filePath)) {
     return null;
   }
@@ -55,7 +63,7 @@ export async function getChapterMDX(courseSlug: string, chapterSlug: string) {
 
   const { content, frontmatter } = await compileMDX<ChapterFrontmatter>({
     source,
-    components: mdxComponents,
+    components: getMdxComponents(locale, labels),
     options: {
       parseFrontmatter: true,
       mdxOptions: {
@@ -66,12 +74,13 @@ export async function getChapterMDX(courseSlug: string, chapterSlug: string) {
   });
 
   const title = frontmatter.title ?? slugToTitle(chapterSlug);
-  const description = frontmatter.description ?? `${title} ko Roman Urdu mein seekhein.`;
+  const description = frontmatter.description ?? title;
 
   return {
     content,
     frontmatter: { ...frontmatter, title, description },
     toc: filterTocHeadings(headings),
     readingMinutes: estimateReadingMinutes(source),
+    isFallback,
   };
 }

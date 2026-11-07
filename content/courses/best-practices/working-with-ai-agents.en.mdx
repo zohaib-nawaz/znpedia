@@ -1,0 +1,193 @@
+---
+title: Working with AI Coding Agents
+description: AI coding agents best practices covering one instructions file, branch work, asking before push and migrations, the assigned task only, and verifying every claim.
+keywords:
+  - ai coding agents best practices
+  - agents.md instructions file
+  - ai agent git safety
+  - verify ai generated code
+  - human in the loop
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**An AI agent is a fast but new teammate: it works on a branch, does only the task it was given, verifies with typecheck and tests, and anything that pushes, merges, deploys or touches a live database happens only with a human's clear permission.**
+
+</Callout>
+
+Coding agents can edit files, run commands and use git. That power is exactly the danger: one wrong command does, in seconds, damage that a human would hesitate to do by hand.
+
+## 2. Why does it matter?
+
+These rules did not come from theory, they came from real events:
+
+<Callout variant="note" title="Real incidents">
+
+One agent was once told "make the PR later". A few days later, on a different task, it took that old remark as permission and pushed and opened a PR. Another agent wrote in its report that "a backup tag was created", but that tag was never created. One agent started running a migration on a live database in the middle of a task. And on a shared tree, an agent's `git stash` took another person's uncommitted work.
+
+</Callout>
+
+<CompareTable leftTitle="Agent without rules" rightTitle="Agent with rules">
+
+Commits straight to main | On its own branch or worktree
+Took an old remark as permission to push | Clear permission, given at that moment, for every push
+Migration on a live database | The migration file is created, a human runs it
+Said a backup was made, never checked | Report only the safety net that was verified
+Fixed three extra things along with the task | Only the assigned task, report the rest
+Wrote the code and called it done | Done after typecheck, lint and tests
+Heard the description and built it | Plan first, build after permission
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | A branch, verification and understanding the code yourself | You do not learn by using code you do not understand |
+| **Production code** | The full rule, most of all for push and live data | One wrong command can wipe production data |
+| **Senior level** | Create the instructions file, permissions and team workflow | Every developer's agent runs on the same rules |
+
+## 4. Bad vs good code
+
+### Bad: prompt and result
+
+```bash
+make the dashboard faster and push it when done
+```
+
+Along with the dashboard, the agent "cleaned up" the auth middleware, ran a migration on the live database, and pushed to main. Report: "Done, all good, backup taken."
+
+### Good: prompt
+
+```bash
+task: the orders page takes 4s. find the cause and propose a fix.
+scope: src/orders only. do not touch auth or migrations.
+first: reply with a short plan, do not edit yet.
+done when: typecheck, lint and tests pass, and you report the before and after timing.
+do not push.
+```
+
+### Good: the agent's report
+
+```bash
+cause: n+1 query, 51 queries per page load
+fix: one query with include in src/orders/service.ts
+verified: tsc --noEmit ok, eslint ok, 14 tests pass
+timing: 4.1s to 0.4s on the seeded data
+committed locally on fix/orders-n-plus-one, not pushed
+not done: the export button has the same pattern, left for a separate task
+```
+
+### What is the difference?
+
+| Thing | Bad | Good |
+| --- | --- | --- |
+| Scope | Open | Folder and forbidden things are clear |
+| Plan | Build straight away | Plan first, then go |
+| Verification | "All good" | Commands and results |
+| Push | Already in the prompt | Separate, permission given at that moment |
+| Extra work | Did it itself | Reported it, did not start it |
+
+## 5. How to apply it
+
+### One instructions file per repo
+
+One file at the repo root (the common convention is `AGENTS.md`) holding the project's rules, commands and pointers to docs. Every tool should read this. If a tool wants its own separate file, that file should only import this one and not repeat the rules. Keep the file short (under about 150 lines) and put the detail in docs.
+
+```bash
+# AGENTS.md (excerpt as an example)
+read docs/knowledge/README.md first.
+work on a branch named type/kebab-summary. never commit to main.
+verify with: npx tsc --noEmit, npm run lint, npm test.
+never push, merge, deploy or run migrations on a live database unless asked for that action now.
+do only the assigned task. report anything else you notice.
+```
+
+<Flow title="One task with an agent">
+
+Write the task, scope and the condition for done
+↓
+The agent gives a plan
+↓
+You approve the plan
+↓
+The agent builds on a branch
+↓
+It runs typecheck, lint and tests
+↓
+Report: what changed, what was verified, what is left
+↓
+You review the diff
+↓
+Push or PR only with your clear permission
+
+</Flow>
+
+### Hard rules
+
+| Rule | Why |
+| --- | --- |
+| Push, merge, rebase and PR only with clear permission given at that moment | An old or general remark is not standing permission |
+| Read-only is the ceiling on a live system | A human does migrations, inserts, updates and deletes |
+| Only the assigned task | Scope creep by an agent with write access breaks live systems |
+| Any safety net you mention must exist and be verified | A false backup is worse than no backup |
+| No `stash`, `reset`, `clean` or `checkout <path>` on a shared tree | Someone else's work gets wiped |
+| Stage your own paths explicitly, not `git add -A` | Other people's files do not get committed |
+| Never print secrets in output, logs or chat | A transcript is stored data too |
+| Plan first, build after permission | Work on solving the wrong problem is wasted |
+
+## 6. Exceptions and common mistakes
+
+**When the rule does not apply:** some teams let an agent run a small migration on a local or dev database if it does not touch existing data, is idempotent and has a down path. Destructive DDL, backfills, drops, renames and type changes always come in front of a human. In a solo throwaway repo, giving push permission once is fine too, but not in a team repo.
+
+<Mistake
+  title="Believing the agent's report without checking"
+  why="An agent can confidently write things that never happened, like tests passed or a backup was made."
+  better="Ask for the commands and results in the report, and verify the important claims yourself."
+/>
+
+<Mistake
+  title="Merging generated route handlers without an auth review"
+  why="AI code often forgets authentication middleware or an ownership check."
+  better="Look for the auth and authorization line in every new route yourself, and ask for failure tests."
+/>
+
+<Mistake
+  title="Several agents on one tree"
+  why="One agent's stash, reset or amend can take or break another's work."
+  better="Give each agent its own branch and its own worktree."
+/>
+
+<Mistake
+  title="Giving an agent a browser and credentials for visual checks"
+  why="Shared browsers and accounts risk a wrong action, and credentials can leak."
+  better="Let the agent verify at the code level and tell you what to look at, and do the visual check yourself."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Git Branches & Commits](/courses/best-practices/git-branches-and-commits), [Definition of Done](/courses/best-practices/definition-of-done) |
+| **Alongside** | [Documentation & Decision Records](/courses/best-practices/documentation-and-decisions), [Safe Migrations](/courses/best-practices/migrations) |
+| **After** | [Pull Requests & Code Review](/courses/best-practices/pull-requests-and-code-review), [Production Readiness Checklist](/courses/best-practices/production-readiness-checklist) |
+
+## Final quick revision
+
+| Check | Yes? |
+| --- | --- |
+| One short instructions file | |
+| Agent on a branch or worktree | |
+| Push, merge and migration only with clear permission | |
+| Only the assigned task | |
+| Verified with typecheck, lint and tests | |
+| Every safety net verified | |
+| Plan first, then build | |
+
+<Callout variant="important" title="Remember">
+
+The agent's speed is yours, and so is the responsibility. The button for any action that cannot be undone should always stay in a human's hands.
+
+</Callout>

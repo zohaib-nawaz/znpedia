@@ -1,0 +1,197 @@
+---
+title: Project Structure
+description: Project folder structure best practices for Next.js. A layout for src/app, src/lib modules, components, hooks, tests and env that stays predictable from day one.
+keywords:
+  - project folder structure best practices
+  - nextjs folder structure
+  - src lib components hooks layout
+  - one unit per folder
+  - env example file
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Everything has one agreed place: routes in `src/app`, logic in `src/lib/<module>`, components in `src/components/<Name>`, hooks in `src/hooks/use-<thing>`, and every unit in its own folder next to its types file.**
+
+</Callout>
+
+The goal of project structure is that any developer can guess where something lives, and where new code should go, without asking.
+
+This is decided on day one. Once three modules are built in three different ways, fixing the structure later becomes a refactor of the whole project.
+
+## 2. Why does it matter?
+
+A real story: a new developer had to change a discount rule. The rule was in `utils/helpers2.ts`, a copy was in `components/Cart/calc.ts`, and a third was in `api/checkout.ts`. They changed one and two were left behind.
+
+Another common problem: the repo still had the default create-next-app README, which listed wrong commands, and an env variable that the code reads was missing from `.env.example`. The app crashed on the production deploy.
+
+<CompareTable leftTitle="No structure" rightTitle="Predictable structure">
+
+Everything dumped into utils and helpers folders | Each module has its own named folder
+PascalCase and kebab-case mixed in one folder | One naming convention per folder
+Imports with a long line of dots | Clean imports through an alias, like at-sign slash lib
+A new developer keeps asking where to write | They learn the pattern by looking at the code
+A missing env variable is found in production | The env module throws at boot
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | The framework's default structure and a `src/` folder are enough | In a small project, extra folders are just noise |
+| **Production code** | The full layout on day one, with a README and `.env.example` | The team and the timeline both grow, and without structure the code scatters |
+| **Senior level** | Capture the layout in a template or a generator | Every new repo and module is born in the right shape |
+
+## 4. Bad vs good code
+
+### Bad: put wherever it fit
+
+```bash
+app/page.tsx
+app/api/checkout/route.ts
+components/orderTable.tsx
+components/order-form.tsx
+components/Cart/calc.ts
+utils/helpers.ts
+utils/helpers2.ts
+types.ts
+api.ts
+```
+
+Naming is mixed, logic is scattered across `components` and `utils`, and `types.ts` is a shared dumping ground.
+
+### Good: each unit in its place
+
+```bash
+README.md
+.env.example
+src/proxy.ts
+src/app/layout.tsx
+src/app/orders/page.tsx
+src/app/api/orders/route.ts
+src/app/api/orders/route.types.ts
+src/lib/env.ts
+src/lib/orders/orders.ts
+src/lib/orders/orders.types.ts
+src/lib/orders/orders.library.ts
+src/lib/api/client/client.ts
+src/components/OrderTable/OrderTable.tsx
+src/components/OrderTable/OrderTable.types.ts
+src/components/ui/button.tsx
+src/hooks/use-orders/use-orders.ts
+tests/api/orders.test.ts
+tests/lib/orders.test.ts
+```
+
+Env is also read from a single module, which fails right away on a missing value:
+
+```ts
+import "server-only";
+
+export function requireEnv(name: string) {
+  const value = process.env[name];
+
+  if (!value) {
+    throw new Error(`Missing environment variable ${name}`);
+  }
+
+  return value;
+}
+```
+
+### What is the difference?
+
+| Folder / file | Job |
+| --- | --- |
+| `src/app` | Only routes, layouts, metadata. Thin handlers, no logic |
+| `src/lib/<module>` | Business logic, types beside logic, pure helpers in `.library.ts` |
+| `src/components/<Name>` | One component, its props types, private children inside |
+| `src/components/ui` | Design system primitives |
+| `src/hooks/use-<thing>` | Hooks for client state |
+| `src/proxy.ts` | Replaces middleware in Next.js 16, one light job only |
+| `.env.example` | The name of every env variable, never the value |
+| `tests/api`, `tests/lib` | Endpoint tests and pure unit tests kept apart |
+
+## 5. How to apply it
+
+<Flow title="Day one of a new repo">
+
+Remove the template's old README and write one for your product
+↓
+Set up the src folder and the at-sign slash alias
+↓
+Create .env.example and an env module
+↓
+Add the first module in src/lib with its types file
+↓
+Delete the template's unused files
+
+</Flow>
+
+When adding a new module, just copy the shape of an existing one: folder, logic file, types file, test. When all modules look alike, the codebase feels small even when it is large.
+
+Use one naming convention per folder. Components in PascalCase (`OrderTable/OrderTable.tsx`), hooks and lib modules in kebab-case (`use-orders`, `render-quota`). Design system primitives can have their own convention, but keep it the same across that whole folder.
+
+## 6. Exceptions and common mistakes
+
+Many teams prefer "feature folders": `src/features/orders/` holding the component, hook and service together. This is common in mobile apps and works well. The layout above is organized by layer first (app, lib, components) and then by module. The trade-off: feature folders keep one feature in one place, while a layer layout keeps the line between server and client code clear. Both are fine, but use only one in a repo.
+
+`proxy.ts` should do just one job, like refreshing a session or a redirect. The real security check should be done by every page and route handler itself.
+
+<Mistake
+  title="A folder named utils or helpers where everything goes"
+  why="The name does not say what is inside, and everything even slightly related ends up there."
+  better="Keep the function near the module it serves, or create a new named module."
+/>
+
+<Mistake
+  title="process.env.KEY! scattered through the code"
+  why="The exclamation mark only silences the compiler. A missing value crashes somewhere far away at runtime."
+  better="Use one env module that validates at boot and gives a clear error when a value is missing."
+/>
+
+<Mistake
+  title="Leaving the template files and README in place"
+  why="New developers get wrong commands and unused screens that serve no purpose."
+  better="Replace the template README with your product's README on day one and delete unused code."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Installation & Project Structure](/courses/nextjs/installation-and-project-structure), [Naming Things](/courses/best-practices/naming) |
+| **Alongside** | [Types Beside Logic](/courses/best-practices/types-beside-logic), [File Size & Organization](/courses/best-practices/file-size-and-organization) |
+| **After** | [Following Existing Patterns](/courses/best-practices/following-existing-patterns), [Secrets Management](/courses/best-practices/secrets-management) |
+
+<Flow title="Suggested order">
+
+Naming Things
+↓
+Types Beside Logic
+↓
+Project Structure
+↓
+Following Existing Patterns
+
+</Flow>
+
+## Final quick revision
+
+| Check | Yes / No |
+| --- | --- |
+| Logic only in `src/lib/<module>` | Yes |
+| Each unit has its own folder and types file | Yes |
+| Two naming conventions in one folder | No |
+| A `utils` dumping ground | No |
+| Every variable name in `.env.example` | Yes |
+| Template README and unused code | Delete |
+
+<Callout variant="important" title="Remember">
+
+Good structure means a new developer can open the right file without asking. Pick one layout, apply it on day one, and build every new module in the same shape.
+
+</Callout>

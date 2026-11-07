@@ -1,0 +1,194 @@
+---
+title: Image Optimization
+description: Use the Next.js image component (next/image) to resize, lazy load and serve images in modern formats, including the new Next.js 16 config defaults.
+keywords:
+  - next.js image component
+  - next/image
+  - remotepatterns next.js
+  - next.js image optimization
+---
+
+## 1. What is image optimization?
+
+<Callout variant="tip" title="Short definition">
+
+**The `Image` component from `next/image` extends the HTML `img` tag and automatically serves images with the right size, the right format and lazy loading.**
+
+</Callout>
+
+You provide one large 3000px JPG, and Next.js sends a smaller WebP or AVIF version to a mobile user. The built-in Next.js image optimizer does this work.
+
+## 2. Why does it matter?
+
+Images are often the heaviest part of a page. A wrongly sized image slows the page down, and an image without `width` / `height` makes the layout jump.
+
+<CompareTable leftTitle="Plain img tag" rightTitle="next/image">
+
+Every device gets the same large file | A resized version for each device
+Old JPG or PNG format | WebP or AVIF where the browser supports it
+All images download immediately | Images below the fold are lazy loaded
+Layout shift (CLS) on load | Space is reserved up front using width and height
+No caching control | Optimized images are cached
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Place | Example |
+| --- | --- |
+| Hero banner | The biggest image on the page, the LCP element |
+| Product cards | Many images in an e-commerce grid |
+| Blog thumbnails | Remote images coming from a CMS |
+| Avatars | Small fixed-size profile pictures |
+| Background cover | An image that covers its parent using `fill` |
+
+## 4. How does it work?
+
+<Flow title="The journey of an image request">
+
+The Image component generates srcset and sizes
+↓
+The browser picks one URL to match the screen
+↓
+The request goes to /_next/image
+↓
+The optimizer resizes it and creates WebP or AVIF
+↓
+The result is cached and delivered to the browser
+
+</Flow>
+
+When you `import` a local image, Next.js reads its `width`, `height` and blur placeholder at build time. For a remote image you have to provide these values yourself, and you must allow the host in `next.config.ts`.
+
+## 5. Code example
+
+### Local image (static import)
+
+```tsx
+import Image from "next/image";
+import hero from "./hero.jpg";
+
+export default function Home() {
+  return (
+    <Image
+      src={hero}
+      alt="A night view of Lahore"
+      placeholder="blur"
+      preload
+    />
+  );
+}
+```
+
+### Remote image and responsive `fill`
+
+```tsx
+import Image from "next/image";
+
+export function ProductCard({ url, name }: { url: string; name: string }) {
+  return (
+    <div className="relative aspect-square">
+      <Image
+        src={url}
+        alt={name}
+        fill
+        sizes="(max-width: 768px) 100vw, 33vw"
+        className="object-cover"
+      />
+    </div>
+  );
+}
+```
+
+### Images config in `next.config.ts`
+
+```ts
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [new URL("https://cdn.example.com/products/**")],
+    localPatterns: [{ pathname: "/assets/**", search: "?v=2" }],
+    qualities: [60, 75],
+    minimumCacheTTL: 14400,
+  },
+};
+
+export default nextConfig;
+```
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `src={hero}` | Static import, size and blur data are read at build time |
+| `preload` | Preloads the LCP image in the `head` (replaces `priority` in Next 16) |
+| `fill` | The image fills its parent, and the parent needs `position: relative` |
+| `sizes` | Tells the browser how wide the image will be on screen |
+| `remotePatterns` | Only remote images matching these URLs will be optimized |
+| `localPatterns` | Allows paths and query strings for local images |
+| `qualities` | The list of allowed quality values |
+
+### What changed in Next.js 16?
+
+| Setting | Next.js 16 behavior |
+| --- | --- |
+| `qualities` | The default is now `[75]`, and any other `quality` value is rounded to the nearest allowed value |
+| `minimumCacheTTL` | The default is 4 hours (14400 seconds) |
+| Local image + query string | An image like `/logo.png?v=2` needs `images.localPatterns` |
+| `priority` prop | Deprecated, use `preload` or `loading="eager"` |
+| `images.domains` | Deprecated, use `remotePatterns` |
+
+## 6. Common mistakes
+
+<Mistake
+  title="Not adding the remote image host to the config"
+  why="Without remotePatterns, Next.js refuses to optimize the remote URL and throws an error."
+  better="In next.config.ts, write the exact protocol, hostname and pathname inside images.remotePatterns."
+/>
+
+<Mistake
+  title="Leaving out sizes when using fill"
+  why="Without sizes, the browser assumes the image is as wide as the whole screen and downloads a file that is larger than needed."
+  better="Give sizes that match your layout, for example 100vw on mobile and 33vw on desktop."
+/>
+
+<Mistake
+  title="Adding preload to every image"
+  why="If every image is preloaded, the real LCP image gets no priority and bandwidth is wasted."
+  better="Keep preload only on the above-the-fold hero or LCP image, and leave the rest on default lazy loading."
+/>
+
+<Mistake
+  title="Leaving alt text empty or useless"
+  why="Screen reader users cannot tell what the image means, and image SEO becomes weaker too."
+  better="Briefly describe what the image shows, and keep alt empty only for purely decorative images."
+/>
+
+### Interview tip
+
+For the question "How does `next/image` help reduce CLS?", the answer is: with `width` and `height` (or a static import) the browser knows the aspect ratio in advance, so space is reserved before the image loads and the content does not move.
+
+## 7. What to learn before and after
+
+| Stage | Chapters |
+| --- | --- |
+| Before | [Styling: CSS Modules & Tailwind](/courses/nextjs/styling), [Server & Client Components](/courses/nextjs/server-and-client-components) |
+| Alongside | [Font Optimization](/courses/nextjs/font-optimization), [next.config & Turbopack](/courses/nextjs/next-config-and-turbopack) |
+| After | [Performance & Core Web Vitals](/courses/nextjs/performance), [Sitemap, Robots & OG Images](/courses/nextjs/sitemap-and-robots) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Component | `import Image from "next/image"` |
+| Required props | `src`, `alt`, and `width` / `height` or `fill` |
+| LCP image | `preload` prop |
+| Remote images | `images.remotePatterns` |
+| Next 16 defaults | `qualities: [75]`, `minimumCacheTTL` of 4 hours |
+
+<Callout variant="important" title="Remember">
+
+Use `next/image` for every image, allow remote hosts in `remotePatterns`, give `sizes` along with `fill`, and `preload` only the LCP image.
+
+</Callout>

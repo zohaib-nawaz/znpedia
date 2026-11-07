@@ -1,0 +1,192 @@
+---
+title: Functions
+description: Learn what JavaScript functions are, how declarations, expressions, parameters, default values and return work, with clear examples.
+keywords:
+  - javascript functions
+  - function in javascript
+  - function declaration vs expression
+  - javascript default parameters
+  - javascript return statement
+---
+
+## 1. What are functions?
+
+<Callout variant="tip" title="Short definition">
+
+**A function is a named block of code that takes input, does some work and gives back a result.**
+
+</Callout>
+
+In simple words, a function is a small machine. You give it data (arguments), it does some work inside, and it gives back a result through `return`.
+
+Write a function once, then call it as many times as you need. This reusability is the foundation of every big JavaScript program.
+
+## 2. Why does it matter?
+
+Without functions, you have to copy and paste the same logic again and again. If you fix a bug in one place, the other copies still have the bug.
+
+<CompareTable leftTitle="Without functions" rightTitle="With functions">
+
+The same calculation copied everywhere | Write it once, call it everywhere
+A bug fix has to be done in 5 places | A bug fix in only one place
+Long, confusing code | Small, named pieces
+Hard to test | Each function can be tested separately
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Area | What the function does |
+| --- | --- |
+| **E-commerce** | `calculateTotal(cart)` works out the cart total |
+| **Forms** | `isValidEmail(email)` checks the input |
+| **UI** | `handleClick()` runs when a button is clicked |
+| **Formatting** | `formatPrice(1500)` makes `Rs 1,500` |
+| **React** | Every component is really just a function |
+
+## 4. How does it work?
+
+A function works in two parts: first it is **defined**, then it is **called**. Nothing runs when you define it, the code runs only on a call.
+
+<Flow title="Journey of a function call">
+
+Function defined (parameter names)
+↓
+Function called (arguments given)
+↓
+Parameters get the values of the arguments
+↓
+The body code runs
+↓
+The result comes back with return
+
+</Flow>
+
+A **parameter** is the name written in the definition, and an **argument** is the actual value given at the call.
+
+<Callout variant="important" title="Mental model">
+
+**Input (arguments) → work (body) → output (return value)**
+
+</Callout>
+
+## 5. Code example
+
+### Function declaration and expression
+
+```js
+function greet(name) {
+  return `Hello, ${name}!`;
+}
+
+const square = function (n) {
+  return n * n;
+};
+
+console.log(greet("Ali"));
+console.log(square(4));
+```
+
+### Default parameters and early return
+
+```js
+function calculateTotal(price, quantity = 1, discount = 0) {
+  if (price <= 0) {
+    return 0;
+  }
+  const subtotal = price * quantity;
+  return subtotal - subtotal * discount;
+}
+
+console.log(calculateTotal(500));
+console.log(calculateTotal(500, 3, 0.1));
+```
+
+### Object parameter (named arguments)
+
+```js
+function createUser({ name, role = "student", active = true }) {
+  return { name, role, active };
+}
+
+console.log(createUser({ name: "Sara" }));
+```
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `function greet(name)` | A function declaration, can be called anywhere in the file (hoisting) |
+| `const square = function` | A function expression, usable only after this line |
+| `quantity = 1` | A default parameter, `1` is used if no value is given |
+| `return 0` | Early return, the function stops here |
+| `{ name, role = "student" }` | Named arguments through object destructuring |
+| Output | `Hello, Ali!`, `16`, `500`, `1350` |
+
+### Interview tip
+
+If you do not write `return` in a function, it returns `undefined`. A declaration is fully hoisted, an expression is not. For details see [Scope & Hoisting](/courses/javascript/scope-and-hoisting).
+
+## 6. Common mistakes
+
+<Mistake
+  title="Forgetting to write return"
+  why="The function does its work but the caller gets undefined, and the code after that breaks."
+  better="Return the value you need outside. console.log and return are two different things."
+/>
+
+<Mistake
+  title="Passing a reference instead of a call, or the other way around"
+  why="Writing handleClick() in onClick runs the function immediately instead of waiting for the click."
+  better="Write handleClick when you want a reference, and handleClick() when you want the result."
+/>
+
+<Mistake
+  title="Too much work in one function"
+  why="A long function is hard to understand, test and reuse."
+  better="Give each function one clear job, and let its name say that job, like formatPrice or isValidEmail."
+/>
+
+<Mistake
+  title="Too many positional parameters"
+  why="Reading createUser('Ali', true, false, 3), you cannot tell which value is for what."
+  better="With more than 3 inputs, take one object parameter and destructure it."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Variables](/courses/javascript/variables), [Data Types](/courses/javascript/data-types), [Conditionals](/courses/javascript/conditionals) |
+| **Alongside** | [Arrow Functions](/courses/javascript/arrow-functions), [Scope & Hoisting](/courses/javascript/scope-and-hoisting) |
+| **Later** | [Closures](/courses/javascript/closures), [Higher-Order Functions](/courses/javascript/higher-order-functions), [Callbacks](/courses/javascript/callbacks) |
+
+<Flow title="Suggested order">
+
+Functions
+↓
+Arrow Functions
+↓
+Scope & Hoisting
+↓
+Closures
+↓
+Higher-Order Functions
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| What a function is | A reusable, named block of code |
+| Parameter vs argument | The name in the definition vs the value in the call |
+| Default parameter | A fallback if the value is missing |
+| `return` | Gives back the result and stops the function |
+| Without `return` | The result is `undefined` |
+
+<Callout variant="important" title="Remember">
+
+**Defining** a function runs nothing, it runs when you **call** it. Write small functions with one job and good names.
+
+</Callout>

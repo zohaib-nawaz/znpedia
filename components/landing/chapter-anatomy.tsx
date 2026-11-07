@@ -10,7 +10,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { SectionHeading } from "@/components/landing/section-heading";
+import { SectionHeading, type SectionCopy } from "@/components/landing/section-heading";
 import type { AnatomyStep } from "@/lib/landing-content";
 import { TONES } from "@/lib/tones";
 import { cn } from "@/lib/utils";
@@ -28,17 +28,18 @@ const ICONS: Record<AnatomyStep["icon"], LucideIcon> = {
 
 type ChapterAnatomyProps = {
   steps: AnatomyStep[];
+  copy: SectionCopy;
 };
 
-export function ChapterAnatomy({ steps }: ChapterAnatomyProps) {
+export function ChapterAnatomy({ steps, copy }: ChapterAnatomyProps) {
   return (
     <section aria-labelledby="anatomy-heading" className="border-y border-border bg-muted/30">
       <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
         <SectionHeading
           id="anatomy-heading"
-          eyebrow="Har chapter ka structure"
-          title="Har chapter ek hi tarteeb mein"
-          description="Aapko pata hota hai aage kya aayega, is liye dhyan concept par rehta hai, layout par nahi."
+          eyebrow={copy.eyebrow}
+          title={copy.title}
+          description={copy.description}
         />
         <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {steps.map((step, index) => {
@@ -62,7 +63,7 @@ export function ChapterAnatomy({ steps }: ChapterAnatomyProps) {
                   >
                     <Icon className="h-5 w-5" aria-hidden />
                   </span>
-                  <span className="font-mono text-2xl font-black text-foreground/10 transition-colors duration-300 group-hover:text-foreground/20">
+                  <span className="font-mono text-2xl font-black text-muted-foreground transition-colors duration-300 group-hover:text-accent">
                     {String(index + 1).padStart(2, "0")}
                   </span>
                 </div>

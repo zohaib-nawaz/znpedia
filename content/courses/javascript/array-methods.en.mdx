@@ -1,0 +1,190 @@
+---
+title: "Array Methods: map, filter, reduce"
+description: Learn JavaScript map, filter, and reduce along with find, some, every, and Object.groupBy, the modern ways to transform data, with examples.
+keywords:
+  - javascript map filter reduce
+  - javascript reduce example
+  - object groupby javascript
+  - find some every
+---
+
+## 1. What are array methods?
+
+<Callout variant="tip" title="Short definition">
+
+**`map`, `filter`, and `reduce` are array methods that transform, select, and combine data without writing a loop.**
+
+</Callout>
+
+`map` changes every item and returns a new array, `filter` keeps only the items that pass, and `reduce` folds the whole array into a single value. None of the three change the original array.
+
+Alongside them, `find`, `some`, `every`, and the ES2024 `Object.groupBy` are also useful every day.
+
+## 2. Why does it matter?
+
+In a `for` loop you have to manage the counter, the empty array, and `push` yourself. Array methods state the **intent** of the work clearly.
+
+<CompareTable leftTitle="for loop" rightTitle="Array methods">
+
+Create an empty array, run a loop, push | One line with map or filter
+Risk of index mistakes | No need to think about indexes
+You have to read it to understand what happens | The method name tells you the task
+Risk of changing the original array | A new array, the original stays safe
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Task | Method |
+| --- | --- |
+| Adding tax to prices | `map` |
+| Showing only in-stock products | `filter` |
+| Calculating the cart total | `reduce` |
+| Finding one user by ID | `find` |
+| Is any item out of stock? | `some` |
+| Are all fields filled in? | `every` |
+| Grouping products by category | `Object.groupBy` |
+
+## 4. How does it work?
+
+| Method | What the callback returns | Result |
+| --- | --- | --- |
+| `map` | A new value | A new array of the same length |
+| `filter` | `true` / `false` | An array that is shorter or equal in length |
+| `reduce` | A new accumulator | A single value |
+| `find` | `true` / `false` | The first match or `undefined` |
+| `some` / `every` | `true` / `false` | `true` or `false` |
+
+<Flow title="A pipeline">
+
+An array of products
+↓
+filter: only in-stock
+↓
+map: extract just the price
+↓
+reduce: add up all the prices
+↓
+One number: the total
+
+</Flow>
+
+The `reduce` callback takes two things: the **accumulator** (the result so far) and the **current item**. The second argument is the starting value.
+
+<Callout variant="important" title="Mental model">
+
+**map = change, filter = choose, reduce = combine.**
+
+</Callout>
+
+## 5. Code example
+
+### map, filter, reduce
+
+```js
+const products = [
+  { name: "Shirt", price: 1500, inStock: true, category: "clothes" },
+  { name: "Shoes", price: 4000, inStock: false, category: "footwear" },
+  { name: "Cap", price: 800, inStock: true, category: "clothes" },
+];
+
+const names = products.map((p) => p.name);
+const available = products.filter((p) => p.inStock);
+const total = available.reduce((sum, p) => sum + p.price, 0);
+
+console.log(names);
+console.log(available.length);
+console.log(total);
+```
+
+### find, some, every, groupBy
+
+```js
+const cap = products.find((p) => p.name === "Cap");
+const anyOut = products.some((p) => !p.inStock);
+const allPriced = products.every((p) => p.price > 0);
+const byCategory = Object.groupBy(products, (p) => p.category);
+
+console.log(cap.price);
+console.log(anyOut, allPriced);
+console.log(Object.keys(byCategory));
+console.log(byCategory.clothes.length);
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `map((p) => p.name)` | `["Shirt", "Shoes", "Cap"]` |
+| `filter((p) => p.inStock)` | Only Shirt and Cap |
+| `reduce((sum, p) => ..., 0)` | Starts at `0`, total is `2300` |
+| `find(...)` | The first match, the Cap object |
+| `some` / `every` | `true` and `true` |
+| `Object.groupBy` | An object with `clothes` and `footwear` keys |
+
+### Interview tip
+
+`forEach` returns nothing (`undefined`). Use `map` when you need a new array, and `forEach` when you only want a side effect (like logging). Also, always give `reduce` an initial value, because calling it on an empty array without one throws a `TypeError`.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Using map just as a loop"
+  why="map builds a new array, so if you do not use the result it wastes memory and confuses readers."
+  better="Use forEach or for of for side effects, and map when you need a new array."
+/>
+
+<Mistake
+  title="Not giving reduce an initial value"
+  why="It throws an error on an empty array, and with an array of objects the first object becomes the accumulator."
+  better="Always pass the second argument, like reduce((sum, p) => sum + p.price, 0)."
+/>
+
+<Mistake
+  title="Using filter()[0] instead of find"
+  why="filter checks the whole array and builds a new array, when you only wanted the first item."
+  better="Use find, which stops at the first match."
+/>
+
+<Mistake
+  title="Doing everything with reduce"
+  why="A complex reduce is hard to read when map, filter, or groupBy would do the same job clearly."
+  better="First check whether a direct method exists. For grouping, Object.groupBy is better."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Arrays](/courses/javascript/arrays), [Arrow Functions](/courses/javascript/arrow-functions) |
+| **Alongside** | [Higher-Order Functions](/courses/javascript/higher-order-functions), [Objects](/courses/javascript/objects) |
+| **After** | [Destructuring](/courses/javascript/destructuring), [Map & Set](/courses/javascript/map-and-set), [JSON](/courses/javascript/json) |
+
+<Flow title="Suggested order">
+
+Arrays
+↓
+Array Methods
+↓
+Objects
+↓
+Destructuring
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `map` | Change every item, same length |
+| `filter` | Items that pass the condition |
+| `reduce` | Combine into one value, give an initial value |
+| `find` | The first match or `undefined` |
+| `some` / `every` | Any one / all of them |
+| `Object.groupBy` | Groups by key (ES2024) |
+
+<Callout variant="important" title="Remember">
+
+`map`, `filter`, and `reduce` do not change the original array. Chain them to build clear data pipelines, and do not forget `return` in the callback.
+
+</Callout>

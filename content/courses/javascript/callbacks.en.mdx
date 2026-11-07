@@ -1,0 +1,188 @@
+---
+title: Callbacks
+description: Learn what JavaScript callbacks are, the difference between sync and async callbacks, the error-first pattern, and how to avoid callback hell.
+keywords:
+  - javascript callbacks
+  - callback hell
+  - async callbacks javascript
+---
+
+## 1. What are callbacks?
+
+<Callout variant="tip" title="Short definition">
+
+**A callback is a function passed to another function as an argument, so that it can call it later.**
+
+</Callout>
+
+In JavaScript, functions are values, so they can be passed around like variables. When you say "run this function once the job is done", that function is a callback.
+
+There are two kinds of callbacks: **sync** (run immediately, like `map`) and **async** (run later, like `setTimeout` or a click handler).
+
+## 2. Why does it matter?
+
+Callbacks let you make a function flexible. The function does not know what to do after the work, and the caller decides that.
+
+<CompareTable leftTitle="Without callbacks" rightTitle="With callbacks">
+
+Write a separate function for every task | One function, the caller supplies the behavior
+Hard to wait for an async result | The callback runs when the work finishes
+Handling events is not possible | Run your own function on a click
+Code is repeated | Reusable higher-order functions
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Place | Example |
+| --- | --- |
+| **Array methods** | `arr.map((x) => x * 2)` |
+| **Events** | `button.addEventListener("click", handleClick)` |
+| **Timers** | `setTimeout(showToast, 2000)` |
+| **Node.js APIs** | `fs.readFile(path, (err, data) => ...)` |
+| **Libraries** | Hooks, plugins, custom sort compare functions |
+
+## 4. How does it work?
+
+<Flow title="Async callback flow">
+
+You give the function a callback
+↓
+The function starts its work
+↓
+The work runs in the background
+↓
+The work finishes, and the callback is called with the result
+
+</Flow>
+
+<Callout variant="important" title="Mental model">
+
+**"Call me back when the work is done."** You hand control of the callback to the other function.
+
+</Callout>
+
+## 5. Code example
+
+### Your own higher-order function
+
+```js
+function repeat(times, callback) {
+  for (let i = 1; i <= times; i++) {
+    callback(i);
+  }
+}
+
+repeat(3, (n) => console.log(`Round ${n}`));
+```
+
+### The error-first callback pattern
+
+```js
+function loadUser(id, callback) {
+  setTimeout(() => {
+    if (id <= 0) {
+      callback(new Error("Invalid id"));
+      return;
+    }
+    callback(null, { id, name: "Ali" });
+  }, 500);
+}
+
+loadUser(1, (error, user) => {
+  if (error) {
+    console.error(error.message);
+    return;
+  }
+  console.log(user.name);
+});
+```
+
+### What callback hell looks like
+
+```js
+loadUser(1, (err, user) => {
+  loadOrders(user.id, (err, orders) => {
+    loadInvoice(orders[0].id, (err, invoice) => {
+      console.log(invoice);
+    });
+  });
+});
+```
+
+### How does the code work?
+
+| Line | What is happening |
+| --- | --- |
+| `repeat(3, ...)` | A sync callback, runs immediately inside the loop |
+| `callback(new Error(...))` | The first argument is the error, a Node.js style convention |
+| `callback(null, user)` | The error is `null`, the second argument is the data |
+| `if (error) return` | Check the error first, then use the data |
+| Nested callbacks | Every step goes deeper, which is called callback hell |
+
+### Interview tip
+
+The fix for callback hell: [Promises](/courses/javascript/promises) and [Async / Await](/courses/javascript/async-await). These days, newer APIs return promises instead of taking callbacks, like `fetch` and `fs/promises`.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Calling the callback instead of passing it"
+  why="In doTask(done()), done runs immediately and its result is passed."
+  better="Pass the reference: doTask(done)."
+/>
+
+<Mistake
+  title="Ignoring the error argument"
+  why="When an error happens, the data is undefined and the code crashes later."
+  better="In every error-first callback, check if (error) first."
+/>
+
+<Mistake
+  title="Calling the callback twice"
+  why="If you forget return after the error, the success callback runs as well."
+  better="Return right after calling the callback with an error."
+/>
+
+<Mistake
+  title="Treating deep nesting as normal"
+  why="In callback hell, the code is hard to read, handle errors in, and test."
+  better="Use promises and async await for async work."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Functions](/courses/javascript/functions), [Higher-Order Functions](/courses/javascript/higher-order-functions), [Timers](/courses/javascript/timers) |
+| **After** | [Promises](/courses/javascript/promises), [Async / Await](/courses/javascript/async-await), [DOM Events](/courses/javascript/dom-events) |
+
+<Flow title="Suggested order">
+
+Functions
+↓
+Higher-Order Functions
+↓
+Callbacks
+↓
+Promises
+↓
+Async Await
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Callback | A function passed as an argument |
+| Sync callback | Runs immediately, like `map` |
+| Async callback | Runs later, like timers and events |
+| Error-first | The `(error, data)` signature |
+| Callback hell | Deep nesting, solved with promises |
+
+<Callout variant="important" title="Remember">
+
+A callback is **passed**, not **called**. For async work in new code, promises and async await are better.
+
+</Callout>

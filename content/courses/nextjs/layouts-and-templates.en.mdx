@@ -1,0 +1,177 @@
+---
+title: "Layouts & Templates"
+description: "Next.js layouts explained: build shared UI with layout.tsx and template.tsx, the root layout, nested layouts, the LayoutProps helper, and how state is preserved."
+keywords:
+  - next.js layouts
+  - next.js template.tsx
+  - next.js root layout
+  - next.js nested layouts
+  - layoutprops
+---
+
+## 1. What are layouts and templates?
+
+<Callout variant="tip" title="Short definition">
+
+**`layout.tsx` is shared UI that wraps many pages and does not remount on navigation. `template.tsx` also wraps pages, but it mounts fresh on every navigation.**
+
+</Callout>
+
+A navbar, sidebar and footer are needed on every page. Instead of copying them into each page, you create a layout that renders the page inside itself through `children`.
+
+## 2. Why does it matter?
+
+<CompareTable leftTitle="Without a layout" rightTitle="With a layout">
+
+The navbar is copied into every page | The navbar lives in one place, on every page
+The sidebar re-renders on navigation | The layout stays in place, state is safe
+The sidebar's scroll and inputs reset | State is preserved
+Every page fetches the shared data | The layout fetches it once
+
+</CompareTable>
+
+Next.js 16 also has **layout deduplication**. If 50 links share the same layout, that layout is downloaded only once during prefetch.
+
+## 3. Where is it used?
+
+| Use case | File |
+| --- | --- |
+| **The shell of the whole site** (`html`, `body`, fonts) | `app/layout.tsx` |
+| **Dashboard sidebar** | `app/dashboard/layout.tsx` |
+| **Blog sidebar and categories** | `app/blog/layout.tsx` |
+| **An enter animation on every page** | `app/template.tsx` |
+| **Page view logging on every navigation** | An effect inside `template.tsx` |
+
+## 4. How does it work?
+
+Layouts **nest**. The root layout wraps everything, the segment's layout sits inside it, and the page sits innermost.
+
+<Flow title="The render tree of /dashboard/settings">
+
+app/layout.tsx (html, body)
+   ↓
+app/dashboard/layout.tsx (sidebar)
+   ↓
+app/dashboard/settings/page.tsx
+
+</Flow>
+
+When the user goes from `/dashboard/settings` to `/dashboard/billing`, only the page changes. The dashboard layout stays the same, and so does its state.
+
+<CompareTable leftTitle="layout.tsx" rightTitle="template.tsx">
+
+The same instance across navigation | A new instance on every navigation
+State is preserved | State is reset
+Effects do not run again | Effects run every time
+For most cases | Only when you need a reset
+
+</CompareTable>
+
+## 5. Code example
+
+### Root layout
+
+```tsx
+import "./globals.css";
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body>
+        <header>ZnShop</header>
+        {children}
+        <footer>Copyright ZnShop</footer>
+      </body>
+    </html>
+  );
+}
+```
+
+### Nested layout with LayoutProps
+
+```tsx
+import Link from "next/link";
+
+export default function DashboardLayout({ children }: LayoutProps<"/dashboard">) {
+  return (
+    <div className="flex">
+      <aside>
+        <Link href="/dashboard">Overview</Link>
+        <Link href="/dashboard/settings">Settings</Link>
+      </aside>
+      <section>{children}</section>
+    </div>
+  );
+}
+```
+
+### Template
+
+```tsx
+export default function Template({ children }: { children: React.ReactNode }) {
+  return <div className="fade-in">{children}</div>;
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `RootLayout` | Required in every app, `html` and `body` live only here |
+| `children` | The inner layout or page |
+| `LayoutProps<"/dashboard">` | A global type helper, the type of `children` and params |
+| `app/dashboard/layout.tsx` | Applies only to `/dashboard` and the routes inside it |
+| `template.tsx` | Remounts on every navigation, so the animation plays again |
+
+### Interview tip
+
+"What is the difference between a layout and a template?" The answer: a layout persists across navigation and keeps its state, while a template mounts fresh on every navigation, so its state and effects reset.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Writing html and body in a nested layout too"
+  why="html and body should be only in the root layout, otherwise you get invalid HTML and hydration errors."
+  better="In nested layouts keep only wrapper UI like a div or section."
+/>
+
+<Mistake
+  title="Trying to read searchParams in a layout"
+  why="A layout does not re-render on navigation, so it never receives the searchParams prop."
+  better="Read searchParams in the page, or use useSearchParams in a Client Component."
+/>
+
+<Mistake
+  title="Using template.tsx everywhere"
+  why="Remounting on every navigation loses state and also does more work."
+  better="Use a layout by default, and a template only when you need a reset or an enter animation."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Routing & Pages](/courses/nextjs/routing-and-pages), [Children and composition](/courses/react/children-and-composition) |
+| **Alongside** | [Linking & Navigation](/courses/nextjs/linking-and-navigation), [Route Groups](/courses/nextjs/route-groups-and-private-folders) |
+| **After** | [Parallel & Intercepting Routes](/courses/nextjs/parallel-and-intercepting-routes), [Metadata & SEO](/courses/nextjs/metadata-and-seo), [Font Optimization](/courses/nextjs/font-optimization) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Layout | Shared UI, persists across navigation |
+| Root layout | Required, with `html` and `body` |
+| Nesting | Layouts nest according to folders |
+| Template | Remounts on every navigation |
+| Type helper | `LayoutProps<"/route">` |
+| Next.js 16 | A shared layout is downloaded once during prefetch |
+
+<Callout variant="important" title="Remember">
+
+**A layout keeps state, a template resets it.** Most of the time a layout is what you need.
+
+</Callout>

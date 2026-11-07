@@ -1,0 +1,179 @@
+---
+title: "Installation & Project Structure"
+description: "Next.js install and project structure: create a Next.js 16 project with create-next-app, the Node 20.9+ requirement, and what the app, public and next.config files do."
+keywords:
+  - next.js install project structure
+  - create-next-app
+  - next.js folder structure
+  - next.js app directory
+  - next.js 16 setup
+---
+
+## 1. What are installation and project structure?
+
+<Callout variant="tip" title="Short definition">
+
+**`create-next-app` is a CLI that creates a ready Next.js project with one command, and the project structure tells you where each file lives.**
+
+</Callout>
+
+In Next.js, folders and file names are not just for organization. Inside `app/`, every folder is a route segment, and special names like `page.tsx` and `layout.tsx` have specific meanings. So understanding the structure is the first step to understanding routing.
+
+## 2. Why does it matter?
+
+With a manual setup you have to configure React, a bundler, TypeScript, ESLint and Tailwind separately. `create-next-app` gives you all of it with good defaults.
+
+<CompareTable leftTitle="Manual setup" rightTitle="create-next-app">
+
+Install every package yourself | One command, everything ready
+Write the bundler config yourself | Turbopack by default, no config
+A separate TypeScript setup | A TypeScript-first template
+Any folder structure you like | The App Router convention
+Errors on the wrong Node version | A clear Node 20.9+ requirement
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Situation | What to do |
+| --- | --- |
+| **A new project** | `npx create-next-app@latest` |
+| **An older Next.js 15 project** | `npx @next/codemod@canary upgrade latest` |
+| **Team onboarding** | A new developer understands the project quickly from its structure |
+| **Monorepo** | Each app has its own `app/` and `next.config.ts` |
+
+## 4. How does it work?
+
+Check your Node version first. Next.js 16 needs **Node.js 20.9 or newer**, and Node 18 support has ended.
+
+<Flow title="Setup flow">
+
+Check the version with node -v
+   ↓
+npx create-next-app@latest
+   ↓
+Choose the recommended defaults
+   ↓
+npm run dev
+   ↓
+The app runs at localhost:3000
+
+</Flow>
+
+The default template includes **App Router, TypeScript, Tailwind CSS and ESLint**. You can also choose an optional `src/` folder, in which case `app/` moves inside it.
+
+## 5. Code example
+
+### Creating the project
+
+```bash
+node -v
+npx create-next-app@latest my-app
+cd my-app
+npm run dev
+```
+
+### Folder structure
+
+```bash
+my-app/
+  app/
+    layout.tsx
+    page.tsx
+    globals.css
+    favicon.ico
+  public/
+  next.config.ts
+  tsconfig.json
+  eslint.config.mjs
+  postcss.config.mjs
+  package.json
+```
+
+### package.json scripts
+
+```json
+{
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  }
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `app/` | The App Router, every folder is a route segment |
+| `app/layout.tsx` | The root layout, the `html` and `body` tags live here |
+| `app/page.tsx` | The page for the `/` route |
+| `public/` | Static files, served directly at URLs like `/logo.png` |
+| `next.config.ts` | Next.js configuration |
+| `next dev` | The dev server, with Turbopack |
+| `next build` | The production build, with Turbopack |
+| `next start` | Runs the built app in production mode |
+| `eslint` | Linting now uses ESLint directly, `next lint` was removed |
+
+<Callout variant="important" title="Next.js 16 note">
+
+The `next lint` command has been removed, and `next build` no longer runs lint. For linting, put `eslint` or Biome directly in your scripts.
+
+</Callout>
+
+### Interview tip
+
+If you are asked, "What is the difference between `public/` and `app/`?", say: `public/` is for static assets that are served as they are, and `app/` is for routes and components that get rendered.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Running the project on an old Node version"
+  why="Next.js 16 refuses to run on anything below Node 20.9 and the errors are confusing."
+  better="Check node -v and install Node 20.9+ (preferably the LTS)."
+/>
+
+<Mistake
+  title="Deleting the root layout"
+  why="The App Router needs a root layout with the html and body tags, and the app does not run without it."
+  better="Always keep app/layout.tsx and render html and body in it."
+/>
+
+<Mistake
+  title="Putting images in the app folder and accessing them by URL"
+  why="Files in the app folder are not served directly at a URL."
+  better="Put static images and files in the public folder."
+/>
+
+<Mistake
+  title="Leaving a next lint script in package.json"
+  why="This command does not exist in Next.js 16, so the script fails."
+  better="Switch the script to eslint, and the next-lint-to-eslint-cli codemod can help."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Introduction](/courses/nextjs/introduction), [npm and packages](/courses/javascript/npm-and-packages) |
+| **Alongside** | [next.config & Turbopack](/courses/nextjs/next-config-and-turbopack), [Environment Variables](/courses/nextjs/environment-variables) |
+| **After** | [What's New in Next.js 16](/courses/nextjs/nextjs-16-whats-new), [Routing & Pages](/courses/nextjs/routing-and-pages) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Install command | `npx create-next-app@latest` |
+| Node requirement | 20.9 or newer |
+| Where routes live | The `app/` folder |
+| Static files | The `public/` folder |
+| Dev server | `next dev` (Turbopack) |
+| Linting | `eslint` directly, not `next lint` |
+
+<Callout variant="important" title="Remember">
+
+`app/` is for routes, `public/` is for static files, and `next.config.ts` is for configuration. Next.js 16 will not run without Node 20.9+.
+
+</Callout>

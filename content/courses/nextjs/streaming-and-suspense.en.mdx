@@ -1,0 +1,205 @@
+---
+title: "Streaming & Suspense"
+description: "Next.js streaming suspense: stream a page in parts when data is slow, with Suspense boundaries, loading.tsx and parallel data fetching."
+keywords:
+  - next.js streaming suspense
+  - react suspense next.js
+  - next.js streaming
+  - next.js loading skeleton
+  - parallel data fetching
+---
+
+## 1. What are streaming and Suspense?
+
+<Callout variant="tip" title="Short definition">
+
+**Streaming sends the HTML of a page in parts: whatever is ready goes out immediately, and slow parts follow the `Suspense` fallback as soon as they are ready.**
+
+</Callout>
+
+`Suspense` is a React component that says "show this fallback until the component inside is ready". Next.js watches these boundaries on the server and streams the HTML in chunks.
+
+## 2. Why does it matter?
+
+If one part of a page takes 3 seconds, then without streaming the whole page stays blank for 3 seconds.
+
+<CompareTable leftTitle="Without streaming" rightTitle="With streaming">
+
+Blank screen until the slowest query finishes | Header and layout show immediately
+One slow widget blocks the whole page | Each widget arrives when it is ready
+The user thinks the site is frozen | A skeleton shows progress
+Higher Time to First Byte | The first byte arrives sooner
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Page | What to stream |
+| --- | --- |
+| **Dashboard** | Each chart and stats card in its own boundary |
+| **Product page** | Reviews and recommendations later |
+| **Blog post** | The comments section later |
+| **Search results** | The results list with a skeleton |
+| **Cache Components page** | Every dynamic (request time) part |
+
+## 4. How does it work?
+
+<Flow title="A streamed response">
+
+Request arrives
+   ↓
+Layout and static parts render
+   ↓
+Fallbacks are placed at the Suspense boundaries
+   ↓
+The first HTML chunk goes to the browser (the user sees something)
+   ↓
+Data for the slow component arrives
+   ↓
+Its HTML is streamed in the same response
+   ↓
+React replaces the fallback with the real UI
+
+</Flow>
+
+There are two ways to stream:
+
+| Way | Scope |
+| --- | --- |
+| `loading.tsx` | The whole page segment in one boundary |
+| `<Suspense>` | You choose the small parts yourself |
+
+`loading.tsx` actually wraps the page in `Suspense` for you. If you want more control, add `Suspense` yourself.
+
+<Callout variant="important" title="Mental model">
+
+**Each `Suspense` boundary is a separate "chunk". The more boundaries, the more independent loading states.**
+
+</Callout>
+
+## 5. Code example
+
+### A dashboard whose widgets stream separately
+
+```tsx
+import { Suspense } from "react";
+
+async function Revenue() {
+  const res = await fetch("https://api.example.com/revenue");
+  const data = await res.json();
+  return <p>Revenue: {data.total}</p>;
+}
+
+async function LatestOrders() {
+  const res = await fetch("https://api.example.com/orders?limit=5");
+  const orders: { id: string; amount: number }[] = await res.json();
+  return (
+    <ul>
+      {orders.map((order) => (
+        <li key={order.id}>{order.amount}</li>
+      ))}
+    </ul>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <main>
+      <h1>Dashboard</h1>
+      <Suspense fallback={<p>Loading revenue...</p>}>
+        <Revenue />
+      </Suspense>
+      <Suspense fallback={<p>Loading orders...</p>}>
+        <LatestOrders />
+      </Suspense>
+    </main>
+  );
+}
+```
+
+### Parallel fetching to avoid a waterfall
+
+```tsx
+async function getUser(id: string) {
+  return fetch(`https://api.example.com/users/${id}`).then((r) => r.json());
+}
+
+async function getPosts(id: string) {
+  return fetch(`https://api.example.com/users/${id}/posts`).then((r) => r.json());
+}
+
+export default async function ProfilePage({ params }: PageProps<"/users/[id]">) {
+  const { id } = await params;
+  const [user, posts] = await Promise.all([getUser(id), getPosts(id)]);
+  return (
+    <h1>
+      {user.name} has {posts.length} posts
+    </h1>
+  );
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `async function Revenue` | An async Server Component that fetches its own data |
+| `<Suspense fallback=...>` | Shows the fallback until the data arrives, then streams the real UI |
+| Two separate boundaries | Revenue and orders do not wait for each other |
+| `<h1>Dashboard</h1>` | Outside any boundary, so it shows immediately |
+| `Promise.all` | Starts both requests together, no waterfall |
+
+### Interview tip
+
+"Does streaming hurt SEO?" No. Streamed content is still HTML coming from the server in the same HTTP response, and crawlers like Google can read it.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Putting Suspense inside the async component"
+  why="The boundary must be above the component that suspends. Placing it inside does not work."
+  better="Add Suspense in the parent and put the slow async component inside it."
+/>
+
+<Mistake
+  title="Awaiting one after another when the requests are independent"
+  why="Each request waits for the previous one, so the total time becomes the sum of all of them."
+  better="Run independent requests together with Promise.all, or put them in separate Suspense boundaries."
+/>
+
+<Mistake
+  title="Wrapping the whole page in one boundary"
+  why="The slowest part blocks everything else too."
+  better="Give every independent slow part its own Suspense boundary."
+/>
+
+<Mistake
+  title="Making the fallback a completely different size from the real UI"
+  why="The layout shifts when the content arrives and your CLS score gets worse."
+  better="Keep the size and shape of the skeleton close to the real UI."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [React Suspense](/courses/react/suspense-and-lazy), [Loading, Error & Not Found UI](/courses/nextjs/loading-and-error-ui), [Promises](/courses/javascript/promises) |
+| **Alongside** | [Rendering Strategies](/courses/nextjs/rendering-strategies), [Server & Client Components](/courses/nextjs/server-and-client-components) |
+| **After** | [Data Fetching](/courses/nextjs/data-fetching), [Cache Components](/courses/nextjs/cache-components), [Performance](/courses/nextjs/performance) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Streaming | HTML in parts, in a single response |
+| Boundary | `<Suspense fallback=...>` |
+| Page level | `loading.tsx` |
+| Benefit | Faster first paint, independent widgets |
+| Avoiding waterfalls | `Promise.all` or separate boundaries |
+| Cache Components | Request time data must be inside Suspense |
+
+<Callout variant="important" title="Remember">
+
+**Fast parts immediately, slow parts behind Suspense.** Every independent slow component gets its own boundary.
+
+</Callout>

@@ -1,0 +1,179 @@
+---
+title: Following Existing Patterns
+description: Codebase conventions and consistency. Find the existing pattern before writing new code, pick the majority pattern and avoid duplicate functions or libraries.
+keywords:
+  - codebase conventions consistency
+  - follow existing code patterns
+  - reuse before you add
+  - consistent codebase
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Before writing new code, see how the codebase already does this job. The nearest file is only a starting point, not proof: find the majority pattern, reuse existing functions, and write the reason for your choice in the PR.**
+
+</Callout>
+
+Every codebase has its own language: how data is fetched, how errors are returned, which library formats dates. Learning that language and writing in it is the heart of this practice.
+
+It has two parts. First, **consistency**: use the pattern that is everywhere. Second, **reuse before you add**: extend a function that already exists instead of creating a similar new one.
+
+## 2. Why does it matter?
+
+A real story: the codebase had two ways to fetch data. The new typed client was in 40 files, and the old raw `fetch` was in 3 old files. A new developer copied the nearest old file. Now the bug of a forgotten auth header showed up in one more place.
+
+Another story: the project already had `date-fns`. Someone installed `moment` for one feature. The bundle grew and dates started appearing in different formats on two screens.
+
+<CompareTable leftTitle="Copy whatever is nearest" rightTitle="Follow the representative pattern">
+
+An old or deprecated pattern spreads | The majority and current pattern grows
+Three ways to do one job, every bug fixed three times | One way, one fix
+A similar second function, and the two drift apart | One function extended, one behavior
+Two libraries for one job | The existing library, a smaller bundle
+The reviewer has to check by hand | The PR says what was reused and why
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Build the habit of keeping one pattern in your own code | Even in a solo project, three ways of doing one thing cause confusion |
+| **Production code** | A must. Search first, code later | In a team codebase, every new way adds to everyone's load |
+| **Senior level** | To change a pattern, plan the full migration and record the decision | A "better" way in one file only creates a third pattern |
+
+## 4. Bad vs good code
+
+### Bad: copy the nearest file, and a new function
+
+```ts
+export async function loadInvoices() {
+  const response = await fetch("/api/invoices");
+
+  return response.json();
+}
+```
+
+```ts
+export async function activeUsersForTeam(teamId: string) {
+  return db.user.findMany({ where: { teamId, status: "active" } });
+}
+```
+
+The first one uses raw `fetch` even though the project has a typed client. The second is a new function even though `list()` already accepts filters.
+
+### Good: search first, then the majority
+
+```bash
+rg "apiClient\." src -l | wc -l
+rg "await fetch\(" src -l
+rg "export async function" src/lib/users
+```
+
+The first command shows 40 files, the second shows 3 old ones. The decision is clear.
+
+```ts
+import { apiClient } from "@/lib/api/client/client";
+
+import type { Invoice } from "./invoices.types";
+
+export function loadInvoices() {
+  return apiClient.get<Invoice[]>("/api/invoices");
+}
+```
+
+```ts
+const members = await list({ teamId, status: USER_STATUS.active });
+```
+
+### What is the difference?
+
+| Thing | Bad | Good |
+| --- | --- | --- |
+| Fetch | Raw `fetch` from the nearest old file | The majority's typed client |
+| Users query | A new near-duplicate function | Reuse the existing `list()` |
+| Decision | A guess | The numbers from a search |
+| PR | Says nothing | Says: reused `list()`, no new function |
+
+## 5. How to apply it
+
+<Flow title="Before writing code">
+
+Look for a function that does the same job on the same entity
+↓
+Count how many ways this job is done in the codebase
+↓
+Pick the majority or the documented decision
+↓
+Extend or call the existing function
+↓
+In the PR, say what was reused or why nothing fit
+
+</Flow>
+
+The same goes before adding a new dependency: does `package.json` already have a library for this job? Does it work with our framework version? One library per job.
+
+If two ways are equally common, or the majority pattern is old and bad, do not guess. Ask the team or check the decision records. Whatever you choose, write one line in the PR about why.
+
+## 6. Exceptions and common mistakes
+
+If the existing pattern is truly bad (a security problem, a deprecated API), copying it is wrong. But quietly bringing in a new way in one file is wrong too. The right path: raise the problem, plan a migration, and move the whole codebase together.
+
+Some teams follow the "boy scout rule": leave every place you pass a little better. That is good as long as each small improvement does not split the codebase into a new pattern. The trade-off: consistency sometimes means living with the old pattern until there is time for a full migration.
+
+<Mistake
+  title="Treating the nearest file as the standard"
+  why="That file may be old, deprecated or the only exception. Copying it spreads the mistake."
+  better="Search how many places use this pattern. Follow the majority and current way."
+/>
+
+<Mistake
+  title="Writing a new function instead of looking, because you were in a hurry"
+  why="Two similar functions drift apart over time and one rule ends up in two places."
+  better="Search the service for the same verb and the same entity. Extend it if found, and say so in the PR if not."
+/>
+
+<Mistake
+  title="Using your own favorite new way in one feature"
+  why="The codebase gets one more pattern and the next developer does not know which to follow."
+  better="If you want a new way, first agree on it with the team, then migrate everything, then record it."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Project Structure](/courses/best-practices/project-structure), [DRY Without Tight Coupling](/courses/best-practices/dry-without-coupling) |
+| **Alongside** | [Refactoring Safely](/courses/best-practices/refactoring-safely), [Pull Requests & Code Review](/courses/best-practices/pull-requests-and-code-review) |
+| **After** | [Documentation & Decision Records](/courses/best-practices/documentation-and-decisions), [Working with AI Coding Agents](/courses/best-practices/working-with-ai-agents) |
+
+<Flow title="Suggested order">
+
+Project Structure
+↓
+Following Existing Patterns
+↓
+Refactoring Safely
+↓
+Documentation & Decision Records
+
+</Flow>
+
+## Final quick revision
+
+| Check | Yes / No |
+| --- | --- |
+| Search before code | Yes |
+| Treating the nearest file as the standard | No |
+| Picked the majority pattern | Yes |
+| A near-duplicate function | No |
+| A second library for one job | No |
+| Wrote the reuse or the reason in the PR | Yes |
+
+<Callout variant="important" title="Remember">
+
+Write in the language of the codebase. First search, then count, then reuse. If you want to change a pattern, change it across the whole codebase, not in one file.
+
+</Callout>

@@ -1,0 +1,190 @@
+---
+title: Spread & Rest
+description: Learn the difference between the three dots in JavaScript spread and rest, how to copy and merge arrays and objects, and how rest parameters work.
+keywords:
+  - javascript spread rest operator
+  - rest parameters javascript
+  - merge objects javascript
+---
+
+## 1. What are Spread & Rest?
+
+<Callout variant="tip" title="Short definition">
+
+**The three dots (`...`) do two jobs: spread expands things out, and rest gathers the remaining things into one place.**
+
+</Callout>
+
+The syntax is exactly the same, only the **position** differs. Where a value is expected (the right side, a function call), `...` is **spread**. Where a variable or parameter is expected (the left side, a function definition), `...` is **rest**.
+
+## 2. Why does it matter?
+
+In older code, you used `concat` to merge arrays, `Object.assign` for objects, and the `arguments` object for arguments. Spread and rest do all of this with one clean syntax.
+
+<CompareTable leftTitle="The old way" rightTitle="Spread and rest">
+
+a.concat(b) | Spread both inside an array literal
+Object.assign with an empty object | Spread inside an object literal
+Math.max.apply(null, arr) | Spread the array into Math.max
+The arguments object, not a real array | A rest parameter, a real array
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Situation | Spread or rest |
+| --- | --- |
+| React state update (a new array / object) | Spread |
+| Merging default settings with user settings | Spread |
+| A shallow copy of an array | Spread |
+| A function that takes any number of arguments | Rest |
+| Removing one field from an object and keeping the rest | Rest (destructuring) |
+| Splitting a string into characters | Spread |
+
+## 4. How does it work?
+
+| Position | What it is | Example |
+| --- | --- | --- |
+| In an array literal | Spread | `[...a, ...b]` |
+| In an object literal | Spread | `{ ...defaults, ...user }` |
+| In a function call | Spread | `Math.max(...nums)` |
+| In function parameters | Rest | `function sum(...nums)` |
+| In destructuring | Rest | `const { id, ...rest } = obj` |
+
+<Flow title="Spread vs rest">
+
+One array or object
+↓
+Spread: take the values out and spread them
+↓
+Many separate values
+↓
+Rest: collect the leftover values into one array or object
+↓
+One array or object
+
+</Flow>
+
+In object spread, the **later** property wins. So in `{ ...defaults, ...user }`, the user's values override the defaults.
+
+<Callout variant="important" title="Mental model">
+
+**Spread = unpack. Rest = pack.**
+
+</Callout>
+
+## 5. Code example
+
+### Spread
+
+```js
+const fruits = ["apple", "mango"];
+const more = [...fruits, "banana"];
+
+const defaults = { theme: "light", fontSize: 16, lang: "en" };
+const saved = { theme: "dark" };
+const settings = { ...defaults, ...saved, lang: "ur" };
+
+const scores = [40, 90, 75];
+
+console.log(more);
+console.log(settings);
+console.log(Math.max(...scores));
+console.log([..."Hi!"]);
+```
+
+### Rest
+
+```js
+function sum(label, ...nums) {
+  const total = nums.reduce((acc, n) => acc + n, 0);
+  return `${label}: ${total}`;
+}
+
+console.log(sum("Total", 10, 20, 30));
+
+const user = { id: 1, name: "Ali", password: "secret" };
+const { password, ...safeUser } = user;
+console.log(safeUser);
+
+const [winner, ...others] = ["Sara", "Ali", "Hina"];
+console.log(winner, others);
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `[...fruits, "banana"]` | A new array, `fruits` stays the same |
+| `{ ...defaults, ...saved, lang: "ur" }` | Merge, later values win: `dark`, `16`, `ur` |
+| `Math.max(...scores)` | Turned the array into separate arguments, `90` |
+| `[..."Hi!"]` | `["H", "i", "!"]` |
+| `...nums` | `10, 20, 30` in one array, total `60` |
+| `{ password, ...safeUser }` | `password` set aside, the rest is `{ id, name }` |
+| `[winner, ...others]` | `Sara` and `["Ali", "Hina"]` |
+
+### Interview tip
+
+Spread makes a **shallow copy**. Nested objects still share the same reference. For a deep copy, use `structuredClone`. Also, a rest parameter must always be the **last** parameter.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Thinking spread is a deep copy"
+  why="Nested objects and arrays are not copied, so changing the copy also changes the original's nested data."
+  better="Use structuredClone for nested data, or spread at every level."
+/>
+
+<Mistake
+  title="The wrong order in a merge"
+  why="In { ...user, ...defaults }, the defaults overwrote the user's values."
+  better="Write the value that should win later: { ...defaults, ...user }."
+/>
+
+<Mistake
+  title="Putting a rest parameter in the middle"
+  why="function f(...args, last) throws a SyntaxError."
+  better="Rest must always be the last parameter: function f(first, ...others)."
+/>
+
+<Mistake
+  title="Spreading very large arrays into a function call"
+  why="Hundreds of thousands of items in Math.max(...arr) can exceed the argument limit and throw a RangeError."
+  better="For very large lists, use reduce or a simple loop."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Arrays](/courses/javascript/arrays), [Objects](/courses/javascript/objects), [Destructuring](/courses/javascript/destructuring) |
+| **Alongside** | [Functions](/courses/javascript/functions), [call, apply & bind](/courses/javascript/call-apply-bind) |
+| **After** | [Optional Chaining & Nullish Coalescing](/courses/javascript/optional-chaining-and-nullish), [Map & Set](/courses/javascript/map-and-set) |
+
+<Flow title="Suggested order">
+
+Destructuring
+↓
+Spread & Rest
+↓
+Optional Chaining & Nullish
+↓
+Map & Set
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Spread | Expands values (array, object, function call) |
+| Rest | Gathers leftover values (parameters, destructuring) |
+| Object merge | The later property wins |
+| Copy | Shallow, nested data stays shared |
+| Rest position | Always last |
+
+<Callout variant="important" title="Remember">
+
+`...` is spread where a value goes and rest where a variable goes. A copy made with spread is shallow, so watch out for nested data.
+
+</Callout>

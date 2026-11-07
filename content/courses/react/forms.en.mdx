@@ -1,0 +1,181 @@
+---
+title: Forms & Controlled Inputs
+description: Learn how to build React forms with controlled inputs, value and onChange, checkboxes, selects, submit handling and an intro to React 19 form actions.
+keywords:
+  - react forms controlled inputs
+  - react onchange input
+  - controlled vs uncontrolled react
+  - react form submit
+---
+
+## 1. What are forms and controlled inputs?
+
+<Callout variant="tip" title="Short definition">
+
+**A controlled input is an input whose value comes from React state, and every change goes into state through `onChange`.**
+
+</Callout>
+
+This makes state the **single source of truth**. The input shows exactly what is in state, and state always holds the input's latest value.
+
+An **uncontrolled input** is the opposite: it keeps its own value in the DOM, and you read it when you need it (on submit with `FormData`, or with a ref).
+
+## 2. Why does it matter?
+
+<CompareTable leftTitle="Uncontrolled" rightTitle="Controlled">
+
+The value lives in the DOM | The value lives in React state
+You only learn the value on submit | The value is available on every keystroke
+Live validation is hard | You can show errors while the user types
+Good enough for simple forms | Good for dynamic forms and instant feedback
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Use case | Why controlled |
+| --- | --- |
+| **Signup form** | Show password strength live |
+| **Search box** | Filter the list on every letter |
+| **Character counter** | A tweet-style limit counter |
+| **Dependent fields** | When the country changes, the city list changes |
+| **Submit button** | Disable it when the form is not valid |
+
+## 4. How does it work?
+
+<Flow title="The controlled input loop">
+
+The value is in state
+↓
+The input takes its value from state
+↓
+The user types and onChange runs
+↓
+The handler sets the new value with setState
+↓
+Re-render, and the input shows the new value
+
+</Flow>
+
+Use `value` for a text input and `checked` for a checkbox. Both need `onChange`.
+
+## 5. Code example
+
+### Controlled text and checkbox
+
+```jsx
+import { useState } from "react";
+
+export default function SignupForm() {
+  const [email, setEmail] = useState("");
+  const [agree, setAgree] = useState(false);
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    console.log({ email, agree });
+  }
+
+  const canSubmit = email.includes("@") && agree;
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="Email"
+      />
+      <label>
+        <input
+          type="checkbox"
+          checked={agree}
+          onChange={(e) => setAgree(e.target.checked)}
+        />
+        I agree to the terms
+      </label>
+      <button disabled={!canSubmit}>Signup</button>
+    </form>
+  );
+}
+```
+
+### Many fields, one state object
+
+```jsx
+const [form, setForm] = useState({ name: "", city: "Lahore" });
+
+function handleChange(e) {
+  setForm({ ...form, [e.target.name]: e.target.value });
+}
+
+<input name="name" value={form.name} onChange={handleChange} />
+<select name="city" value={form.city} onChange={handleChange}>
+  <option>Lahore</option>
+  <option>Karachi</option>
+</select>
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `value={email}` | The input's value comes from state |
+| `e.target.value` | The text the user typed |
+| `e.target.checked` | A boolean for checkboxes |
+| `e.preventDefault()` | Stops the page from reloading |
+| `[e.target.name]` | Updates the right key using the field's `name` |
+| `canSubmit` | A derived value, not a separate state |
+
+### React 19: form action
+
+In React 19 you can also write `<form action={fn}>`. The function receives the `FormData`, and uncontrolled fields reset on their own after submit. This works better with pending state and server actions. The full details are in [Actions, useActionState & useOptimistic](/courses/react/actions-and-form-hooks).
+
+## 6. Common mistakes
+
+<Mistake
+  title="Giving value but not onChange"
+  why="The input becomes read-only. The user types but nothing changes, and a warning appears in the console."
+  better="Always pass onChange along with value, or use defaultValue if you only need an initial value."
+/>
+
+<Mistake
+  title="Starting with undefined state and giving it a string later"
+  why="The input switches from uncontrolled to controlled, and React shows a warning."
+  better="Always start with useState('') for text and false for checkboxes."
+/>
+
+<Mistake
+  title="Reading e.target.value for a checkbox"
+  why="A checkbox has a value attribute, which is not its checked status."
+  better="Use the checked prop and e.target.checked for checkboxes."
+/>
+
+<Mistake
+  title="Forgetting preventDefault in onSubmit"
+  why="The browser reloads the whole page and the state is lost."
+  better="Write e.preventDefault() on the first line of the onSubmit handler, or use a React 19 form action."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Chapters |
+| --- | --- |
+| **Before** | [State with useState](/courses/react/state), [Handling Events](/courses/react/events) |
+| **After** | [Actions, useActionState & useOptimistic](/courses/react/actions-and-form-hooks), [useRef](/courses/react/use-ref) |
+| **Related** | [Lifting State Up](/courses/react/lifting-state-up) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Controlled | `value` + `onChange`, state is the source of truth |
+| Uncontrolled | `defaultValue`, the DOM holds the value |
+| Checkbox | `checked` and `e.target.checked` |
+| Submit | `onSubmit` + `preventDefault` |
+| React 19 | `<form action>` with FormData |
+
+<Callout variant="important" title="Remember">
+
+In a controlled input, **state writes and the input displays**. If you pass `value`, pass `onChange` too.
+
+</Callout>

@@ -1,0 +1,204 @@
+---
+title: Refactoring Safely
+description: How to refactor safely in small steps. Improve code without changing behaviour, use tests as a safety net, make small commits and stay in scope.
+keywords:
+  - safe refactoring small steps
+  - refactoring best practices
+  - refactor without breaking
+  - characterization tests
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Refactoring means improving the shape of code without changing its behaviour. Take one small step at a time, run the tests after every step, and never leave the code broken.**
+
+</Callout>
+
+Refactoring and building a new feature are two different jobs. In a refactor, the app stays exactly the same from the outside: same input, same output. Only the arrangement inside changes.
+
+| Part | Meaning |
+| --- | --- |
+| **Small steps** | One rename, one extract, one move, then check |
+| **Always working** | Tests are green after every step |
+| **Behaviour in a separate commit** | One commit for the refactor, another for the feature |
+| **Stay in scope** | Clean up only what is related to your task, note the rest |
+| **Check callers** | Before deleting old code, see who uses it |
+
+## 2. Why does it matter?
+
+A big "I will fix everything" refactor is the riskiest kind of work. You changed 40 files, something broke, and now you do not know which change broke it.
+
+<CompareTable leftTitle="Big bang refactor" rightTitle="Small safe steps">
+
+3 days of work, nothing runs in between | The code works every hour
+If it breaks, search through 40 files | If it breaks, check only the last step
+Refactor and new feature in one PR, review is impossible | The refactor PR only changes the shape, review is easy
+The main branch moves ahead, big merge conflict | Small PRs merged quickly
+Revert and you lose everything | Revert one small commit
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | A git commit after every small step | Going back is easy when something breaks, build this habit early |
+| **Production code** | Tests and small PRs are a must | A refactor must never cause a bug that affects users |
+| **Senior level** | Plan big refactors and split them up | A senior splits a large change into small safe pieces |
+
+## 4. Bad vs good code
+
+Task: clean up the `discount` function.
+
+```ts
+export function discount(c: any, t: number) {
+  if (c.vip) { if (t > 1000) return t * 0.8; else return t * 0.9; }
+  if (c.orders > 10) return t * 0.95;
+  return t;
+}
+```
+
+**Bad approach:** changed the name, signature, logic and types all at once, and slipped in a "small" behaviour change too.
+
+```ts
+export function price(customer: Customer, total: number) {
+  if (customer.tier === "vip") {
+    return total * VIP_RATE;
+  }
+
+  return total;
+}
+```
+
+The 5 percent discount for loyal customers (more than 10 orders) quietly disappeared. There was no test, so nobody knows.
+
+**Good approach:** first a safety net, then small steps.
+
+Step 1: capture the current behaviour in a test.
+
+```ts
+test.each([
+  [{ vip: true, orders: 0 }, 2000, 1600],
+  [{ vip: true, orders: 0 }, 500, 450],
+  [{ vip: false, orders: 11 }, 100, 95],
+  [{ vip: false, orders: 2 }, 100, 100],
+])("discount(%o, %i) is %i", (customer, total, expected) => {
+  expect(discount(customer, total)).toBe(expected);
+});
+```
+
+Steps 2, 3, 4: change one thing at a time and run the tests each time.
+
+```ts
+const VIP_BIG_ORDER_THRESHOLD = 1000;
+const VIP_BIG_ORDER_RATE = 0.8;
+const VIP_RATE = 0.9;
+const LOYAL_MIN_ORDERS = 10;
+const LOYAL_RATE = 0.95;
+
+export function discount(customer: Customer, total: number) {
+  if (customer.vip) {
+    return total * vipRate(total);
+  }
+
+  if (customer.orders > LOYAL_MIN_ORDERS) {
+    return total * LOYAL_RATE;
+  }
+
+  return total;
+}
+
+function vipRate(total: number) {
+  if (total > VIP_BIG_ORDER_THRESHOLD) {
+    return VIP_BIG_ORDER_RATE;
+  }
+
+  return VIP_RATE;
+}
+```
+
+| What is the difference? | Bad | Good |
+| --- | --- | --- |
+| Safety net | No tests | A test of the current behaviour first |
+| Steps | Everything at once | Types, then constants, then braces, then extract |
+| Behaviour | The loyal discount vanished | Exactly the same, the tests prove it |
+| Renaming | The function name changed too, all callers broke | The public name stays, change it in a separate PR if needed |
+
+## 5. How to apply it
+
+<Flow title="The safe refactor loop">
+
+Do you have tests? If not, first write a test of the current behaviour
+↓
+One small change: rename, extract or move
+↓
+Run the tests and the typecheck
+↓
+Green? Commit
+↓
+Red? Undo only the last step
+↓
+Next small change
+
+</Flow>
+
+When should you refactor? When the code shows these signs: duplication, a long function that does many things, tangled conditions, or names that say nothing. The best time is **right before you add a feature to that same code.** Refactor first to make the feature easy, then add the feature in a separate commit.
+
+Your editor's built-in refactor tools (Rename Symbol, Extract Function, Move to File) are safer than doing it by hand, because they update every reference.
+
+## 6. Exceptions and common mistakes
+
+Sometimes a full rewrite really is cheaper, like a small file with no callers or prototype code. But in production, "rewrite from scratch" often loses hidden rules that nobody documented. Capture those rules with tests first.
+
+Change the signature of a public API or of a function used by another team only when migrating it is part of your task.
+
+<Mistake
+  title="Refactor and behaviour change in one commit"
+  why="When a bug appears you cannot tell whether the reshaping or the new logic caused it, and the reviewer cannot check both at once."
+  better="First a refactor commit with the same behaviour, then a separate commit for the new feature."
+/>
+
+<Mistake
+  title="A big refactor without tests"
+  why="There is no proof that the behaviour stayed the same, and hidden edge cases break silently."
+  better="First write tests for the current behaviour, even if that behaviour looks odd."
+/>
+
+<Mistake
+  title="Cleaning up the whole codebase in the middle of a task"
+  why="The PR gets huge, the scope drifts and the real work arrives late."
+  better="Clean up what is related to your task, and note the rest as a separate task."
+/>
+
+<Mistake
+  title="Deleting an old function without checking callers"
+  why="Another module or script was using it, and the build or production broke."
+  better="Search all references first, then delete."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Small Functions](/courses/best-practices/small-functions), [DRY Without Tight Coupling](/courses/best-practices/dry-without-coupling) |
+| **Alongside** | [Testing Pyramid](/courses/best-practices/testing-pyramid), [Git Branches & Commits](/courses/best-practices/git-branches-and-commits) |
+| **After** | [Following Existing Patterns](/courses/best-practices/following-existing-patterns), [Fix Root Causes](/courses/best-practices/fix-root-causes), [Pull Requests & Code Review](/courses/best-practices/pull-requests-and-code-review) |
+
+## Final quick revision
+
+| Check | Question |
+| --- | --- |
+| Safety net | Are there tests before you change anything? |
+| Steps | Is each change small enough that a break is noticed right away? |
+| Green | Did the tests and typecheck run after every step? |
+| Separate commit | Are the refactor and the feature in separate commits? |
+| Scope | Did you touch only code related to the task? |
+| Callers | Did you check references before deleting? |
+
+<Callout variant="important" title="Remember">
+
+The promise of a refactor is "nothing changed from the outside". Tests are the proof of that promise, and small steps make it easy to keep.
+
+</Callout>

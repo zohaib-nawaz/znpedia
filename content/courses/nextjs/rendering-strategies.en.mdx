@@ -1,0 +1,205 @@
+---
+title: "Rendering Strategies: SSR, SSG, ISR"
+description: "Next.js SSR SSG ISR: the difference between static, dynamic and incremental rendering, and how to write them with use cache and cacheLife in Next.js 16 Cache Components."
+keywords:
+  - next.js ssr ssg isr
+  - next.js static rendering
+  - next.js dynamic rendering
+  - incremental static regeneration
+  - partial prerendering
+---
+
+## 1. What are rendering strategies?
+
+<Callout variant="tip" title="Short definition">
+
+**A rendering strategy decides when the HTML of a page is created: at build time (SSG), on every request (SSR), or at build time and then refreshed from time to time (ISR).**
+
+</Callout>
+
+| Strategy | Full name | When the HTML is created |
+| --- | --- | --- |
+| **SSG** | Static Site Generation | At build time, once |
+| **SSR** | Server-Side Rendering | On every request |
+| **ISR** | Incremental Static Regeneration | At build time, then again after some time or on an event |
+| **PPR** | Partial Prerendering | The static shell at build time, the dynamic parts on request |
+
+In Next.js 16 these are less like separate "modes" and more like **choices inside a single page**. When Cache Components is on, each component says for itself whether it is cached or dynamic.
+
+## 2. Why does it matter?
+
+Every page has different needs. An "About us" page does not change daily, a cart is different for every user, and a product price changes once an hour.
+
+<CompareTable leftTitle="Wrong strategy" rightTitle="Right strategy">
+
+About page rendered on every request, extra load on the server | SSG, instant from the CDN
+Cart made static, everyone sees the same cart | SSR, a separate cart for each user
+Product price fixed at build time and shows stale data | ISR, fresh every hour
+Whole page dynamic because of one widget | PPR, only the widget is dynamic
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Page | Strategy |
+| --- | --- |
+| Landing page, docs, blog post | SSG |
+| Dashboard, cart, profile | SSR (request time) |
+| Product listing, news feed | ISR (`cacheLife("hours")`) |
+| Product page with a "for you" section | PPR (static shell + dynamic widget) |
+
+## 4. How does it work?
+
+Next.js 16 has two models:
+
+<CompareTable leftTitle="cacheComponents off (classic)" rightTitle="cacheComponents: true (new)">
+
+Route is static by default if there is no dynamic API | Data is dynamic by default
+cookies or searchParams make the whole route dynamic | Only the part inside Suspense is dynamic
+ISR with export const revalidate = 60 | ISR with use cache + cacheLife
+export const dynamic force-dynamic | No config needed
+next.revalidate option of fetch | use cache in a function
+
+</CompareTable>
+
+<Flow title="A page with Cache Components">
+
+Page renders at build time
+   ↓
+The use cache part goes into the static shell
+   +
+The dynamic part inside Suspense gets a fallback
+   ↓
+A request arrives, the static shell is sent immediately
+   ↓
+The dynamic part renders on the server and streams in
+
+</Flow>
+
+In this model, the `dynamic`, `revalidate` and `fetchCache` route segment configs cause an **error**. `"use cache"` and `cacheLife` replace them.
+
+## 5. Code example
+
+All three examples below use `cacheComponents: true`.
+
+### SSG: the whole page cached
+
+```tsx
+import { cacheLife } from "next/cache";
+
+export default async function AboutPage() {
+  "use cache";
+  cacheLife("max");
+  const team = await fetch("https://api.example.com/team").then((r) => r.json());
+  return <h1>Our team: {team.length} people</h1>;
+}
+```
+
+### ISR: refresh every hour
+
+```tsx
+import { cacheLife, cacheTag } from "next/cache";
+
+async function getProducts() {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("products");
+  const res = await fetch("https://api.example.com/products");
+  return res.json();
+}
+
+export default async function ProductsPage() {
+  const products = await getProducts();
+  return <p>{products.length} products</p>;
+}
+```
+
+### SSR / PPR: the user-specific part at request time
+
+```tsx
+import { Suspense } from "react";
+import { cookies } from "next/headers";
+
+async function CartCount() {
+  const cartId = (await cookies()).get("cart")?.value;
+  const res = await fetch(`https://api.example.com/cart/${cartId}`);
+  const cart = await res.json();
+  return <span>{cart.items.length} items</span>;
+}
+
+export default function ShopHeader() {
+  return (
+    <header>
+      <h1>ZnShop</h1>
+      <Suspense fallback={<span>...</span>}>
+        <CartCount />
+      </Suspense>
+    </header>
+  );
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `"use cache"` on the page | The whole page is cached and prerendered at build time (SSG) |
+| `cacheLife("max")` | A very long lifetime, revalidated in the background |
+| `cacheLife("hours")` | Fresh every hour (like ISR) |
+| `cacheTag("products")` | Lets you refresh on demand later with `revalidateTag` or `updateTag` |
+| `cookies()` inside Suspense | Only this part runs at request time (SSR) |
+| The rest of the header | In the static shell (PPR) |
+
+<Callout variant="tip" title="ISR in the classic model">
+
+If `cacheComponents` is off, the old way still works: `export const revalidate = 3600` in the page, or `fetch(url, { next: { revalidate: 3600 } })`.
+
+</Callout>
+
+### Interview tip
+
+"When do you use SSR and when SSG?" Use SSR for data that changes per user or per request, SSG for data that is the same for everyone and changes rarely, and ISR for something in between. In Next.js 16 this decision is made at the component level instead of the page level.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Turning on cacheComponents and keeping export const revalidate"
+  why="With Cache Components, the dynamic, revalidate and fetchCache configs cause errors."
+  better="Use use cache and cacheLife, and if revalidate is 0, simply remove the config."
+/>
+
+<Mistake
+  title="Making the whole page dynamic because of one cookie"
+  why="You lose the benefit of the static shell and the whole page renders on every request."
+  better="Move the component that reads the cookie into its own file and wrap it in Suspense."
+/>
+
+<Mistake
+  title="Reading cookies or headers inside use cache"
+  why="A cached result is shared between all users, so request data is not allowed inside."
+  better="Read request data outside and pass the needed value to the cached function as an argument."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Server & Client Components](/courses/nextjs/server-and-client-components), [Dynamic Routes](/courses/nextjs/dynamic-routes) |
+| **Alongside** | [Streaming & Suspense](/courses/nextjs/streaming-and-suspense), [Data Fetching](/courses/nextjs/data-fetching) |
+| **After** | [Cache Components](/courses/nextjs/cache-components), [Revalidation](/courses/nextjs/revalidation), [Performance](/courses/nextjs/performance) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| SSG | HTML at build time, `"use cache"` + `cacheLife("max")` |
+| SSR | On request, dynamic data inside Suspense |
+| ISR | `cacheLife("hours")` or the classic `revalidate` |
+| PPR | Static shell + streamed dynamic parts |
+| Next.js 16 | The decision is at component level, with `cacheComponents: true` |
+
+<Callout variant="important" title="Remember">
+
+**With Cache Components, everything is dynamic by default.** Add `"use cache"` to what you want cached, and put what you need at request time inside Suspense.
+
+</Callout>

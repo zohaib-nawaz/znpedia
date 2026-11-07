@@ -1,0 +1,217 @@
+---
+title: Shared API Contracts
+description: Share a typed API contract between frontend and backend. Keep request and response in one module so a field rename fails the build on both sides.
+keywords:
+  - typed api contract frontend backend
+  - shared types api
+  - zod api schema
+  - end to end type safety
+  - api versioning
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Each endpoint's request and response shape lives in one typed module that both the route and the frontend client import. The route never returns a field that is not written in the contract.**
+
+</Callout>
+
+A contract is a promise: "send this to this endpoint, and you get this back". When the promise is written in two separate places, the two will drift apart sooner or later. When it is written in one place, TypeScript keeps both in step.
+
+## 2. Why does it matter?
+
+A backend developer renamed `fullName` to `name`. The frontend's own type still says `fullName`. The build is green, it gets deployed, and every user's name shows as `undefined` on the profile page. Someone noticed three days later.
+
+The other bug goes the opposite way. A route returned the whole database row. The row also had `password_hash` and `reset_token`. The frontend does not use them, but anyone can see them in the network tab.
+
+<CompareTable leftTitle="Two separate type copies" rightTitle="One shared contract">
+
+A field rename breaks at runtime | A field rename fails the build
+Backend and frontend each write their own type | Both import one module
+The route sends the whole row | The route builds only the fields in the contract
+A new developer does not know what an endpoint accepts | The contract file is itself the documentation
+A breaking change quietly breaks the public API | A public API changes behind a version prefix
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Optional | When frontend and backend are in one file the benefit is small |
+| **Production code** | Important | Different people change the frontend and backend, so drift is certain |
+| **Senior level** | Decide where the contract lives and how it is versioned | A public API, a mobile app and the web all run on one promise |
+
+When to learn it: after [Input Validation](/courses/best-practices/input-validation) and [Types Beside Logic](/courses/best-practices/types-beside-logic), when your frontend and API both start growing in one repo.
+
+## 4. Bad vs good code
+
+### Bad: its own type on each side
+
+```ts
+type Project = {
+  id: string;
+  title: string;
+  ownerName: string;
+};
+
+export async function GET() {
+  const rows = await listProjectsWithOwners();
+  return Response.json(rows);
+}
+```
+
+```ts
+type Project = {
+  id: string;
+  name: string;
+  ownerName: string;
+};
+
+const projects: Project[] = await fetch("/api/projects").then((res) => res.json());
+```
+
+The route's type says `title`, the frontend says `name`, and the actual response is whatever was in the row. The compiler says nothing.
+
+### Good: one contract module
+
+File `lib/api/contracts/projects.contract.ts`:
+
+```ts
+import { z } from "zod";
+
+export const projectSchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  ownerName: z.string(),
+  createdAt: z.iso.datetime(),
+});
+
+export const createProjectRequestSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+});
+
+export type Project = z.infer<typeof projectSchema>;
+export type CreateProjectRequest = z.infer<typeof createProjectRequestSchema>;
+export type ListProjectsResponse = { projects: Project[] };
+```
+
+The service turns a row into the contract, field by field:
+
+```ts
+export function toProject(row: ProjectWithOwnerRow): Project {
+  return {
+    id: row.id,
+    name: row.name,
+    ownerName: row.owner_name,
+    createdAt: row.created_at,
+  };
+}
+```
+
+The route returns that same type:
+
+```ts
+export async function GET() {
+  const user = await requireUser();
+  const rows = await listProjectsForUser(user.id);
+
+  return NextResponse.json<ListProjectsResponse>({ projects: rows.map(toProject) });
+}
+```
+
+The frontend client imports the same thing:
+
+```ts
+import type { CreateProjectRequest, ListProjectsResponse, Project } from "@/lib/api/contracts/projects.contract";
+
+export function listProjects() {
+  return apiRequest<ListProjectsResponse>("/api/projects");
+}
+
+export function createProject(input: CreateProjectRequest) {
+  return apiRequest<{ project: Project }>("/api/projects", { method: "POST", body: input });
+}
+```
+
+Now if you rename `name` to `title`, `toProject`, the route and every component that reads `project.name` will all give a compile error together.
+
+### What is the difference?
+
+| Thing | Bad code | Good code |
+| --- | --- | --- |
+| Type copies | Two, separate | One contract module |
+| Response | The whole row, secrets included | `toProject`, only the named fields |
+| Rename | `undefined` at runtime | An error at compile time |
+| Request shape | Not written anywhere | A Zod schema, the server validates with it too |
+
+## 5. How to apply it
+
+<Flow title="Contract first">
+
+Write the request and response schema for the endpoint
+↓
+Let the route validate its input with this schema
+↓
+Let the service map a row into the contract shape
+↓
+Let the frontend client import these same types
+↓
+When the contract changes, both sides are compile checked
+
+</Flow>
+
+For a public API, such as one used by partners or a mobile app, create a new version on a breaking change (`/api/v2/...`) and write the end date of the old version in the docs. Mobile apps keep running on old versions for months.
+
+## 6. Exceptions and common mistakes
+
+If the frontend and backend are in separate repos, publish the contract in a small shared package, or generate types from an OpenAPI spec. Tools like server actions and tRPC share types on their own, so there is less need for a separate contract file, but the rule "return only the named fields" still applies.
+
+<Mistake
+  title="Using a database row directly as the response"
+  why="The moment a new column is added it leaks into the API, whether it is a password hash or an internal note."
+  better="Write a mapper function that picks only the contract's fields."
+/>
+
+<Mistake
+  title="Writing the response type yourself on the frontend"
+  why="That type never stays in sync with the backend and gives false safety."
+  better="Import the type from the contract module, and never declare the shape on the frontend."
+/>
+
+<Mistake
+  title="Using a database type in the contract"
+  why="A column rename directly breaks the public API and snake_case names reach the client."
+  better="Give the contract its own shape and let the mapper bridge the two."
+/>
+
+<Mistake
+  title="Quietly removing a field from a public API"
+  why="Old mobile apps and partner integrations break without warning."
+  better="Make breaking changes under a new version prefix and add a deprecation note."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Strict Typing](/courses/best-practices/strict-typing), [Types Beside Logic](/courses/best-practices/types-beside-logic), [Input Validation at the Boundary](/courses/best-practices/input-validation) |
+| **Alongside** | [One Fetch Client](/courses/best-practices/single-fetch-client), [Generated Database Types](/courses/best-practices/generated-types) |
+| **After** | [Endpoint Tests First](/courses/best-practices/endpoint-tests-first), [Documentation & Decision Records](/courses/best-practices/documentation-and-decisions) |
+
+## Final quick revision
+
+| Check | Question |
+| --- | --- |
+| One place | Do the request and response shapes live only in the contract module? |
+| Import | Do both the route and the client import the same thing? |
+| Mapper | Was the response built field by field, not by spreading a row? |
+| Validation | Is the request schema also the server validation? |
+| Versioning | Is a breaking change to a public API in a new version? |
+
+<Callout variant="important" title="Remember">
+
+Write the contract once and import it on both sides. When a field changes, let the compiler tell you before production does, before you see `undefined` on a user's screen.
+
+</Callout>

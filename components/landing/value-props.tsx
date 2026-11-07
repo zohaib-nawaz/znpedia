@@ -8,7 +8,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { SectionHeading } from "@/components/landing/section-heading";
+import { SectionHeading, type SectionCopy } from "@/components/landing/section-heading";
 import type { ValueProp } from "@/lib/landing-content";
 import { TONES } from "@/lib/tones";
 import { cn } from "@/lib/utils";
@@ -24,9 +24,10 @@ const ICONS: Record<ValueProp["icon"], LucideIcon> = {
 
 type ValuePropsProps = {
   items: ValueProp[];
+  copy: SectionCopy;
 };
 
-export function ValueProps({ items }: ValuePropsProps) {
+export function ValueProps({ items, copy }: ValuePropsProps) {
   return (
     <section
       aria-labelledby="why-heading"
@@ -47,9 +48,9 @@ export function ValueProps({ items }: ValuePropsProps) {
       <div className="relative mx-auto max-w-6xl px-4 py-20 sm:px-6">
         <SectionHeading
           id="why-heading"
-          eyebrow="Kyun ZnPedia"
-          title="Seekhna aasaan, content kaam ka"
-          description="Bikhre tutorials ki jagah ek tarteeb, apni zabaan mein, aaj ke tools ke saath."
+          eyebrow={copy.eyebrow}
+          title={copy.title}
+          description={copy.description}
         />
         <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => {

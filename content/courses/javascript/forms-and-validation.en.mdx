@@ -1,0 +1,196 @@
+---
+title: Forms & Validation
+description: Learn modern JavaScript form validation with the submit event, FormData, required and pattern attributes, the Constraint Validation API and custom messages.
+keywords:
+  - javascript form validation
+  - form validation
+  - formdata javascript
+  - constraint validation api
+  - setcustomvalidity
+---
+
+## 1. What are forms and validation?
+
+<Callout variant="tip" title="Short definition">
+
+**Form validation means checking that the user's data is correct and complete before you send it.**
+
+</Callout>
+
+A form is how you collect data from the user: login, signup, checkout, contact. JavaScript listens to the `submit` event, reads the values with `FormData` and checks them.
+
+Validation happens in two places. **Client side** (in the browser) gives the user instant feedback. **Server side** is the real security, because anyone can bypass the browser check.
+
+## 2. Why does it matter?
+
+Without validation, wrong emails, empty fields and weak passwords reach the server. The user also finds out only after everything has already failed.
+
+<CompareTable leftTitle="Without validation" rightTitle="With validation">
+
+An empty form reaches the server | The error shows before submitting
+The user does not know what is wrong | A clear message next to each field
+Useless requests hit the server | Only valid data is sent
+Read every value by hand | All values at once with FormData
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Form | Validation |
+| --- | --- |
+| **Signup** | Email format, password length, password match |
+| **Checkout** | Phone number, address, required fields |
+| **Contact** | The message must not be empty, length limit |
+| **Search** | Minimum characters |
+| **Profile** | Age range, file size and type |
+
+## 4. How does it work?
+
+<Flow title="From submit to server">
+
+The user presses submit
+↓
+The browser runs its built-in checks
+↓
+preventDefault on the submit event
+↓
+Read the values with FormData
+↓
+Run custom checks and show a message if something is wrong
+↓
+Everything is valid, so send it to the server with fetch
+
+</Flow>
+
+| Built-in tool | Job |
+| --- | --- |
+| `required`, `minlength`, `pattern`, `type="email"` | Basic rules through HTML attributes |
+| `input.validity` | Which rule failed, such as `valueMissing` |
+| `input.setCustomValidity(msg)` | Set your own error message |
+| `form.checkValidity()` | Is the whole form valid or not |
+| `form.reportValidity()` | Check and also show the browser's message |
+
+<Callout variant="important" title="Mental model">
+
+**HTML rules first, then custom JavaScript rules, and finally the server check.**
+
+</Callout>
+
+## 5. Code example
+
+HTML:
+
+```html
+<form id="signup" novalidate>
+  <input name="email" type="email" required />
+  <input name="password" type="password" minlength="8" required />
+  <input name="confirm" type="password" required />
+  <p id="error" role="alert"></p>
+  <button>Signup</button>
+</form>
+```
+
+JavaScript:
+
+```js
+const form = document.querySelector("#signup");
+const errorBox = document.querySelector("#error");
+
+form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const data = Object.fromEntries(new FormData(form));
+  form.elements.confirm.setCustomValidity(
+    data.password === data.confirm ? "" : "Passwords do not match"
+  );
+
+  if (!form.checkValidity()) {
+    const firstInvalid = form.querySelector(":invalid");
+    errorBox.textContent = firstInvalid.validationMessage;
+    firstInvalid.focus();
+    return;
+  }
+
+  errorBox.textContent = "";
+  const res = await fetch("/api/signup", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: data.email, password: data.password }),
+  });
+  errorBox.textContent = res.ok ? "Account created" : "Signup failed";
+});
+```
+
+### How does the code work?
+
+| Line | What happens |
+| --- | --- |
+| `novalidate` | Turns off the browser's default popups, so we show the messages ourselves |
+| `event.preventDefault()` | The page does not reload |
+| `new FormData(form)` | The value of every input that has a `name` |
+| `Object.fromEntries(...)` | Turned the FormData into a simple object |
+| `setCustomValidity(...)` | An empty string means valid, anything else is an error |
+| `:invalid` and `validationMessage` | The first invalid field and its message |
+
+## 6. Common mistakes
+
+<Mistake
+  title="Trusting client side validation alone"
+  why="Anyone can bypass browser checks with DevTools or a direct API request."
+  better="Use client side validation for UX, and check the same rules again on the server."
+/>
+
+<Mistake
+  title="Validating on the button click event"
+  why="When the form is submitted with the Enter key, the click handler never runs."
+  better="Always attach the listener to the form's submit event."
+/>
+
+<Mistake
+  title="Not resetting setCustomValidity"
+  why="Once a message is set, the field stays invalid forever, even after the user fixes it."
+  better="Call setCustomValidity('') when the value becomes valid."
+/>
+
+<Mistake
+  title="Forgetting the name attribute on inputs"
+  why="FormData only picks up fields that have a name, so values go missing."
+  better="Give every input a unique name."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [DOM Events](/courses/javascript/dom-events), [Event Bubbling & Delegation](/courses/javascript/event-delegation), [Fetch API](/courses/javascript/fetch-api) |
+| **Alongside** | [Regular Expressions](/courses/javascript/regular-expressions), [Error Handling](/courses/javascript/error-handling) |
+| **After** | [localStorage, sessionStorage & Cookies](/courses/javascript/web-storage), [Debounce & Throttle](/courses/javascript/debounce-and-throttle) |
+
+<Flow title="Suggested order">
+
+DOM Events
+↓
+Forms and Validation
+↓
+Submit with the Fetch API
+↓
+Save drafts in Web Storage
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `submit` event | The real form event, not click |
+| `preventDefault()` | Stop the reload and send with JavaScript |
+| `FormData` | Values of fields that have a `name` |
+| HTML rules | `required`, `minlength`, `pattern`, `type` |
+| Custom rules | `setCustomValidity`, `checkValidity` |
+| Security | Always validate on the server |
+
+<Callout variant="important" title="Remember">
+
+Client validation is there to **help the user**, not for security. The real check always happens on the server.
+
+</Callout>

@@ -1,0 +1,180 @@
+---
+title: Environment Variables
+description: How to keep Next.js environment variables in .env files, what the NEXT_PUBLIC_ prefix means, and how to keep server secrets away from the browser.
+keywords:
+  - next.js environment variables
+  - next_public prefix
+  - next.js env local
+  - next.js secrets server only
+---
+
+## 1. What are environment variables?
+
+<Callout variant="tip" title="Short definition">
+
+**Environment variables are settings and secrets kept outside the code, in `.env` files or on the hosting platform, and the code reads them with `process.env.NAME`.**
+
+</Callout>
+
+A database URL, API keys, a payment secret and the site URL are all different in every environment: your machine, staging and production. Hardcoding them in the code is dangerous and painful.
+
+Next.js loads `.env` files by itself. You do not need any extra package.
+
+## 2. Why does it matter?
+
+<CompareTable leftTitle="Hardcoded values" rightTitle="Environment variables">
+
+The API key gets committed to Git | The secret stays only in .env.local or on the platform
+Change the code for every environment | The same code, different values
+If a key leaks, you have to clean the whole history | Just rotate the value
+A secret can reach the browser | Variables without NEXT_PUBLIC_ stay on the server
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Variable | Where it is needed | Prefix |
+| --- | --- | --- |
+| `DATABASE_URL` | Server only | None |
+| `AUTH_SECRET` | Server only | None |
+| `STRIPE_SECRET_KEY` | Server only | None |
+| `NEXT_PUBLIC_SITE_URL` | Server and browser | `NEXT_PUBLIC_` |
+| `NEXT_PUBLIC_ANALYTICS_ID` | Browser script | `NEXT_PUBLIC_` |
+
+## 4. How does it work?
+
+<Flow title="The journey of an env variable">
+
+.env files are loaded
+↓
+Server code reads from process.env
+↓
+At next build, NEXT_PUBLIC_ values are inlined into the JS bundle
+↓
+The browser gets only the NEXT_PUBLIC_ values
+
+</Flow>
+
+### Files and priority
+
+Next.js looks for values in these places, and the first match wins:
+
+| Order | Source |
+| --- | --- |
+| 1 | `process.env` (set in the platform or the shell) |
+| 2 | `.env.development.local` or `.env.production.local` |
+| 3 | `.env.local` (not loaded in the test environment) |
+| 4 | `.env.development` or `.env.production` |
+| 5 | `.env` |
+
+`.env*.local` files are for secrets and are not committed to Git. Keep only safe defaults in `.env`.
+
+<Callout variant="important" title="Mental model">
+
+**No prefix = a server secret. `NEXT_PUBLIC_` = visible to everyone, written into the bundle at build time.**
+
+</Callout>
+
+## 5. Code example
+
+### Step 1: the .env.local file
+
+```bash
+DATABASE_URL="postgresql://user:password@localhost:5432/shop"
+AUTH_SECRET="value-generated-with-openssl-rand-base64-32"
+NEXT_PUBLIC_SITE_URL="http://localhost:3000"
+```
+
+### Step 2: validate and use on the server
+
+```ts
+import "server-only";
+import * as z from "zod";
+
+const EnvSchema = z.object({
+  DATABASE_URL: z.url(),
+  AUTH_SECRET: z.string().min(32),
+});
+
+export const env = EnvSchema.parse({
+  DATABASE_URL: process.env.DATABASE_URL,
+  AUTH_SECRET: process.env.AUTH_SECRET,
+});
+```
+
+### Step 3: a public variable in a Client Component
+
+```tsx
+"use client";
+
+export function ShareButton({ path }: { path: string }) {
+  const url = `${process.env.NEXT_PUBLIC_SITE_URL}${path}`;
+  return <button onClick={() => navigator.clipboard.writeText(url)}>Copy link</button>;
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `.env.local` | Local secrets, in the Git ignore list |
+| `import "server-only"` | The build fails if this file is imported into a Client Component by mistake |
+| `EnvSchema.parse(...)` | Catches a missing or wrong variable as soon as the app starts |
+| `process.env.NEXT_PUBLIC_SITE_URL` | Replaced with the real string at build time |
+| `AUTH_SECRET` in the client | You get `undefined`, it never reaches the browser |
+
+`NEXT_PUBLIC_` values are frozen at **build time**. After you change the value, you must run `next build` again. Server side variables are read at request time in dynamic rendering.
+
+### Interview tip
+
+"Why does `process.env[key]` not work on the client?" Answer: Next.js only replaces a directly written `process.env.NEXT_PUBLIC_X` at build time. A dynamic lookup is not inlined.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Adding the NEXT_PUBLIC_ prefix to a secret key"
+  why="The value goes into the JavaScript bundle and anyone can see it in the browser."
+  better="Keep secrets without the prefix and use them only in server code."
+/>
+
+<Mistake
+  title="Committing .env.local to Git"
+  why="Database passwords and API keys leak into a public repo."
+  better="Keep .env*.local in .gitignore and write only the names in .env.example."
+/>
+
+<Mistake
+  title="Changing a NEXT_PUBLIC_ value in production without rebuilding"
+  why="Public values are inlined at build time, so the old value keeps running."
+  better="After changing a public variable, create a new build and deploy."
+/>
+
+<Mistake
+  title="Not finding out about a missing variable until runtime"
+  why="The app keeps running and then crashes strangely on the first request."
+  better="Validate env with Zod at startup so the mistake is seen immediately."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Installation & Project Structure](/courses/nextjs/installation-and-project-structure), [Server & Client Components](/courses/nextjs/server-and-client-components) |
+| **Alongside** | [next.config & Turbopack](/courses/nextjs/next-config-and-turbopack) |
+| **After** | [Authentication](/courses/nextjs/authentication), [Database Integration](/courses/nextjs/database-integration), [Deployment](/courses/nextjs/deployment) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Reading | `process.env.NAME` |
+| For the browser | The `NEXT_PUBLIC_` prefix, inlined at build time |
+| Secrets | No prefix, server only |
+| Local secrets | `.env.local`, not in Git |
+| Safety | `server-only` + Zod validation |
+
+<Callout variant="important" title="Remember">
+
+A variable that starts with `NEXT_PUBLIC_` is public. Everything else is a server secret, and a secret should never reach Git or the browser.
+
+</Callout>

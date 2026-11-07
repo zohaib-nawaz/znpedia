@@ -1,0 +1,205 @@
+---
+title: Map & Set
+description: Learn what JavaScript Map and Set are, how they differ from objects and arrays, unique values, any-type keys, Map.groupBy, and the new Set methods.
+keywords:
+  - javascript map set
+  - map vs object javascript
+  - set unique values javascript
+  - map groupby
+  - set union intersection
+---
+
+## 1. What are Map & Set?
+
+<Callout variant="tip" title="Short definition">
+
+**`Map` stores key-value pairs where the key can be of any type. `Set` is a collection of unique values only.**
+
+</Callout>
+
+Object keys can only be strings or symbols. In a `Map`, the key can be a number, an object, even a function, and it remembers insertion order.
+
+`Set` is like an array but does not allow duplicate values. A value is either in the set or it is not.
+
+## 2. Why does it matter?
+
+Objects and arrays are not perfect for every job. For lookups that are added and removed often, and for unique lists, Map and Set are better and faster.
+
+<CompareTable leftTitle="Making do with objects / arrays" rightTitle="With Map / Set">
+
+Object keys turn into strings | In a Map, the key keeps its real type
+Object.keys().length for the size | map.size directly
+filter and indexOf to remove duplicates | Unique in one line with new Set
+includes scans the whole array | set.has is a fast lookup
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Situation | What to use |
+| --- | --- |
+| Unique tags, categories, visited IDs | `Set` |
+| Removing duplicate items | `[...new Set(arr)]` |
+| Caching user data by user ID | `Map` |
+| Attaching extra data to a DOM element | `Map` or `WeakMap` |
+| A lookup that is added to and deleted from often | `Map` |
+| What two lists have in common or differ by | `Set` methods |
+
+## 4. How does it work?
+
+| Task | `Map` | `Set` |
+| --- | --- | --- |
+| Create | `new Map()` | `new Set()` |
+| Add | `map.set(key, value)` | `set.add(value)` |
+| Read | `map.get(key)` | (the value is the key) |
+| Check | `map.has(key)` | `set.has(value)` |
+| Delete | `map.delete(key)` | `set.delete(value)` |
+| Count | `map.size` | `set.size` |
+| Loop | `for (const [k, v] of map)` | `for (const v of set)` |
+
+<Flow title="Which one to choose">
+
+Do you only need unique values?
+↓
+If yes, use a Set
+↓
+Do you need key-value with dynamic or non-string keys?
+↓
+If yes, use a Map
+↓
+Fixed-shape data that you will send as JSON?
+↓
+A plain object
+
+</Flow>
+
+Map and Set both iterate in **insertion order**. But they do not convert directly with `JSON.stringify`, so you first need `Object.fromEntries(map)` or `[...set]`.
+
+<Callout variant="important" title="Mental model">
+
+**Map = a smart dictionary (any key). Set = a guest list (each name only once).**
+
+</Callout>
+
+## 5. Code example
+
+### Set: unique values and set operations
+
+```js
+const tags = ["js", "react", "js", "css", "react"];
+const unique = new Set(tags);
+
+console.log(unique.size);
+console.log(unique.has("css"));
+console.log([...unique]);
+
+const frontend = new Set(["js", "css", "html"]);
+const backend = new Set(["js", "sql"]);
+
+console.log([...frontend.intersection(backend)]);
+console.log([...frontend.union(backend)]);
+console.log([...frontend.difference(backend)]);
+```
+
+### Map: cache and grouping
+
+```js
+const userCache = new Map();
+userCache.set(101, { name: "Ali" });
+userCache.set(102, { name: "Sara" });
+
+console.log(userCache.get(101).name);
+console.log(userCache.has(103), userCache.size);
+
+const orders = [
+  { id: 1, status: "paid" },
+  { id: 2, status: "pending" },
+  { id: 3, status: "paid" },
+];
+const byStatus = Map.groupBy(orders, (o) => o.status);
+console.log(byStatus.get("paid").length);
+
+console.log(Object.fromEntries(userCache));
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `new Set(tags)` | Duplicates were removed automatically, `size` is `3` |
+| `[...unique]` | Turned the Set back into an array |
+| `intersection` | What both have in common, `["js"]` |
+| `union` | Everything unique, `["js", "css", "html", "sql"]` |
+| `difference` | Only the frontend ones, `["css", "html"]` |
+| `userCache.set(101, ...)` | The number key keeps its type |
+| `Map.groupBy` | A Map of groups by status (ES2024) |
+| `Object.fromEntries` | Turned the Map into a plain object, for JSON |
+
+### Interview tip
+
+`WeakMap` and `WeakSet` can only use objects as keys/values, and they do not prevent garbage collection. They are used to attach private data to DOM elements or objects.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Using bracket notation on a Map"
+  why="map['key'] = value does not create a Map entry, it only adds an object property that get and size do not see."
+  better="Always use map.set(key, value) and map.get(key)."
+/>
+
+<Mistake
+  title="Expecting a Set to make objects unique by content"
+  why="Two different objects with the same data are different references, so the Set keeps both."
+  better="For objects, use a Set or Map built on a unique key (like id)."
+/>
+
+<Mistake
+  title="Calling JSON.stringify directly on a Map"
+  why="JSON.stringify(map) returns an empty object, and the data is lost."
+  better="First use Object.fromEntries(map) or [...map], then stringify."
+/>
+
+<Mistake
+  title="Forcing Map everywhere"
+  why="Fixed-shape data like a user profile is clearer and more JSON friendly in a plain object."
+  better="Use Map for dynamic lookups and an object for a fixed record."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Arrays](/courses/javascript/arrays), [Objects](/courses/javascript/objects), [Spread & Rest](/courses/javascript/spread-and-rest) |
+| **Alongside** | [Array Methods: map, filter, reduce](/courses/javascript/array-methods), [JSON](/courses/javascript/json) |
+| **After** | [Iterators & Generators](/courses/javascript/iterators-and-generators), [Classes](/courses/javascript/classes) |
+
+<Flow title="Suggested order">
+
+Objects
+↓
+Spread & Rest
+↓
+Map & Set
+↓
+JSON
+↓
+Iterators & Generators
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `Map` | A key of any type, `get` / `set` / `has` |
+| `Set` | Unique values only, `add` / `has` |
+| Unique array | `[...new Set(arr)]` |
+| Order | Both keep insertion order |
+| JSON | Convert to an object or array first |
+| Grouping | `Map.groupBy` |
+
+<Callout variant="important" title="Remember">
+
+Use `Set` for unique values and `Map` for dynamic key-value lookups. For fixed-shape data that goes into JSON, a plain object is better.
+
+</Callout>

@@ -1,0 +1,184 @@
+---
+title: Setup with Vite
+description: Learn the React Vite setup step by step, from creating a new project with npm create vite to the folder structure, main.jsx and createRoot.
+keywords:
+  - react vite setup
+  - create react app with vite
+  - npm create vite react
+  - react project structure
+---
+
+## 1. What is Vite?
+
+<Callout variant="tip" title="Short definition">
+
+**Vite is a fast build tool and dev server that creates a React project in seconds and runs it in the browser.**
+
+</Callout>
+
+React by itself is only a library. The browser does not understand JSX directly, so you need a tool that turns JSX into JavaScript, serves your files and makes the production build. Today that job is done by **Vite**.
+
+The old way was **Create React App (CRA)**. The React team officially deprecated it in 2025, so for new projects use Vite (or a framework like Next.js).
+
+## 2. Why does it matter?
+
+<CompareTable leftTitle="Old setup (CRA)" rightTitle="Vite">
+
+The dev server takes a long time to start | Starts almost instantly
+The whole bundle is rebuilt on every change | Only the changed file updates
+Hidden and hard-to-read config | A small and clear vite.config.js
+No longer maintained | Actively maintained and modern
+
+</CompareTable>
+
+In development, Vite uses the browser's native **ES modules** and processes only the files the browser asks for. That is why **HMR (Hot Module Replacement)** updates the screen as soon as you save, and most of the time the state is kept too.
+
+## 3. Where is it used?
+
+| Project | Why Vite |
+| --- | --- |
+| **Learning projects** | One command, zero config |
+| **Single page apps (SPA)** | Dashboards, admin panels, internal tools |
+| **Component libraries** | Build a package with library mode |
+| **Other frameworks** | Vue, Svelte and Solid also use Vite |
+
+If you need routing, server rendering and SEO built in, a framework like Next.js is better. For learning and SPAs, Vite is perfect.
+
+## 4. How does it work?
+
+<Flow title="Vite React app flow">
+
+npm run dev
+↓
+The Vite dev server runs on localhost:5173
+↓
+The browser loads index.html
+↓
+index.html loads src/main.jsx
+↓
+createRoot renders App into the div with id root
+
+</Flow>
+
+### Folder structure
+
+| File | Job |
+| --- | --- |
+| `index.html` | The entry point, it has `div id="root"` |
+| `src/main.jsx` | Connects React to `#root` |
+| `src/App.jsx` | Your first component |
+| `public/` | Static files served as they are |
+| `vite.config.js` | Vite settings and the React plugin |
+| `package.json` | Scripts and dependencies |
+
+## 5. Code example
+
+### Creating the project
+
+First install the current LTS version of Node.js, then:
+
+```bash
+npm create vite@latest my-app -- --template react
+cd my-app
+npm install
+npm run dev
+```
+
+If you want TypeScript, use the `react-ts` template.
+
+### src/main.jsx
+
+```jsx
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import App from "./App.jsx";
+import "./index.css";
+
+createRoot(document.getElementById("root")).render(
+  <StrictMode>
+    <App />
+  </StrictMode>
+);
+```
+
+### src/App.jsx
+
+```jsx
+export default function App() {
+  return (
+    <main>
+      <h1>Hello React</h1>
+      <p>My first Vite project</p>
+    </main>
+  );
+}
+```
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `npm create vite@latest` | Runs Vite's latest scaffolding tool |
+| `--template react` | The React + JavaScript starter |
+| `createRoot` | The root API of React 18+, hands the `#root` element over to React |
+| `.render(...)` | Shows the `App` component on the screen |
+| `StrictMode` | Extra checks in development, no effect in production |
+| `npm run build` | Optimized files in the `dist/` folder |
+| `npm run preview` | Test the `dist/` build locally |
+
+Write environment variables in the `.env` file with the `VITE_` prefix and read them with `import.meta.env.VITE_API_URL`.
+
+### Interview tip
+
+"What is the difference between Create React App and Vite?" CRA was built on webpack and is now deprecated. Vite gives native ES modules and fast HMR in dev, and makes the production build with a separate optimized bundler.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Using create-react-app for a new project"
+  why="CRA is deprecated, with outdated dependencies and warnings."
+  better="Use npm create vite@latest, or Next.js for a full-stack app."
+/>
+
+<Mistake
+  title="Running npm run dev without running npm install"
+  why="There is no node_modules, so you get an error like vite command not found."
+  better="After creating the project, run npm install first, then npm run dev."
+/>
+
+<Mistake
+  title="Writing an env variable without the VITE_ prefix"
+  why="For security, Vite exposes only variables with VITE_ to browser code, and the rest come out undefined."
+  better="Start browser variables with VITE_, and never keep secret keys in the frontend .env."
+/>
+
+<Mistake
+  title="Copying ReactDOM.render from an old tutorial"
+  why="ReactDOM.render has been removed in React 19."
+  better="Import createRoot from react-dom/client and use root.render."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Introduction](/courses/react/introduction), [npm & Packages](/courses/javascript/npm-and-packages), [Modules](/courses/javascript/modules) |
+| **Alongside** | [JSX](/courses/react/jsx) |
+| **After** | [Components](/courses/react/components), [Styling in React](/courses/react/styling) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Vite | A fast dev server and build tool |
+| Command | `npm create vite@latest my-app -- --template react` |
+| Entry | `index.html` to `src/main.jsx` |
+| Root API | `createRoot(...).render(...)` |
+| Dev port | `localhost:5173` |
+| CRA | Deprecated, do not use it |
+
+<Callout variant="important" title="Remember">
+
+A new React project = **Vite + createRoot**. Run `npm install`, then `npm run dev`, and start working from `src/App.jsx`.
+
+</Callout>

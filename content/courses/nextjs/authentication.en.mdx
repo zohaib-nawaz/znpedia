@@ -1,0 +1,215 @@
+---
+title: Authentication
+description: Next.js authentication with Better Auth or Auth.js, covering session cookies, Data Access Layer checks and the right way to use optimistic redirects in proxy.
+keywords:
+  - next.js authentication
+  - better auth next.js
+  - auth.js next.js
+  - next.js data access layer
+  - next.js protected routes
+---
+
+## 1. What is authentication?
+
+<Callout variant="tip" title="Short definition">
+
+**Authentication means identifying who the user is, and authorization means deciding what they are allowed to see or do.**
+
+</Callout>
+
+In Next.js, think of auth in three parts:
+
+| Part | Job |
+| --- | --- |
+| **Authentication** | Login: email and password, Google, GitHub and so on |
+| **Session management** | Remembering the user on every request after login, usually with an `httpOnly` cookie |
+| **Authorization** | A permission check in every page, Server Action and Route Handler |
+
+Writing a full auth system yourself is hard and risky. So use a library like **Better Auth** or **Auth.js**, which handles sessions, OAuth and password hashing for you.
+
+## 2. Why does it matter?
+
+<CompareTable leftTitle="Checking only in proxy or layout" rightTitle="With a Data Access Layer">
+
+Proxy only checks that a cookie exists | The DAL verifies the session every time
+A Server Action called directly bypasses it | verifySession in every action
+A layout does not run again on navigation | The check sits right next to the data
+Different auth logic everywhere | One file, all checks from one place
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Place | What to check |
+| --- | --- |
+| **`proxy.ts`** | An optimistic redirect: no cookie means go to `/login` |
+| **Server Component page** | `verifySession()`, then the user's data |
+| **Server Action** | Session + ownership, before the mutation |
+| **Route Handler** | `401` if there is no session, `403` if the role is wrong |
+| **Client Component** | Only showing or hiding UI, not security |
+
+## 4. How does it work?
+
+<Flow title="From login to protected data">
+
+The user submits the login form
+↓
+The auth library verifies the credentials or OAuth
+↓
+An httpOnly session cookie is set
+↓
+proxy does an optimistic redirect
+↓
+The DAL verifies the session
+↓
+Only the needed data is returned
+
+</Flow>
+
+<Callout variant="important" title="Mental model">
+
+**Proxy is a quick glance at the door. The real lock sits next to the data, in the Data Access Layer.**
+
+</Callout>
+
+## 5. Code example
+
+### Step 1: Better Auth setup
+
+```ts
+import { betterAuth } from "better-auth";
+import { prismaAdapter } from "better-auth/adapters/prisma";
+import { nextCookies } from "better-auth/next-js";
+import { db } from "@/lib/db";
+
+export const auth = betterAuth({
+  database: prismaAdapter(db, { provider: "postgresql" }),
+  emailAndPassword: { enabled: true },
+  socialProviders: {
+    github: {
+      clientId: process.env.GITHUB_CLIENT_ID as string,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
+    },
+  },
+  plugins: [nextCookies()],
+});
+```
+
+Mount the library's handler in `app/api/auth/[...all]/route.ts`:
+
+```ts
+import { toNextJsHandler } from "better-auth/next-js";
+import { auth } from "@/lib/auth";
+
+export const { GET, POST } = toNextJsHandler(auth);
+```
+
+### Step 2: Data Access Layer
+
+```ts
+import "server-only";
+import { cache } from "react";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
+
+export const getSession = cache(async () => {
+  return auth.api.getSession({ headers: await headers() });
+});
+
+export async function verifySession() {
+  const session = await getSession();
+  if (!session) {
+    redirect("/login");
+  }
+  return { userId: session.user.id, name: session.user.name };
+}
+```
+
+### Step 3: using it in a page and a Server Action
+
+```tsx
+import { verifySession } from "@/lib/dal";
+import { db } from "@/lib/db";
+
+export default async function DashboardPage() {
+  const { userId, name } = await verifySession();
+  const orders = await db.order.findMany({ where: { userId } });
+
+  return (
+    <main>
+      <h1>Welcome, {name}</h1>
+      <p>Your orders: {orders.length}</p>
+    </main>
+  );
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `betterAuth({...})` | The auth config: email and password plus GitHub login |
+| `prismaAdapter(db, ...)` | Stores users and sessions in the database |
+| `nextCookies()` | A plugin that sets the cookie on login in Server Actions |
+| `toNextJsHandler(auth)` | All the endpoints under `/api/auth/...` |
+| `auth.api.getSession({ headers })` | Validates the session from the cookie |
+| `cache(...)` | Fetches the session only once in one render pass |
+| `verifySession()` | Redirects if there is no session, otherwise returns only the needed fields |
+| `where: { userId }` | The user sees only their own data |
+
+Auth.js (NextAuth v5) works on the same pattern: `auth.ts` gives you an `auth()` function that provides the session in the DAL. Whatever the library, the DAL pattern stays the same.
+
+### Interview tip
+
+"Is an auth check in `proxy.ts` enough?" Answer: no. Proxy only looks at the cookie and does not validate it. Server Actions and Route Handlers are public endpoints, so `verifySession()` is needed inside them too.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Relying on proxy.ts alone for auth"
+  why="A cookie existing is not validation, and it can be bypassed by calling actions or the API directly."
+  better="Use Proxy only for redirects, and verify the session with the DAL on every data access."
+/>
+
+<Mistake
+  title="Checking auth in the layout and thinking the pages are safe"
+  why="Layouts do not render again on navigation, and nested segments can also run on their own."
+  better="Do the check close to the page, the Server Action and the data function."
+/>
+
+<Mistake
+  title="Sending the whole user object to a Client Component"
+  why="A password hash or private fields can reach the browser."
+  better="Return only the fields the UI needs from the DAL."
+/>
+
+<Mistake
+  title="Forgetting the ownership check in a Server Action"
+  why="A logged in user can delete or edit someone else's record by sending its id."
+  better="Include userId in the query so users can only change their own data."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Cookies & Headers](/courses/nextjs/cookies-and-headers), [Server Actions](/courses/nextjs/server-actions), [Environment Variables](/courses/nextjs/environment-variables) |
+| **Alongside** | [Proxy (formerly Middleware)](/courses/nextjs/proxy), [Forms & Validation](/courses/nextjs/forms-and-validation) |
+| **After** | [Database Integration](/courses/nextjs/database-integration), [Testing Next.js Apps](/courses/nextjs/testing) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Library | Better Auth or Auth.js |
+| Session | An `httpOnly` cookie, validated on the server |
+| Proxy | Only an optimistic redirect |
+| DAL | `verifySession()` in every page, action and handler |
+| Data | Return only the needed fields, filter by `userId` |
+
+<Callout variant="important" title="Remember">
+
+The auth library handles login and sessions, but authorization is your responsibility. Verify the session through the Data Access Layer on every data access, and never rely on proxy alone.
+
+</Callout>

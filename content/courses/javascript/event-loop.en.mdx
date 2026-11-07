@@ -1,0 +1,184 @@
+---
+title: Event Loop
+description: Learn what the JavaScript event loop is and how the call stack, microtask queue, and task queue work together to run async code, with output examples.
+keywords:
+  - javascript event loop
+  - microtask vs macrotask
+  - call stack javascript
+---
+
+## 1. What is the event loop?
+
+<Callout variant="tip" title="Short definition">
+
+**The event loop is the mechanism that picks up the next job from the queues and runs it once the call stack is empty.**
+
+</Callout>
+
+JavaScript is single threaded, which means it runs one thing at a time. Even so, timers, network requests, and clicks are handled side by side. This is the event loop's doing.
+
+Long jobs (like a network call) are handed to the browser or Node.js. When they are ready, their callback goes into a queue, and the event loop brings it onto the stack.
+
+## 2. Why does it matter?
+
+If JavaScript blocked and waited for every network request, the page would freeze. The event loop makes non-blocking code possible.
+
+<CompareTable leftTitle="Blocking thinking" rightTitle="With the event loop">
+
+Everything waits until the request responds | The request runs in the background, the UI keeps working
+A button click responds late | A click is handled right away
+The output order makes no sense | A clear order of stack, microtasks, tasks
+Bugs feel random | You can predict the order
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Situation | Role of the event loop |
+| --- | --- |
+| **setTimeout** | The callback goes into the task queue |
+| **Promises** | Code after `.then` and `await` goes into the microtask queue |
+| **Click events** | The event handler runs as a task |
+| **fetch** | The network works in the background, the result comes through a promise |
+| **Rendering** | The browser paints the screen between tasks |
+
+## 4. How does it work?
+
+| Part | Job |
+| --- | --- |
+| **Call stack** | The functions running right now |
+| **Web APIs** | Timers, fetch, DOM events (part of the browser) |
+| **Microtask queue** | Promise callbacks, `queueMicrotask`, code after `await` |
+| **Task queue** | `setTimeout`, `setInterval`, events (macrotasks) |
+
+<Flow title="One round of the event loop">
+
+Sync code runs on the call stack
+↓
+The stack is empty
+↓
+Run all microtasks, including new ones
+↓
+The browser renders if needed
+↓
+Take one task from the task queue
+↓
+Start again
+
+</Flow>
+
+<Callout variant="important" title="Mental model">
+
+**Sync code first, then all microtasks, then one macrotask.**
+
+</Callout>
+
+## 5. Code example
+
+### Predict the output order
+
+```js
+console.log("1: start");
+
+setTimeout(() => console.log("2: timeout"), 0);
+
+Promise.resolve().then(() => console.log("3: promise"));
+
+queueMicrotask(() => console.log("4: microtask"));
+
+console.log("5: end");
+```
+
+Output:
+
+```bash
+1: start
+5: end
+3: promise
+4: microtask
+2: timeout
+```
+
+### Order inside an async function
+
+```js
+async function run() {
+  console.log("A");
+  await null;
+  console.log("C");
+}
+
+run();
+console.log("B");
+```
+
+### How does the code work?
+
+| Step | What is happening |
+| --- | --- |
+| `1` and `5` | Sync code, goes straight onto the stack |
+| `setTimeout(..., 0)` | Even after 0ms it goes into the task queue and waits |
+| `.then` and `queueMicrotask` | Microtask queue, they run as soon as the stack is empty |
+| `2: timeout` | After all the microtasks, last of all |
+| `await null` | The rest of the function becomes a microtask, so the order is `A B C` |
+
+### Interview tip
+
+`setTimeout(fn, 0)` does not mean "immediately", it means "after the stack and microtasks finish". This question often shows up as output prediction.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Freezing the page with a long sync loop"
+  why="While the stack is busy, the event loop handles neither clicks nor rendering."
+  better="Break heavy work into small pieces or send it to a Web Worker."
+/>
+
+<Mistake
+  title="Thinking setTimeout 0 runs first"
+  why="A timer callback is a macrotask, and promise microtasks run before it."
+  better="Remember the order: sync, microtasks, then a macrotask."
+/>
+
+<Mistake
+  title="Creating an infinite chain of microtasks"
+  why="Rendering does not happen until the microtask queue is empty, so the page hangs."
+  better="For recursive work, use tasks like setTimeout or requestAnimationFrame."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [How JavaScript Runs](/courses/javascript/how-javascript-runs), [Functions](/courses/javascript/functions) |
+| **After** | [Timers](/courses/javascript/timers), [Callbacks](/courses/javascript/callbacks), [Promises](/courses/javascript/promises), [Async / Await](/courses/javascript/async-await) |
+
+<Flow title="Suggested order">
+
+How JavaScript Runs
+↓
+Event Loop
+↓
+Timers and Callbacks
+↓
+Promises
+↓
+Async Await
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Single thread | One job at a time on the stack |
+| Microtasks | Promises, `queueMicrotask`, code after `await` |
+| Macrotasks | `setTimeout`, `setInterval`, events |
+| Order | Sync, all microtasks, then one macrotask |
+| Rendering | Between tasks, not while the stack is busy |
+
+<Callout variant="important" title="Remember">
+
+The event loop makes JavaScript **non-blocking**. Microtasks always finish before the next macrotask.
+
+</Callout>

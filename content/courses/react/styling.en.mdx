@@ -1,0 +1,178 @@
+---
+title: Styling in React
+description: Learn the ways to style React apps with className, inline style objects, CSS Modules and Tailwind CSS, and how to choose between them.
+keywords:
+  - react css tailwind styling
+  - react classname
+  - react inline style
+  - css modules react
+  - tailwind css react
+---
+
+## 1. What is styling in React?
+
+<Callout variant="tip" title="Short definition">
+
+**Styling in React means giving CSS to your components, through `className`, inline `style` objects, CSS Modules or utility classes like Tailwind.**
+
+</Callout>
+
+React does not ship its own styling system. You use the same CSS that works on the web, except in JSX you write `className` instead of `class`.
+
+## 2. Why does it matter?
+
+Components are small and reusable, so their styling should be organized too. A single global CSS file quickly becomes messy.
+
+<CompareTable leftTitle="One big global CSS" rightTitle="Component-level styling">
+
+Class names collide with each other | Each component has its own scoped classes
+You cannot tell which CSS is used where | Styles live next to the component
+Unused CSS keeps piling up | Remove the component and its style goes too
+Dynamic styling is hard | Changing classes based on state is easy
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Approach | When it is better |
+| --- | --- |
+| **Plain CSS + className** | Small apps, global base styles |
+| **Inline style** | Dynamic runtime values, like a progress width |
+| **CSS Modules** | Scoped classes, when you like writing plain CSS |
+| **Tailwind CSS** | Fast development, design systems, most modern projects |
+
+## 4. How does it work?
+
+<Flow title="From style to screen">
+
+You write a CSS file or Tailwind classes
+↓
+The component sets className or the style prop
+↓
+The build tool bundles the CSS
+↓
+The browser matches the classes and applies the styles
+
+</Flow>
+
+Inline `style` takes a **JavaScript object**, not a CSS string. Property names are camelCase: `backgroundColor`, `fontSize`.
+
+## 5. Code example
+
+### className and a conditional class
+
+```jsx
+import "./Button.css";
+
+function Button({ variant = "primary", children }) {
+  return <button className={`btn btn-${variant}`}>{children}</button>;
+}
+```
+
+### Inline style (dynamic value)
+
+```jsx
+function ProgressBar({ percent }) {
+  return (
+    <div className="track">
+      <div style={{ width: `${percent}%`, backgroundColor: "teal" }} />
+    </div>
+  );
+}
+```
+
+### CSS Modules
+
+```css
+/* Card.module.css */
+.card {
+  padding: 16px;
+  border-radius: 8px;
+}
+```
+
+```jsx
+import styles from "./Card.module.css";
+
+function Card({ children }) {
+  return <div className={styles.card}>{children}</div>;
+}
+```
+
+### Tailwind CSS
+
+```jsx
+function Badge({ active }) {
+  return (
+    <span
+      className={`rounded-full px-3 py-1 text-sm ${
+        active ? "bg-green-600 text-white" : "bg-gray-200 text-gray-700"
+      }`}
+    >
+      {active ? "Active" : "Inactive"}
+    </span>
+  );
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `className` | HTML's `class`, renamed in JSX because `class` is a reserved word |
+| `style={{ ... }}` | The outer braces are JSX, the inner ones are the object |
+| `styles.card` | CSS Modules generates a unique class name |
+| Template string | Joins classes based on state or props |
+| Tailwind classes | Each class is one small CSS rule |
+
+Setting up Tailwind v4 with Vite is simple: add the `@tailwindcss/vite` plugin and write `@import "tailwindcss";` in your CSS file.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Writing class in JSX"
+  why="JSX is JavaScript and class is a reserved word, so React expects className."
+  better="Always write className."
+/>
+
+<Mistake
+  title="Passing a CSS string to inline style, like style='color: red'"
+  why="React wants an object in the style prop, and a string causes an error."
+  better="Write style={{ color: 'red' }} and keep property names in camelCase."
+/>
+
+<Mistake
+  title="Doing everything with inline style"
+  why="Hover, media queries and pseudo classes do not work in inline style, and the code gets heavy."
+  better="Use classes for static styling and inline style only for dynamic runtime values."
+/>
+
+<Mistake
+  title="Building Tailwind class names dynamically by joining strings, like bg- plus a color"
+  why="Tailwind looks for complete class names at build time, so CSS is not generated for partial names."
+  better="Write the full class names and choose between them with a condition."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Chapters |
+| --- | --- |
+| **Before** | [JSX](/courses/react/jsx), [Setup with Vite](/courses/react/setup-with-vite) |
+| **Alongside** | [Conditional Rendering](/courses/react/conditional-rendering), [Props](/courses/react/props) |
+| **After** | [TypeScript with React](/courses/react/typescript-with-react) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Class | `className` |
+| Inline | An object with camelCase properties |
+| Scoped CSS | `*.module.css` |
+| Utility first | Tailwind CSS |
+| Dynamic | Choose a complete class with a condition |
+
+<Callout variant="important" title="Remember">
+
+Use a **class** for static styles and **inline style** for runtime values. In Tailwind, always write complete class names.
+
+</Callout>

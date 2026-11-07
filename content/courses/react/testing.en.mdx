@@ -1,0 +1,198 @@
+---
+title: Testing React Apps
+description: React testing library with Vitest for beginners. Set up Vitest, use render and screen queries, and test components like a user with user-event.
+keywords:
+  - react testing library vitest
+  - vitest react setup
+  - user-event testing
+  - react component testing
+---
+
+## 1. What is Testing React Apps?
+
+<Callout variant="tip" title="Short definition">
+
+**React testing means checking with code that a component shows the right UI and reacts correctly to user actions.**
+
+</Callout>
+
+The common stack today is: **Vitest** (the test runner, fast with Vite), **React Testing Library** (rendering components and finding UI), and **user-event** (real user-like clicks and typing).
+
+The philosophy of React Testing Library is simple: do not test a component's internal state or functions, test only what the **user sees and does**.
+
+## 2. Why does it matter?
+
+Opening every page by hand after every change is slow, and things get missed. Tests do this work in seconds, the same way every time.
+
+<CompareTable leftTitle="Manual testing only" rightTitle="With automated tests">
+
+Clicking around the browser after every change | npm test checks everything
+Old features quietly break | A regression is caught immediately
+Refactoring feels scary | Green tests give confidence
+The bug is found in production | The bug is stopped in CI
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Test type | What it checks | Tool |
+| --- | --- | --- |
+| **Unit** | One function or hook | Vitest |
+| **Component** | One component's render and interaction | Vitest + Testing Library |
+| **Integration** | Several components together, like a form + list | Vitest + Testing Library |
+| **End to end** | The whole app in a real browser | Playwright |
+
+## 4. How does it work?
+
+Vitest runs in Node. The `jsdom` environment provides a fake browser DOM. Testing Library renders the component into that DOM, and you find elements with `screen`.
+
+<Flow title="The flow of one test">
+
+render(component)
+↓
+Find an element with screen.getByRole
+↓
+Click or type with user-event
+↓
+Check the result with expect
+↓
+The test passes or fails
+
+</Flow>
+
+Remember the query priority: `getByRole` first, then `getByLabelText`, then `getByText`. `getByTestId` is the last resort.
+
+## 5. Code example
+
+### Setup
+
+```bash
+npm install -D vitest jsdom @testing-library/react @testing-library/dom @testing-library/user-event @testing-library/jest-dom
+```
+
+```ts
+import { defineConfig } from "vitest/config";
+import react from "@vitejs/plugin-react";
+
+export default defineConfig({
+  plugins: [react()],
+  test: {
+    environment: "jsdom",
+    globals: true,
+    setupFiles: "./vitest.setup.ts",
+  },
+});
+```
+
+```ts
+import "@testing-library/jest-dom/vitest";
+```
+
+The first file is `vitest.config.ts` and the second is `vitest.setup.ts`, which adds matchers like `toBeInTheDocument`.
+
+### Example 1: A counter test
+
+```tsx
+import { useState } from "react";
+
+export function Counter() {
+  const [count, setCount] = useState(0);
+  return <button onClick={() => setCount(count + 1)}>Count: {count}</button>;
+}
+```
+
+```tsx
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it } from "vitest";
+import { Counter } from "./Counter";
+
+describe("Counter", () => {
+  it("increases the count on click", async () => {
+    const user = userEvent.setup();
+    render(<Counter />);
+
+    const button = screen.getByRole("button", { name: /count: 0/i });
+    await user.click(button);
+
+    expect(screen.getByRole("button", { name: /count: 1/i })).toBeInTheDocument();
+  });
+});
+```
+
+### Example 2: Testing async UI
+
+```tsx
+it("shows the name when the data arrives", async () => {
+  render(<UserCard userId={1} />);
+
+  expect(screen.getByText(/loading/i)).toBeInTheDocument();
+  expect(await screen.findByText("Ali")).toBeInTheDocument();
+});
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `environment: "jsdom"` | A browser-like DOM inside Node |
+| `globals: true` | Lets Testing Library clean up on its own after every test |
+| `userEvent.setup()` | A user instance at the start of each test |
+| `await user.click(...)` | user-event actions are async |
+| `getByRole("button", ...)` | Finds by accessible role and name |
+| `findByText` | Waits until the element appears (async) |
+| `toBeInTheDocument()` | A jest-dom matcher |
+
+### Interview tip
+
+You will almost certainly be asked the difference between `getBy`, `queryBy` and `findBy`. `getBy` throws an error if it finds nothing, `queryBy` returns `null` (for testing that something is **not** there), and `findBy` returns a Promise that waits until the element appears.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Testing implementation details"
+  why="The test breaks when you rename state or an internal function, even though nothing changed for the user."
+  better="Test only what the user sees: text, roles, labels and their behavior."
+/>
+
+<Mistake
+  title="Not awaiting user-event actions"
+  why="The expect runs before the action finishes and the test fails at random."
+  better="Call userEvent.setup() and put await before every user.click or user.type."
+/>
+
+<Mistake
+  title="Using getBy for async UI"
+  why="The data has not arrived yet, so getBy fails immediately."
+  better="Use await findBy for elements that will appear later."
+/>
+
+<Mistake
+  title="Adding data-testid to everything"
+  why="The tests do not check accessibility and drift away from the user's point of view."
+  better="Try getByRole and getByLabelText first, and keep testid as the last option."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Handling Events](/courses/react/events), [Forms & Controlled Inputs](/courses/react/forms), [Async / Await](/courses/javascript/async-await) |
+| **Alongside** | [TypeScript with React](/courses/react/typescript-with-react), [Custom Hooks](/courses/react/custom-hooks), [Data Fetching](/courses/react/data-fetching) |
+| **After** | [Testing Next.js Apps](/courses/nextjs/testing) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Runner | Vitest, `environment: "jsdom"` |
+| Render | `render()` and `screen` |
+| Queries | `getByRole` first, `findBy` for async |
+| Interaction | `userEvent.setup()` and `await user.click()` |
+| Matchers | `@testing-library/jest-dom/vitest` |
+
+<Callout variant="important" title="Remember">
+
+Write tests the way the **user uses the app**: find by role and text, click with user-event, and check only what shows up on the screen.
+
+</Callout>

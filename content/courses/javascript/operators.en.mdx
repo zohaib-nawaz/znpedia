@@ -1,0 +1,188 @@
+---
+title: Operators
+description: A guide to JavaScript operators, arithmetic, assignment, comparison, logical and nullish operators, with short and clear examples.
+keywords:
+  - javascript operators
+  - logical operators javascript
+  - nullish coalescing operator
+  - javascript comparison operators
+  - operator precedence
+---
+
+## 1. What are operators?
+
+<Callout variant="tip" title="Short definition">
+
+**An operator is a symbol that does something with values, like adding, comparing or checking a condition.**
+
+</Callout>
+
+In `2 + 3`, `+` is the operator and `2` and `3` are the **operands**. The main groups of operators:
+
+| Group | Operators |
+| --- | --- |
+| **Arithmetic** | `+`, `-`, `*`, `/`, `%`, `**`, `++`, `--` |
+| **Assignment** | `=`, `+=`, `-=`, `*=`, `??=`, `\|\|=`, `&&=` |
+| **Comparison** | `===`, `!==`, `>`, `<`, `>=`, `<=` |
+| **Logical** | `&&`, `\|\|`, `!` |
+| **Nullish** | `??` |
+| **Others** | `typeof`, ternary `? :`, optional chaining `?.` |
+
+## 2. Why does it matter?
+
+Every program runs on calculations and decisions. Working out a total, applying a discount, checking a login, all of it is done with operators. Choosing the right operator makes code shorter and less buggy.
+
+<CompareTable leftTitle="The long way" rightTitle="With the right operator">
+
+count = count + 1 | count += 1 or count++
+Every condition in a separate if | Two conditions in one line with and
+A full if else for a default | A default in one line with the nullish operator
+Math.pow for a square | The exponent operator with two stars
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Real use | Operator |
+| --- | --- |
+| **Cart total** | `+`, `*`, `+=` |
+| **Even or odd check** | `%` |
+| **Checking both login and admin** | `&&` |
+| **Default username** | `??` |
+| **Age 18 or above** | `>=` |
+| **Exact match** | `===` |
+
+## 4. How does it work?
+
+When an expression has several operators, **precedence** decides which runs first, just like school math.
+
+<Flow title="Simple order of precedence">
+
+Brackets ( )
+     ↓
+Exponent **
+     ↓
+Multiply, divide, remainder
+     ↓
+Plus, minus
+     ↓
+Comparison
+     ↓
+Logical and, then or
+
+</Flow>
+
+Logical operators **short circuit**. `&&` stops at the first falsy value. `||` stops at the first truthy value. `??` takes the right side only on `null` or `undefined`.
+
+<Callout variant="important" title="Mental model">
+
+**`||` says "if it is falsy, use the default". `??` says "only if it is empty (null or undefined), use the default".**
+
+</Callout>
+
+## 5. Code example
+
+Arithmetic and assignment:
+
+```js
+const price = 500;
+const qty = 3;
+let total = price * qty;
+
+total += 100;
+console.log(total);
+console.log(10 % 3);
+console.log(2 ** 5);
+```
+
+Output: `1600`, `1`, `32`.
+
+Comparison and logical:
+
+```js
+const age = 20;
+const hasTicket = true;
+
+console.log(age >= 18 && hasTicket);
+console.log(age < 18 || hasTicket);
+console.log(!hasTicket);
+```
+
+Output: `true`, `true`, `false`.
+
+The difference between `||` and `??`:
+
+```js
+const savedVolume = 0;
+
+const v1 = savedVolume || 50;
+const v2 = savedVolume ?? 50;
+console.log(v1, v2);
+
+const settings = {};
+settings.theme ??= "dark";
+console.log(settings.theme);
+```
+
+Output: `50 0`, then `dark`. The user had set the volume to `0`, `||` wrongly changed it to `50`, and `??` correctly kept `0`.
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `total += 100` | Short form of `total = total + 100` |
+| `10 % 3` | Remainder, `1` |
+| `2 ** 5` | 2 to the power 5, `32` |
+| `&&` | True if both are true |
+| `\|\|` | True if either one is true |
+| `??` | The right side if the left side is `null` / `undefined` |
+| `??=` | Assign a value only if it is empty |
+
+### Interview tip
+
+Mixing `??` with `&&` or `||` without brackets throws a `SyntaxError`, like `a || b ?? c`. Brackets are required: `(a || b) ?? c`.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Using || for a default when 0 or an empty string is valid"
+  why="|| replaces every falsy value (0, empty string, false), so valid data is lost."
+  better="Use ?? when you want a default only for null and undefined."
+/>
+
+<Mistake
+  title="Using == for comparison"
+  why="== does type coercion, so even 0 == empty string comes out true."
+  better="Always use === and !==."
+/>
+
+<Mistake
+  title="Guessing the precedence"
+  why="In long expressions it is unclear which part runs first, and you get a wrong result."
+  better="Add brackets wherever you are unsure. The code also becomes easier to read."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Data Types](/courses/javascript/data-types), [Type Conversion](/courses/javascript/type-conversion) |
+| **After this** | [Conditionals](/courses/javascript/conditionals), [Truthy, Falsy & Equality](/courses/javascript/truthy-falsy-and-equality) |
+| **Further on** | [Optional Chaining & Nullish Coalescing](/courses/javascript/optional-chaining-and-nullish), [Spread & Rest](/courses/javascript/spread-and-rest) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Arithmetic | `+ - * / % **` |
+| Shortcut assignment | `+=`, `-=`, `??=` |
+| Comparison | Always `===` and `!==` |
+| Logical | `&&`, `\|\|`, `!` short circuit |
+| `??` | A default only on `null` / `undefined` |
+| Precedence | Use brackets when in doubt |
+
+<Callout variant="important" title="Remember">
+
+For default values, **prefer `??` over `||`** when `0` or `""` could also be valid values.
+
+</Callout>

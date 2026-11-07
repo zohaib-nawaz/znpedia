@@ -1,0 +1,196 @@
+---
+title: Separation of Concerns
+description: Separation of concerns between UI and logic. Components only render, hooks manage state, and services handle domain rules and data, with React examples.
+keywords:
+  - separation of concerns ui logic
+  - separation of concerns react
+  - presentational and logic separation
+  - pure functions side effects
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Each unit does one kind of work: displaying, managing state, running a domain rule, or fetching data. If you need the word "and" to describe a unit, it is really two units.**
+
+</Callout>
+
+A "concern" is one reason for the code to change. If the design changes, the UI changes. If the API changes, the data layer changes. If the discount rule changes, the service changes. When all of these live in one place, every change touches everything.
+
+A component that fetches data, transforms it and renders it is three things, not one.
+
+## 2. Why does it matter?
+
+A real problem: an `OrdersTable` component did its own `fetch`, calculated the total and displayed the table. The mobile app needed the same total, but the logic was locked inside the component. It got copied. Then the tax rule changed and the web and mobile apps began showing different totals.
+
+<CompareTable leftTitle="Everything in one component" rightTitle="Concerns separated">
+
+The API format changes and the UI file has to be opened | Only the data layer changes
+Testing the total rule means rendering the component | Test the pure function directly
+A second screen needs the logic, so copy paste | Import the same function
+A design change might break the logic | There is no logic in the UI file
+Every bug means understanding the whole file | The kind of bug tells you where to look
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | At least separate fetching from displaying | This is the first and most useful split |
+| **Production code** | A must: UI, hooks, services and data access kept apart | Each layer changes for a different reason and is tested differently |
+| **Senior level** | Make boundaries solid with folder structure and lint | In a big team boundaries do not survive by themselves, they have to be enforced |
+
+## 4. Bad vs good code
+
+### Bad: fetch, transform and render together
+
+```tsx
+"use client";
+
+import { useEffect, useState } from "react";
+
+export function OrdersSummary() {
+  const [orders, setOrders] = useState<{ amount: number; status: string }[]>([]);
+
+  useEffect(() => {
+    fetch("/api/orders")
+      .then((response) => response.json())
+      .then(setOrders);
+  }, []);
+
+  const paid = orders.filter((order) => order.status === "paid");
+  const revenue = paid.reduce((sum, order) => sum + order.amount, 0) * 1.17;
+
+  return <p>Revenue: Rs {revenue.toFixed(0)}</p>;
+}
+```
+
+The network, the tax rule (`1.17`), the status string and the UI are all mixed together. If the tax changes, the UI file has to change.
+
+### Good: each concern in its own place
+
+```ts
+import { ORDER_STATUS, TAX_RATE, type Order } from "./orders.types";
+
+export function revenue(orders: Order[]) {
+  const paid = orders.filter((order) => order.status === ORDER_STATUS.paid);
+
+  return paid.reduce((sum, order) => sum + order.amount, 0) * (1 + TAX_RATE);
+}
+```
+
+The code above is a pure function in `src/lib/orders/orders.library.ts`: no network, no UI. Now the page and the component:
+
+```tsx
+import { RevenueCard } from "@/components/RevenueCard/RevenueCard";
+import { list } from "@/lib/orders/orders";
+import { revenue } from "@/lib/orders/orders.library";
+
+export default async function DashboardPage() {
+  const orders = await list();
+
+  return <RevenueCard amount={revenue(orders)} />;
+}
+```
+
+```tsx
+import type { RevenueCardProps } from "./RevenueCard.types";
+
+export function RevenueCard({ amount }: RevenueCardProps) {
+  return <p>Revenue: Rs {amount.toFixed(0)}</p>;
+}
+```
+
+### What is the difference?
+
+| Concern | Where it lives | Why |
+| --- | --- | --- |
+| Fetching data | In the `list()` service | If the API or database changes, only this changes |
+| Domain rule | The pure `revenue()` function | Test it without rendering, and use it on both web and mobile |
+| Displaying | `RevenueCard`, props only | The logic stays safe when the design changes |
+| Wiring | The server component page | It only connects the layers |
+
+## 5. How to apply it
+
+<Flow title="Layers from top to bottom">
+
+Component: takes props and only renders
+↓
+Hook: client state and callbacks
+↓
+Service: domain rules and data access
+↓
+Pure library functions: calculations, no side effects
+
+</Flow>
+
+A short checklist when a file starts to feel big:
+
+| Question | If yes |
+| --- | --- |
+| Is the component calling `fetch` or running a query? | Move the data fetching into a service or hook |
+| Does the component contain a calculation or a rule? | Make it a pure function in `src/lib` |
+| Does one function both calculate and save? | Keep the calculation separate from the side effect |
+| Does the UI know where the data came from? | Pass it in through props, hide the source |
+
+## 6. Exceptions and common mistakes
+
+Separation is about reasons, not file types. React itself puts HTML and JS in one component because they change for the same reason. So it is fine for markup and its small bit of UI state to stay together.
+
+Some teams value "colocation" more and keep everything for a small feature in one file. That is fast at first. The trade-off is that you have to split it once a second caller arrives. Splitting a trivial two line component into three files is also wrong: separate things only when the concerns are truly different.
+
+<Mistake
+  title="Separated the folders but the logic is still mixed"
+  why="Creating components, hooks and utils folders is not separation if the component still calculates the rule."
+  better="Ask of each file why it will change. If there is more than one reason, split it."
+/>
+
+<Mistake
+  title="Saving or logging inside a pure function"
+  why="Then it has side effects in tests and cannot be reused elsewhere."
+  better="Let it return the calculation, and let the caller decide what side effect to run with the result."
+/>
+
+<Mistake
+  title="Writing fetch directly in a component"
+  why="Auth headers, error handling and retries end up different in every component."
+  better="On the server call a service, on the client use one typed fetch client and a hook."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Small Functions & Single Responsibility](/courses/best-practices/small-functions), [Custom Hooks](/courses/react/custom-hooks) |
+| **Alongside** | [Service Layer & Thin Controllers](/courses/best-practices/service-layer), [React Component Practices](/courses/best-practices/react-component-practices) |
+| **After** | [Loose Coupling & Dependency Injection](/courses/best-practices/dependency-injection), [One Fetch Client](/courses/best-practices/single-fetch-client) |
+
+<Flow title="Suggested order">
+
+Small Functions
+↓
+Separation of Concerns
+↓
+Service Layer & Thin Controllers
+↓
+Loose Coupling & Dependency Injection
+
+</Flow>
+
+## Final quick revision
+
+| Check | Yes / No |
+| --- | --- |
+| The component only renders from props | Yes |
+| `fetch` or a query in the component | No |
+| Domain rule in a pure function | Yes |
+| Calculation and side effect in one function | No |
+| One reason to change per file | Yes |
+
+<Callout variant="important" title="Remember">
+
+Separate code by its reason to change, not by file type. Displaying, managing, deciding and fetching are four different jobs.
+
+</Callout>

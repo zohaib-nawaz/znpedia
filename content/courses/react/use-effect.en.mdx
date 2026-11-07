@@ -1,0 +1,182 @@
+---
+title: useEffect
+description: Learn how the React useEffect hook syncs a component with external systems, including the dependency array, cleanup and when you do not need an effect.
+keywords:
+  - react useeffect
+  - useeffect dependency array
+  - useeffect cleanup function
+  - you might not need an effect
+  - react side effects
+---
+
+## 1. What is useEffect?
+
+<Callout variant="tip" title="Short definition">
+
+**`useEffect` is a hook that keeps a component in sync with a system outside React, such as a timer, a browser API, the network or a third-party widget.**
+
+</Callout>
+
+Rendering should only calculate JSX. Work that has to happen **after** rendering, like setting up a subscription or changing `document.title`, goes into an effect.
+
+## 2. Why does it matter?
+
+<CompareTable leftTitle="Side effect inside render" rightTitle="Inside useEffect">
+
+Runs again and again on every render | Runs only when dependencies change
+Render is slow and impure | Render stays pure, the effect runs after commit
+You forget to close subscriptions | The cleanup function runs for you
+Memory leaks | Cleanup happens on unmount
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Use case | What the effect does |
+| --- | --- |
+| **Timers** | Start `setInterval` and clear it in cleanup |
+| **Browser events** | A `window` resize or online/offline listener |
+| **WebSocket / chat** | Open and close a connection |
+| **Third-party widget** | Attach a map or chart library to a DOM node |
+| **Document title** | Set the tab title from state |
+
+## 4. How does it work?
+
+<Flow title="The effect lifecycle">
+
+The component renders
+↓
+React updates the screen (commit)
+↓
+The effect runs
+↓
+A dependency changed: cleanup first, then the new effect
+↓
+Final cleanup on unmount
+
+</Flow>
+
+| Dependency array | When the effect runs |
+| --- | --- |
+| `[a, b]` | The first time, then whenever `a` or `b` changes |
+| `[]` | Only on mount (and cleanup on unmount) |
+| No array at all | After every render (usually wrong) |
+
+<Callout variant="note" title="Double run in StrictMode">
+
+In development, `StrictMode` runs the effect as mount, cleanup, mount. This is on purpose, so a missing cleanup shows up as a bug right away. In production it runs only once.
+
+</Callout>
+
+## 5. Code example
+
+### Timer with cleanup
+
+```jsx
+import { useEffect, useState } from "react";
+
+export default function Clock() {
+  const [time, setTime] = useState(() => new Date());
+
+  useEffect(() => {
+    const id = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  return <p>{time.toLocaleTimeString()}</p>;
+}
+```
+
+### Syncing with a prop
+
+```jsx
+function ChatRoom({ roomId }) {
+  useEffect(() => {
+    const connection = createConnection(roomId);
+    connection.connect();
+    return () => connection.disconnect();
+  }, [roomId]);
+
+  return <h2>Room: {roomId}</h2>;
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `useEffect(() => ..., [])` | The interval starts on mount |
+| `return () => clearInterval(id)` | Cleanup, which stops the interval on unmount |
+| `[roomId]` | When the room changes, disconnect from the old one and connect to the new one |
+| `createConnection` | An outside system, which is why an effect is needed |
+
+### You might not need an effect
+
+A lot of code that gets written in effects is not really effect work. Effects are only for **outside systems**.
+
+| Situation | Use this instead of an effect |
+| --- | --- |
+| Calculating a value from props or state | Calculate it directly during render |
+| An expensive calculation | `useMemo` (or React Compiler) |
+| Doing something on a user click | Do it in an event handler |
+| Resetting state when a prop changes | Give the component a `key` |
+| Data fetching | A framework, TanStack Query or `use()` |
+
+```jsx
+function Cart({ items }) {
+  const total = items.reduce((sum, item) => sum + item.price, 0);
+  return <p>Total: Rs. {total}</p>;
+}
+```
+
+Here, creating state and an effect for `total` would only add extra re-renders and bugs. Calculating it directly is enough.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Hiding values from the dependency array so the effect runs less"
+  why="The effect keeps seeing old props or state (a stale closure) and works with wrong data."
+  better="Put every reactive value the effect uses in the dependencies. Move values that should not trigger the effect into useEffectEvent."
+/>
+
+<Mistake
+  title="Setting state in an effect when that same state is a dependency"
+  why="Setting causes a re-render, the re-render runs the effect, the effect sets again: an infinite loop."
+  better="Calculate derived values in render, or use an updater function to remove the dependency."
+/>
+
+<Mistake
+  title="Not writing a cleanup function"
+  why="Intervals, listeners or connections keep running after unmount, causing memory leaks and duplicate events."
+  better="An effect that starts something should also stop it in its return function."
+/>
+
+<Mistake
+  title="Putting button click logic inside an effect"
+  why="An effect runs because of rendering, not because of a user action. The logic can run at the wrong time or twice."
+  better="Do the work for a user action in an event handler."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Chapters |
+| --- | --- |
+| **Before** | [Rules of Hooks](/courses/react/rules-of-hooks), [State with useState](/courses/react/state) |
+| **After** | [useEffectEvent](/courses/react/use-effect-event), [Custom Hooks](/courses/react/custom-hooks), [Data Fetching](/courses/react/data-fetching) |
+| **Related** | [useRef](/courses/react/use-ref), [useMemo & useCallback](/courses/react/use-memo-and-use-callback) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Job | Sync with an external system |
+| When it runs | After commit |
+| Dependencies | Every reactive value the effect uses |
+| Cleanup | The returned function, on re-run and on unmount |
+| First question | Do I even need an effect? |
+
+<Callout variant="important" title="Remember">
+
+Effects are for the **outside world**. Calculations go in render, user actions go in handlers, and effects are only for syncing.
+
+</Callout>

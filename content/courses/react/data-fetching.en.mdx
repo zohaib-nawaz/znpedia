@@ -1,0 +1,201 @@
+---
+title: Data Fetching
+description: React data fetching with TanStack Query v5, using useQuery and useMutation, and handling caching, loading and error states the right way.
+keywords:
+  - react data fetching tanstack query
+  - tanstack query v5
+  - react usequery
+  - react api call
+---
+
+## 1. What is Data Fetching?
+
+<Callout variant="tip" title="Short definition">
+
+**Data fetching means getting data from a server or API and showing it in the UI, while managing that data's loading, errors, caching and refresh.**
+
+</Callout>
+
+React itself does not ship a data fetching library. For small things `fetch` is enough, but in real apps **TanStack Query** (formerly React Query) is the most common choice.
+
+TanStack Query **caches** server data, prevents duplicate requests, refreshes in the background, and gives you ready-made `isPending`, `isError` and `data`.
+
+## 2. Why does it matter?
+
+Writing a fetch inside `useEffect` feels easy at first, but soon you are dealing with race conditions, loading flags and the burden of a cache.
+
+<CompareTable leftTitle="useEffect + fetch" rightTitle="TanStack Query">
+
+You build loading and error state yourself | isPending, isError and data come ready
+Every component sends the request again | One request per queryKey, shared cache
+Risk of race conditions | Old responses are ignored automatically
+Manual refresh after saving data | Automatic refetch with invalidateQueries
+Stale data on window focus | Background refetch built in
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Use case | Tool |
+| --- | --- |
+| **Lists and detail pages** | `useQuery` |
+| **Form submit, create, delete** | `useMutation` |
+| **Infinite scroll** | `useInfiniteQuery` |
+| **A dashboard that keeps refreshing** | `refetchInterval` |
+| **An app with Server Components** | `await` on the server, TanStack Query or `use()` on the client |
+
+## 4. How does it work?
+
+Each query is identified by a **queryKey**, like `["todos"]` or `["todo", 5]`. All components with the same key share one cache entry.
+
+<Flow title="The useQuery cycle">
+
+A component calls useQuery
+↓
+Look up the queryKey in the cache
+↓
+If it is missing, run queryFn and isPending is true
+↓
+The data is saved in the cache and the component re-renders
+↓
+The data becomes stale after staleTime
+↓
+A background refetch happens on focus, mount or invalidate
+
+</Flow>
+
+`staleTime` says how long data counts as "fresh" (default 0). `gcTime` says how long unused data stays in the cache (default 5 minutes).
+
+## 5. Code example
+
+### Setup
+
+```bash
+npm install @tanstack/react-query
+```
+
+```tsx
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createRoot } from "react-dom/client";
+import App from "./App";
+
+const queryClient = new QueryClient();
+
+createRoot(document.getElementById("root")!).render(
+  <QueryClientProvider client={queryClient}>
+    <App />
+  </QueryClientProvider>
+);
+```
+
+### Example 1: A list with useQuery
+
+```tsx
+import { useQuery } from "@tanstack/react-query";
+
+type Todo = { id: number; title: string };
+
+async function getTodos(): Promise<Todo[]> {
+  const res = await fetch("/api/todos");
+  if (!res.ok) throw new Error("Could not load todos");
+  return res.json();
+}
+
+export function TodoList() {
+  const { data, isPending, isError, error } = useQuery({
+    queryKey: ["todos"],
+    queryFn: getTodos,
+  });
+
+  if (isPending) return <p>Loading...</p>;
+  if (isError) return <p>Error: {error.message}</p>;
+
+  return (
+    <ul>
+      {data.map((todo) => (
+        <li key={todo.id}>{todo.title}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+### Example 2: useMutation and invalidate
+
+```tsx
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+
+export function AddTodo() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: (title: string) =>
+      fetch("/api/todos", { method: "POST", body: JSON.stringify({ title }) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["todos"] }),
+  });
+
+  return (
+    <button disabled={mutation.isPending} onClick={() => mutation.mutate("New task")}>
+      {mutation.isPending ? "Saving..." : "Add todo"}
+    </button>
+  );
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `QueryClientProvider` | Gives the whole app one shared cache |
+| `queryKey: ["todos"]` | The cache identity, dependencies go in it too |
+| `queryFn` | A function that returns a Promise, and throws on error |
+| `isPending` | The state of the first load in v5 (the old name was `isLoading`) |
+| `invalidateQueries` | Marks `["todos"]` as stale and fetches it again |
+
+### Interview tip
+
+Explain the difference between "server state" and "client state". Server state (API data) is really owned by the server and needs caching and syncing, which is why we use TanStack Query. For client state (modal open, theme), `useState` or Zustand is enough.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Leaving variables out of the queryKey"
+  why="When userId changes the key stays the same, so the old data keeps showing."
+  better="Include every variable that queryFn uses in the queryKey, like both user and userId."
+/>
+
+<Mistake
+  title="Ignoring the error status of fetch"
+  why="fetch does not reject on 404 or 500, so TanStack Query treats it as a success."
+  better="Check res.ok and throw new Error when it is false."
+/>
+
+<Mistake
+  title="Copying server data into useState"
+  why="You end up with two sources of truth, and the local copy goes stale when the cache updates."
+  better="Use the query data directly and calculate derived values during render."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Fetch API](/courses/javascript/fetch-api), [Async / Await](/courses/javascript/async-await), [useEffect](/courses/react/use-effect) |
+| **Alongside** | [Custom Hooks](/courses/react/custom-hooks), [Suspense & lazy()](/courses/react/suspense-and-lazy), [The use() API](/courses/react/use-hook) |
+| **After** | [State Management Libraries](/courses/react/state-management), [Server Components](/courses/react/server-components), [Next.js Data Fetching](/courses/nextjs/data-fetching) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Library | `@tanstack/react-query` v5 |
+| Read | `useQuery({ queryKey, queryFn })` |
+| Write | `useMutation({ mutationFn, onSuccess })` |
+| Refresh | `queryClient.invalidateQueries({ queryKey })` |
+| States | `isPending`, `isError`, `data`, `error` |
+
+<Callout variant="important" title="Remember">
+
+API data is **server state**. Instead of managing it yourself with `useEffect` and `useState`, hand it to TanStack Query, and focus on keeping the **queryKey correct**.
+
+</Callout>

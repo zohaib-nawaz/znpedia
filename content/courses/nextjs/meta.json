@@ -3,6 +3,11 @@
   "order": 3,
   "slug": "nextjs",
   "description": "Next.js 16 App Router Roman Urdu mein, routing, server components, data fetching, Cache Components, server actions, SEO aur deployment.",
+  "i18n": {
+    "en": {
+      "description": "The Next.js 16 App Router: routing, server components, data fetching, Cache Components, server actions, SEO and deployment."
+    }
+  },
   "badge": "NX",
   "sections": [
     {

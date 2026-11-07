@@ -1,0 +1,180 @@
+---
+title: Suspense & lazy()
+description: React suspense lazy loading explained. Split components with lazy() and show a loading UI with a Suspense fallback, with simple examples.
+keywords:
+  - react suspense lazy loading
+  - react lazy component
+  - react suspense fallback
+  - code splitting in react
+---
+
+## 1. What are Suspense and lazy()?
+
+<Callout variant="tip" title="Short definition">
+
+**`lazy()` loads a component's code the first time it renders, and `Suspense` shows a fallback UI until then.**
+
+</Callout>
+
+Both `lazy()` and `Suspense` come from the `react` package. `lazy()` takes a dynamic `import()` and returns a component whose code lives in a separate file (a chunk).
+
+`Suspense` is a boundary. If any component inside it is not "ready" yet, for example lazy code is still loading or `use()` is waiting on a Promise, React shows the `fallback`.
+
+## 2. Why does it matter?
+
+Without code splitting, all of the app's JavaScript goes into a single bundle. Even if the user never opens the settings page, its code is downloaded first.
+
+<CompareTable leftTitle="Without lazy()" rightTitle="With lazy() + Suspense">
+
+All code in one big bundle | Each heavy part in its own chunk
+Slow first load | Small, fast first load
+Rarely used pages are downloaded upfront | Code arrives only when needed
+You manage loading state yourself | A declarative Suspense fallback
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Use case | Example |
+| --- | --- |
+| **Route level splitting** | Each page's component with `lazy()` |
+| **Heavy widgets** | A chart library, a rich text editor, a map |
+| **Modals and drawers** | Things that open only on click |
+| **Admin panels** | Seen by only some users |
+| **Data loading** | A loading UI with `use()` or framework data |
+
+## 4. How does it work?
+
+When React renders a lazy component for the first time, it calls `import()`. Until the Promise resolves, the component "suspends" and React shows the `fallback` of the nearest `Suspense` boundary.
+
+<Flow title="The journey of a lazy component">
+
+The component renders for the first time
+↓
+import() is called, the chunk starts downloading
+↓
+The component suspends
+↓
+The nearest Suspense fallback is shown
+↓
+The chunk loads, the real component renders
+
+</Flow>
+
+On later renders the code is already cached, so the fallback does not appear again.
+
+## 5. Code example
+
+### Example 1: Basic lazy loading
+
+```jsx
+import { lazy, Suspense, useState } from "react";
+
+const SettingsPanel = lazy(() => import("./SettingsPanel.jsx"));
+
+export default function App() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div>
+      <button onClick={() => setOpen(true)}>Open settings</button>
+      {open && (
+        <Suspense fallback={<p>Loading settings...</p>}>
+          <SettingsPanel />
+        </Suspense>
+      )}
+    </div>
+  );
+}
+```
+
+```jsx
+export default function SettingsPanel() {
+  return <section>Settings go here</section>;
+}
+```
+
+### How does the code work?
+
+| Line | Meaning |
+| --- | --- |
+| `lazy(() => import(...))` | Creates a lazy component at the top level of the module |
+| `export default` | `lazy()` needs a default export |
+| `open && (...)` | The code is not downloaded at all before the button click |
+| `fallback` | This UI is shown until the chunk arrives |
+
+### Example 2: Nested boundaries
+
+```jsx
+import { lazy, Suspense } from "react";
+
+const Sidebar = lazy(() => import("./Sidebar.jsx"));
+const Feed = lazy(() => import("./Feed.jsx"));
+
+export default function Dashboard() {
+  return (
+    <Suspense fallback={<p>Loading page...</p>}>
+      <Sidebar />
+      <Suspense fallback={<p>Loading feed...</p>}>
+        <Feed />
+      </Suspense>
+    </Suspense>
+  );
+}
+```
+
+The inner boundary covers only `Feed`. Once `Sidebar` arrives it shows up, while `Feed` shows its own fallback. This way you decide how fine-grained the loading UI is.
+
+### Interview tip
+
+If you are asked, "Is Suspense only for lazy?", the answer is no. Suspense works with any suspending source, such as `lazy()`, `use(promise)`, and data fetching in Suspense-enabled frameworks. A fetch inside `useEffect` does not trigger Suspense.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Calling lazy() inside a component"
+  why="A new component type is created on every render, so state resets and the code loads again and again."
+  better="Always call lazy() at the top level of the module, outside the component."
+/>
+
+<Mistake
+  title="Passing a named export straight to lazy()"
+  why="lazy() needs a Promise that resolves to a module with a default export, otherwise it throws an error."
+  better="Export the component as default, or return it in the shape of a default export inside then after the import."
+/>
+
+<Mistake
+  title="Wrapping the whole app in a single Suspense"
+  why="Even when a tiny part is loading, the whole page turns into the fallback."
+  better="Place boundaries where a loading UI makes sense, such as around each section or route."
+/>
+
+<Mistake
+  title="Not handling load errors"
+  why="If the network fails, the import rejects and the app can crash."
+  better="Put an Error Boundary above Suspense so the user gets a retry option."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Components](/courses/react/components), [Conditional Rendering](/courses/react/conditional-rendering), [Promises](/courses/javascript/promises) |
+| **Alongside** | [Error Boundaries](/courses/react/error-boundaries), [The use() API](/courses/react/use-hook) |
+| **After** | [useTransition & useDeferredValue](/courses/react/use-transition), [Server Components](/courses/react/server-components), [Routing with React Router](/courses/react/react-router) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `lazy()` | A separate chunk for a component, via dynamic `import()` |
+| `Suspense` | Shows the `fallback` while something suspends |
+| Placement | `lazy()` at the top level, with a default export |
+| Nesting | The inner boundary covers only its own children |
+| Errors | Pair it with an Error Boundary |
+
+<Callout variant="important" title="Remember">
+
+`lazy()` decides **when** to load code, and `Suspense` decides **what to show while it loads**. Together they make the first load smaller and faster.
+
+</Callout>

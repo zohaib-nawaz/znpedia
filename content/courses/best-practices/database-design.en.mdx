@@ -1,0 +1,179 @@
+---
+title: Database Naming & Design
+description: Database naming conventions and design. Use snake_case plural tables, timestamps, foreign keys, enums and indexes to keep data clean and queries fast.
+keywords:
+  - database naming conventions
+  - postgres table design
+  - foreign key on delete
+  - database indexes naming
+  - timestamptz vs timestamp
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Tables and columns use `snake_case`, and tables are plural. Every table has a primary key, `created_at` and `updated_at`. Every foreign key is declared with a deliberate `on delete`. Closed sets like status go in an enum or CHECK, and any column you filter on gets an index.**
+
+</Callout>
+
+A database lives longer than code. Code changes every week, but a table name and a column type last for years. So small decisions made early cost a lot later.
+
+## 2. Why does it matter?
+
+Some real problems that come from weak design:
+
+- `status` was free text. Now the table holds `Active`, `active`, `actv` and `ACTIVE ` all together, and report numbers never match.
+- A foreign key was not declared. A user was deleted, their orders were left as "orphans", and the dashboard crashes.
+- `on delete cascade` was added without thinking. One customer was deleted and all their invoices vanished too, which the law required accounting to keep.
+- `timestamp` without a timezone. The server is in UTC, the user is in Pakistan, and every report is off by 5 hours.
+- There was no index on the foreign key. With 1,000 rows everything is fine, with a million rows the list page takes 8 seconds.
+
+<CompareTable leftTitle="Without conventions" rightTitle="With conventions">
+
+UserOrders, order_item, tblProduct all mixed | orders, order_items, products, one style
+Free text status with spelling mistakes | Enum or CHECK, only allowed values
+Orphan rows with no parent | Foreign key and a chosen on delete
+Timestamp without timezone, hours of difference | timestamptz, always the right time
+Big table, slow list query | Index on every foreign key and filter column
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Naming and timestamps at least | A good habit from the start, renaming later is expensive |
+| **Production code** | Required | Fixing production data needs a migration and carries risk |
+| **Senior level** | Review keys, delete policy and indexes | Scale and data integrity are decided here |
+
+When to learn it: before you create your first table. Look at the SQL basics in [Database Integration](/courses/nextjs/database-integration).
+
+## 4. Bad vs good code
+
+### Bad
+
+```sql
+create table "UserOrder" (
+  "orderId" serial primary key,
+  "userId" int,
+  "Status" varchar(50),
+  "total" float,
+  "createdOn" timestamp
+);
+```
+
+Mixed case names need quotes in every query. `userId` is not a foreign key. `Status` can hold anything. Money is in `float`, where `0.1 + 0.2` does not come out right. The timestamp has no timezone, and there is no `updated_at` at all.
+
+### Good
+
+```sql
+create type order_status as enum ('pending', 'paid', 'shipped', 'cancelled');
+
+create table orders (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users (id) on delete restrict,
+  status order_status not null default 'pending',
+  total_cents integer not null check (total_cents >= 0),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index orders_user_id_idx on orders (user_id);
+create index orders_status_created_at_idx on orders (status, created_at);
+```
+
+### What is the difference?
+
+| Thing | Bad | Good |
+| --- | --- | --- |
+| Names | `"UserOrder"`, `"orderId"` | `orders`, `user_id` |
+| Primary key | Serial, can be guessed in a URL | `uuid`, because the id goes into the URL |
+| Foreign key | None | `references users` and `on delete restrict` |
+| Status | Free text | `order_status` enum |
+| Money | `float` | `integer` cents, with a CHECK |
+| Time | `timestamp`, only created | `timestamptz`, created and updated |
+| Index | None | On the foreign key and the list query columns |
+
+## 5. How to apply it
+
+<Flow title="Checklist for a new table">
+
+Plural snake_case name
+↓
+Pick a primary key: identity for internal use, uuid for URLs
+↓
+created_at and updated_at as timestamptz
+↓
+Declare every foreign key, thinking about on delete
+↓
+Closed sets in an enum or CHECK
+↓
+Named indexes on foreign keys and filter columns
+
+</Flow>
+
+A few more conventions:
+
+| Thing | Convention |
+| --- | --- |
+| Primary key | `bigint generated always as identity` for internal use, `uuid` when the id appears in a URL |
+| Index name | `<table>_<columns>_idx`, and `<table>_<columns>_key` for unique |
+| Soft delete | `deleted_at` only when you need restore or audit, and then every query must respect it |
+| Secrets | Store a hash of tokens and codes, never plain text |
+| Status that changes often | `CHECK (status in (...))`, because changing an enum is hard |
+
+Choose the `on delete` option with care: `restrict` (the parent cannot be deleted while children exist), `cascade` (children are deleted too), `set null` (the link breaks, the row stays).
+
+## 6. Exceptions and common mistakes
+
+If you are working with an older database that has its own style, create new tables in that same style. Half camelCase and half snake_case is the worst. Join tables (like `project_members`) do not need a separate `id` if a composite primary key is enough, just do not keep both.
+
+<Mistake
+  title="Putting on delete cascade everywhere"
+  why="The moment you delete a parent, important history like invoices or audit rows is quietly wiped."
+  better="Think about each foreign key: restrict, cascade or set null, and on financial data it is often restrict."
+/>
+
+<Mistake
+  title="Storing money in float or double"
+  why="Floating point rounding makes totals differ by a few paise, and accounting catches it."
+  better="Keep cents or paisa in an integer, or use a numeric type with a fixed scale."
+/>
+
+<Mistake
+  title="Adding indexes only once the site gets slow"
+  why="By then the table is already big, and creating the index can itself cause locks and downtime."
+  better="Add indexes on foreign keys and list query filter columns when you create the table."
+/>
+
+<Mistake
+  title="A soft delete column that some queries forget"
+  why="Deleted data starts showing up again in search, reports or the API."
+  better="Use soft delete only when needed, with a data layer that adds deleted_at is null to every query."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Database Integration](/courses/nextjs/database-integration), [Naming Things](/courses/best-practices/naming) |
+| **Alongside** | [Safe Migrations](/courses/best-practices/migrations), [Generated Database Types](/courses/best-practices/generated-types) |
+| **After** | [Query Patterns & Transactions](/courses/best-practices/query-patterns), [Authorization & Multi-Tenancy](/courses/best-practices/authorization-and-tenancy) |
+
+## Final quick revision
+
+| Check | Question |
+| --- | --- |
+| Names | Plural, `snake_case`, the same across the whole database? |
+| Keys | Primary key of the right type, every foreign key declared? |
+| On delete | Chosen deliberately on every foreign key? |
+| Time | `created_at`, `updated_at`, `timestamptz`? |
+| Closed sets | Is status in an enum or CHECK? |
+| Indexes | On foreign keys and filter columns, with proper names? |
+
+<Callout variant="important" title="Remember">
+
+A table is created once and lives for years. Spending five minutes today on names, keys and types is cheaper than a long migration tomorrow.
+
+</Callout>

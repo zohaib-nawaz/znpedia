@@ -1,0 +1,202 @@
+---
+title: Safe Migrations
+description: Database migrations best practices. Write idempotent, non destructive and reversible migrations, and review drops, renames and backfills by hand.
+keywords:
+  - database migrations best practices
+  - idempotent migration sql
+  - expand and contract migration
+  - zero downtime migration
+  - rollback migration
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Every migration is idempotent (safe to run twice), non destructive (it does not delete or change existing data) and reversible (its down path is written). Destructive work like drop, rename, type change and backfill is reviewed and applied by a human. A live production database is never touched casually.**
+
+</Callout>
+
+A migration is a file that moves the database schema from one state to another, like adding a new column. These files live in version control so that every environment (local, staging, production) is built the same way, in the same order.
+
+## 2. Why does it matter?
+
+Real outages caused by migrations:
+
+- **A rename took the app down:** `name` was renamed to `full_name`. The new code took two minutes to deploy, and during those two minutes the old code was still looking for `name`. Every request returned 500.
+- **A lock stopped the site:** the type of a column on a big table was changed. Postgres rewrote the whole table and held a lock, and all writes stopped for 10 minutes.
+- **One query, all the data:** someone ran `update users set plan = 'free'` on the production console and forgot the `where`. Every paying customer became free.
+- **Ran twice and blew up:** a migration failed halfway, and when it was run again it got stuck on `table already exists`, and the deploy was blocked.
+
+<CompareTable leftTitle="Casual migrations" rightTitle="Safe migrations">
+
+Errors when run again | if not exists, safe to run again
+Rename and drop in one step | Expand and contract, across several deploys
+No way to go back | A written down for every up
+Hand written SQL on production | From CI or a deploy step, after a backup
+Editing a merged migration | Writing a new migration
+App code creates tables on request | Schema lives only in migration files
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Learn to use migration files | Creating tables by hand builds a bad habit |
+| **Production code** | Required, with every condition | Production data does not come back |
+| **Senior level** | Plan and review destructive changes | Decide expand contract, backfills and rollback |
+
+When to learn it: the first time you need to add a column to a table in a deployed app. Read [Database Naming & Design](/courses/best-practices/database-design) first.
+
+## 4. Bad vs good code
+
+### Bad: destructive, not idempotent, no down
+
+```sql
+alter table users rename column name to full_name;
+alter table users drop column legacy_role;
+alter table orders alter column total type numeric(12, 2);
+create type plan_tier as enum ('free', 'pro');
+```
+
+The rename immediately breaks the old code. The drop deletes data forever. The type change locks a big table. Running it again makes `create type` fail. There is no file to go back.
+
+This is also bad, schema inside app code:
+
+```ts
+export async function saveLead(lead: Lead) {
+  await sql`create table if not exists leads (id serial primary key, email text)`;
+  await sql`insert into leads (email) values (${lead.email})`;
+}
+```
+
+Now the schema lives in two places, migrations and code, and the two will never match.
+
+### Good: additive, idempotent, with a down
+
+File `migrations/20261101093000_add_plan_tier_to_users.sql`:
+
+```sql
+do $$
+begin
+  create type plan_tier as enum ('free', 'pro');
+exception
+  when duplicate_object then null;
+end
+$$;
+
+alter table users add column if not exists plan_tier plan_tier not null default 'free';
+
+create index if not exists users_plan_tier_idx on users (plan_tier);
+```
+
+File `migrations/20261101093000_add_plan_tier_to_users.down.sql`:
+
+```sql
+drop index if exists users_plan_tier_idx;
+alter table users drop column if exists plan_tier;
+drop type if exists plan_tier;
+```
+
+Run this up migration twice and check that the second run does nothing. This simple test proves idempotency. The down file is for development and staging. Running a down in production is also a deliberate decision, because data is lost.
+
+### The right way to rename: expand and contract
+
+<Flow title="Renaming a column with no downtime">
+
+Deploy 1: add the new column full_name (additive)
+↓
+Deploy 2: code writes to both columns, reads from the old one
+↓
+Backfill script: copy old rows into full_name, with a test
+↓
+Deploy 3: code reads and writes only full_name
+↓
+Deploy 4: after human review, drop the old column
+
+</Flow>
+
+### What is the difference?
+
+| Thing | Bad | Good |
+| --- | --- | --- |
+| Running again | Error | `if not exists`, guarded `do` block |
+| Data | Drop and rename immediately | Only add, drop later by a human |
+| Rollback | None | A `.down.sql` file |
+| Name | Says nothing | Timestamp and the name of the job |
+| Where the schema lives | Code and migrations both | Only migrations |
+
+## 5. How to apply it
+
+Three questions before every migration:
+
+| Question | If the answer is "no" |
+| --- | --- |
+| Does it avoid deleting or changing existing data? | It is destructive, a human reviews and applies it |
+| Is it safe to run twice? | Add `if not exists` and guarded blocks |
+| Is its down path written? | Write a down file, or write down why it is not possible |
+
+Only if all three answers are "yes" can it go through the automatic pipeline. If even one is "no", the file stays in the PR and a human applies it by hand after a backup.
+
+Other rules:
+
+- One migration, one change, and the name says the job: `add_plan_tier_to_users`, not `create_alter_users`.
+- Never edit a merged migration. If you made a mistake, write a new migration.
+- Migrations run from CI or a deploy step, after a health check and a backup. App code does not create schema on request.
+- A dry run on the pull request (like `supabase db push --dry-run`) so the review knows what will run.
+- Staging and production must never share one database.
+- On a big Postgres table, build the index with `create index concurrently` so writes do not stop.
+
+## 6. Exceptions and common mistakes
+
+On a local database that is only yours, it is perfectly fine to reset and run the migrations from scratch. On a brand new table with no data yet, drop or rename is less dangerous, but still do it through a file and review so other environments match.
+
+<Mistake
+  title="Running SQL directly on the production console"
+  why="No review, no backup, no record, and one missing where clause changes the whole table."
+  better="Put every change in a migration or script file, run it after PR review and after taking a backup."
+/>
+
+<Mistake
+  title="Renaming a column in a single deploy"
+  why="During the deploy the old code looks for the old name and every request fails."
+  better="Expand and contract: add the new column, write to both, backfill, then remove the old one."
+/>
+
+<Mistake
+  title="Changing a merged migration file"
+  why="Environments where it already ran never get the new version, and the schema drifts."
+  better="Always write a new migration that fixes the earlier mistake."
+/>
+
+<Mistake
+  title="Hiding a backfill inside a migration"
+  why="Updating millions of rows holds a long lock, and if it fails, half the data is changed and nothing was tested."
+  better="Put the backfill in a separate script, in batches, with a test, and under human supervision."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Database Naming & Design](/courses/best-practices/database-design), [Database Integration](/courses/nextjs/database-integration) |
+| **Alongside** | [Generated Database Types](/courses/best-practices/generated-types), [CI/CD & Environments](/courses/best-practices/ci-cd-and-environments) |
+| **After** | [Query Patterns & Transactions](/courses/best-practices/query-patterns), [Production Readiness Checklist](/courses/best-practices/production-readiness-checklist) |
+
+## Final quick revision
+
+| Check | Question |
+| --- | --- |
+| Idempotent | Is it safe even when run twice? |
+| Non destructive | Is any data deleted or changed? |
+| Reversible | Is the down path written? |
+| Destructive | Were drop, rename, type change and backfill reviewed and applied by a human? |
+| Production | Did the change go through CI, after a backup, with no console? |
+| Edit | Was any merged migration touched? |
+
+<Callout variant="important" title="Remember">
+
+A code mistake is fixed in the next deploy, but a data mistake often never is. So a migration adds, a human deletes, and production only ever sees a reviewed file.
+
+</Callout>

@@ -1,0 +1,185 @@
+---
+title: Event Bubbling & Delegation
+description: Learn JavaScript event delegation and bubbling, the capture phase, event.target and closest(), and handle many items with one parent listener.
+keywords:
+  - javascript event delegation bubbling
+  - event bubbling
+  - event capturing javascript
+  - event.target closest
+---
+
+## 1. What are event bubbling and delegation?
+
+<Callout variant="tip" title="Short definition">
+
+**In bubbling, an event travels from the target up through its parents, and delegation uses this to put one listener on a parent.**
+
+</Callout>
+
+When you click a button, that click does not belong only to the button. The event "bubbles" from the button to its parent, then that parent's parent, and finally up to `document`.
+
+**Event delegation** is a pattern: instead of adding a listener to every child, add one listener to the common parent and use `event.target` to find out which child was actually clicked.
+
+## 2. Why does it matter?
+
+If a list has 500 items, 500 listeners use memory. And items added later do not have a listener at all.
+
+<CompareTable leftTitle="Listener on every item" rightTitle="Event delegation">
+
+500 items, 500 listeners | Just 1 listener on the parent
+Attach listeners to new items yourself | New items are handled automatically
+Clean up listeners when removing items | No cleanup needed
+Setup code scattered around | All the logic in one place
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Place | Example |
+| --- | --- |
+| **Todo list** | Delete and done buttons in every item |
+| **Tables** | Click a row to open its details |
+| **Menus / tabs** | Which tab was clicked |
+| **Infinite scroll feeds** | Like buttons on new posts |
+| **Closing a dropdown** | Listen for clicks on `document` to detect an outside click |
+
+## 4. How does it work?
+
+An event has three phases:
+
+<Flow title="Event phases">
+
+Capture phase: from window down to the target
+↓
+Target phase: on the actual element
+↓
+Bubble phase: from the target up to window
+
+</Flow>
+
+By default, `addEventListener` listens in the **bubble phase**. To listen in the capture phase, pass `{ capture: true }`.
+
+<Flow title="Delegation flow">
+
+The user clicks the Delete button inside an li
+↓
+The event bubbles up to the ul
+↓
+The ul listener looks at event.target
+↓
+closest finds the right button and li
+↓
+Only that item is updated
+
+</Flow>
+
+<Callout variant="important" title="Mental model">
+
+**The click happens down low, but it is heard up high.** The parent works like a receptionist who takes every child's call.
+
+</Callout>
+
+## 5. Code example
+
+HTML:
+
+```html
+<ul id="todos">
+  <li data-id="1">Study <button data-action="delete">Delete</button></li>
+  <li data-id="2">Walk <button data-action="done">Done</button></li>
+</ul>
+```
+
+JavaScript:
+
+```js
+const list = document.querySelector("#todos");
+
+list.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-action]");
+  if (!button || !list.contains(button)) return;
+
+  const item = button.closest("li");
+  const { action } = button.dataset;
+
+  if (action === "delete") item.remove();
+  if (action === "done") item.classList.toggle("done");
+
+  console.log(`Item ${item.dataset.id}: ${action}`);
+});
+
+const li = document.createElement("li");
+li.dataset.id = "3";
+li.innerHTML = `Groceries <button data-action="delete">Delete</button>`;
+list.append(li);
+```
+
+### How does the code work?
+
+| Line | What happens |
+| --- | --- |
+| `list.addEventListener("click", ...)` | Just one listener on the parent `ul` |
+| `event.target.closest(...)` | You find the button even if the click lands on any part inside it |
+| `if (!button ...) return` | Ignores empty space and buttons outside the list |
+| `button.dataset.action` | `data-action` tells you what to do |
+| The new `li` | No new listener is added, and it still works |
+
+### Interview tip
+
+`focus`, `blur`, `mouseenter` and `mouseleave` do not bubble. For delegation, use their bubbling counterparts: `focusin`, `focusout`, `mouseover` and `mouseout`.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Assuming event.target is the button itself"
+  why="If the button contains an icon or span, the target is that inner element and the dataset comes back empty."
+  better="Use event.target.closest('button') to find the right element."
+/>
+
+<Mistake
+  title="Forgetting the null check"
+  why="If the click lands on empty space in the parent, closest returns null and a TypeError follows."
+  better="Add a guard with if (!button) return first."
+/>
+
+<Mistake
+  title="Calling stopPropagation for no reason"
+  why="The event never reaches delegated listeners higher up, and features break."
+  better="Check the target and decide, instead of stopping propagation."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [DOM Basics](/courses/javascript/dom-basics), [DOM Events](/courses/javascript/dom-events) |
+| **After** | [Forms & Validation](/courses/javascript/forms-and-validation), [localStorage, sessionStorage & Cookies](/courses/javascript/web-storage) |
+
+<Flow title="Suggested order">
+
+DOM Basics
+↓
+DOM Events
+↓
+Bubbling and Delegation
+↓
+Forms and Validation
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Bubbling | The event travels from the target up to its parents |
+| Capturing | Top to bottom, listen with `{ capture: true }` |
+| Delegation | One listener on the parent handles the children |
+| `event.target` | The element that was actually clicked |
+| `closest()` | Finds a matching element going up from the target |
+| Benefit | Fewer listeners, dynamic items covered automatically |
+
+<Callout variant="important" title="Remember">
+
+For dynamic lists, put **one listener on the parent** and catch the right child with `event.target.closest()`.
+
+</Callout>

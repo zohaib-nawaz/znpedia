@@ -1,0 +1,205 @@
+---
+title: Service Layer & Thin Controllers
+description: The service layer and thin controllers rule. A route handler only does auth, validation and one service call, and all business logic lives in src/lib.
+keywords:
+  - service layer thin controllers
+  - business logic layer
+  - thin route handlers nextjs
+  - fat controller problem
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**A route handler, server action or controller does only four things: authenticate the caller, validate the input, call one service function, and shape the response. Every calculation, query and domain decision lives in the service layer.**
+
+</Callout>
+
+The service layer is where the real behavior of the product is written: how an order is created, when a discount applies, who can do what. In Next.js this is `src/lib/<module>/<module>.ts`.
+
+Services are plain functions. Their signatures contain no `Request`, `NextResponse` or any framework type, so a route, a cron job, a script and a test can all call them the same way.
+
+## 2. Why does it matter?
+
+A real story: the discount rule was written inside the checkout route. Two months later, the admin panel needed to create manual orders. Someone copied the rule. Then the discount changed, one place was updated and the other was not. Now the same cart had two different totals.
+
+When logic is in the handler, testing it means building a full HTTP request, and reusing it means copy paste.
+
+<CompareTable leftTitle="Fat controller" rightTitle="Thin controller + service">
+
+The business rule is buried inside the route | The rule lives in a service, under one name
+Cron and admin have to copy the rule | Everyone calls the same service function
+Testing the logic needs a fake HTTP request | Test the service directly as a function
+You read every route to understand the product's behavior | Read only src/lib and you understand the whole product
+A 150 line handler, a jungle of if else | A handler that fits on one screen and reads at a glance
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | In one or two routes, logic inside the handler is okay. Extract it as soon as a second caller appears | First understand what happens from request to response, then layers |
+| **Production code** | A must. No queries or domain `if` in the handler | One rule in one place. Easy to test and reuse |
+| **Senior level** | Enforce layering with lint, like `no-restricted-imports` | A tool that stops it beats catching it in review every time |
+
+## 4. Bad vs good code
+
+### Bad: everything in the handler
+
+```ts
+import { NextResponse } from "next/server";
+
+import { db } from "@/lib/db";
+
+export async function POST(request: Request) {
+  const body = await request.json();
+  const cart = await db.cart.findUnique({ where: { id: body.cartId } });
+
+  if (!cart) {
+    return NextResponse.json({ error: "Cart not found" }, { status: 404 });
+  }
+
+  let total = cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+  if (total > 5000) {
+    total = total * 0.9;
+  }
+
+  const order = await db.order.create({ data: { cartId: cart.id, total } });
+
+  return NextResponse.json(order);
+}
+```
+
+No auth, no validation, and the discount rule (10% over `5000`) is hidden inside the handler.
+
+### Good: thin handler, logic in the service
+
+```ts
+import { NextResponse } from "next/server";
+
+import { requireUser } from "@/lib/auth/auth";
+import { place } from "@/lib/orders/orders";
+import { placeOrderSchema } from "@/lib/orders/orders.types";
+
+export async function POST(request: Request) {
+  const user = await requireUser();
+  const parsed = placeOrderSchema.safeParse(await request.json());
+
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.message }, { status: 422 });
+  }
+
+  return NextResponse.json(await place(user.id, parsed.data));
+}
+```
+
+```ts
+import { db } from "@/lib/db";
+
+import { DISCOUNT_RATE, DISCOUNT_THRESHOLD, type CartItem, type PlaceOrderInput } from "./orders.types";
+
+export function total(items: CartItem[]) {
+  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+  if (subtotal <= DISCOUNT_THRESHOLD) {
+    return subtotal;
+  }
+
+  return subtotal * (1 - DISCOUNT_RATE);
+}
+
+export async function place(userId: string, input: PlaceOrderInput) {
+  const cart = await db.cart.findFirstOrThrow({ where: { id: input.cartId, userId } });
+
+  return db.order.create({ data: { cartId: cart.id, userId, total: total(cart.items) } });
+}
+```
+
+### What is the difference?
+
+| Thing | Fat handler | Thin handler + service |
+| --- | --- | --- |
+| Discount rule | A literal inside the handler | In `total()`, with named constants |
+| Ownership check | None | `userId` in the query, inside the service |
+| Testing | You have to mock HTTP | Test `total()` directly, no server |
+| Admin or cron | Copy the code | Call `place()` |
+
+## 5. How to apply it
+
+<Flow title="The shape of a thin handler">
+
+Authenticate: who is the caller
+↓
+Validate: parse the input with a schema
+↓
+Delegate: call one service function
+↓
+Respond: status and JSON
+
+</Flow>
+
+Before starting new work, look in the service layer: is there already the same verb on the same entity? A function that does half the job? Extend it. Writing a similar second function in a hurry creates two behaviors that drift apart over time.
+
+A simple test: can the handler be read on one screen, and does it not need its own unit test? If yes, it is thin. Everything worth testing is in the service.
+
+## 6. Exceptions and common mistakes
+
+Many teams and frameworks take a different route. Some use a "fat model" pattern where the logic lives in the model class. Some add more layers (repository, use case, domain). In a small app, a little logic inside the handler is fine. The trade-off: more layers means more files, fewer layers means more copy paste. The rule here is in the middle: one service layer, plain functions, and a very thin handler.
+
+<Mistake
+  title="Taking Request or NextResponse in a service function"
+  why="Then cron jobs, scripts and tests cannot call it without building a fake HTTP object."
+  better="Have the service take plain values, like userId and parsed input, and return plain data."
+/>
+
+<Mistake
+  title="Writing helper functions in the handler file"
+  why="The helper gets stuck there, a second caller cannot import it and a copy appears."
+  better="Only exported actions in the handler. Anything worth extracting becomes a service function."
+/>
+
+<Mistake
+  title="Writing a domain if in the handler, like do not cancel if the order is shipped"
+  why="This is a business rule. The admin panel or a cron job will bypass it because the rule lives in the route."
+  better="Keep the rule in the service, and have the service throw a clear error on a wrong state."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Small Functions & Single Responsibility](/courses/best-practices/small-functions), [Route Handlers (API)](/courses/nextjs/route-handlers) |
+| **Alongside** | [Separation of Concerns](/courses/best-practices/separation-of-concerns), [API Handler Shape](/courses/best-practices/api-handler-shape) |
+| **After** | [Loose Coupling & Dependency Injection](/courses/best-practices/dependency-injection), [Endpoint Tests First](/courses/best-practices/endpoint-tests-first) |
+
+<Flow title="Suggested order">
+
+Small Functions
+↓
+Service Layer & Thin Controllers
+↓
+Input Validation at the Boundary
+↓
+Endpoint Tests First
+
+</Flow>
+
+## Final quick revision
+
+| Check | Yes / No |
+| --- | --- |
+| Handler: auth, validate, one call, respond | Yes |
+| Database query in the handler | No |
+| Domain `if` in the handler | No |
+| Framework types in a service signature | No |
+| Search the service layer before writing a new function | Yes |
+| Cron, route and test call the same function | Yes |
+
+<Callout variant="important" title="Remember">
+
+The controller is the door, not the house. The door checks identity, and the real work happens inside the service, where every caller can reach it.
+
+</Callout>

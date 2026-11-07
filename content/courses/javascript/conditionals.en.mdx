@@ -1,0 +1,202 @@
+---
+title: "Conditionals: if, switch, ternary"
+description: Learn to make decisions in JavaScript with if else, switch and the ternary operator, plus clean patterns like early return and object lookup.
+keywords:
+  - javascript if else switch
+  - javascript ternary operator
+  - switch case javascript
+  - early return pattern
+---
+
+## 1. What are conditionals?
+
+<Callout variant="tip" title="Short definition">
+
+**Conditionals let code make a decision: if a condition is true do one thing, otherwise do another.**
+
+</Callout>
+
+JavaScript has three main tools for decisions:
+
+| Tool | When to use it |
+| --- | --- |
+| `if / else if / else` | General conditions, ranges, multiple checks |
+| `switch` | Matching one value against several fixed options |
+| Ternary `? :` | Picking one of two values, in one line |
+
+## 2. Why does it matter?
+
+Every app has to make decisions. Is the user logged in or not, is the cart empty or not, what is the order status. Without conditionals, a program would do the same thing every time.
+
+<CompareTable leftTitle="Messy conditionals" rightTitle="Clean conditionals">
+
+An if inside an if inside an if | A direct flow with early return
+A long else if chain for fixed values | switch or object lookup
+A full if else for a small value | A ternary in one line
+The condition is hard to understand | The condition held in a well named variable
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Real use | Tool |
+| --- | --- |
+| **Login check, redirect** | `if` + early return |
+| **Grade from marks** | `if / else if` (ranges) |
+| **Message for an order status** | `switch` or object lookup |
+| **Button text "Follow" or "Unfollow"** | Ternary |
+| **Form validation** | `if` checks |
+
+## 4. How does it work?
+
+`if` turns the condition into a **boolean** and checks it. The block of the first true condition runs, and the rest are skipped.
+
+<Flow title="Flow of if / else if / else">
+
+Check condition 1
+     ↓
+If true, run block 1 and exit
+     ↓
+Otherwise check condition 2
+     ↓
+If none is true, the else block
+
+</Flow>
+
+`switch` compares the value with each `case` using `===` (strict equality). When it finds a match, the code runs until a `break`.
+
+<Callout variant="important" title="Mental model">
+
+**`if` asks a question, `switch` looks up a value in a list, and the ternary picks one of two values.**
+
+</Callout>
+
+## 5. Code example
+
+`if / else if / else` for ranges:
+
+```js
+function getGrade(marks) {
+  if (marks >= 80) {
+    return "A";
+  } else if (marks >= 65) {
+    return "B";
+  } else if (marks >= 50) {
+    return "C";
+  }
+  return "Fail";
+}
+
+console.log(getGrade(72));
+```
+
+Output: `B`.
+
+`switch` and object lookup:
+
+```js
+function statusMessage(status) {
+  switch (status) {
+    case "pending":
+      return "Order received";
+    case "shipped":
+      return "Order is on the way";
+    case "delivered":
+      return "Order delivered";
+    default:
+      return "Unknown status";
+  }
+}
+
+const messages = {
+  pending: "Order received",
+  shipped: "Order is on the way",
+};
+
+console.log(statusMessage("shipped"));
+console.log(messages["pending"] ?? "Unknown status");
+```
+
+Ternary and early return:
+
+```js
+const isFollowing = true;
+const label = isFollowing ? "Unfollow" : "Follow";
+
+function checkout(user, cart) {
+  if (!user) return "Please log in first";
+  if (cart.length === 0) return "Your cart is empty";
+  return "Go to the payment page";
+}
+
+console.log(label);
+console.log(checkout({ name: "Asad" }, []));
+```
+
+Output: `Unfollow`, `Your cart is empty`.
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `else if` | If the condition above is false, check the next one |
+| `case "pending":` | If `status === "pending"`, start running from here |
+| `return` / `break` | Leaves the `switch`, otherwise it falls into the next case |
+| `default` | When no case matches |
+| `messages[status]` | Object lookup, a short alternative to `switch` |
+| `a ? b : c` | `b` if `a` is true, otherwise `c` |
+| `if (!user) return` | Early return (guard clause), less nesting |
+
+### Interview tip
+
+Forgetting `break` in a `switch` is called **fall through**. Interviews often ask what the output will be. Remember: after a match, all the cases below keep running until a `break` or `return`.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Forgetting break in a switch"
+  why="After a match, the cases below also run, giving a wrong message or doing the work twice."
+  better="Write break or return at the end of every case."
+/>
+
+<Mistake
+  title="Writing a nested ternary"
+  why="Reading and debugging several ternaries in one line is very hard."
+  better="With more than two options, use if else, switch or object lookup."
+/>
+
+<Mistake
+  title="Writing = inside a condition"
+  why="if (role = 'admin') assigns the value and is always true, so every user becomes an admin."
+  better="Write === for comparison. = is only for assigning a value."
+/>
+
+<Mistake
+  title="Deep nesting"
+  why="An if inside an if inside an if pushes the code to the right and hides the logic."
+  better="Get the bad cases out first with an early return, and write the main logic straight at the end."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Operators](/courses/javascript/operators), [Data Types](/courses/javascript/data-types) |
+| **After this** | [Loops](/courses/javascript/loops), [Truthy, Falsy & Equality](/courses/javascript/truthy-falsy-and-equality) |
+| **Further on** | [Functions](/courses/javascript/functions), [Optional Chaining & Nullish Coalescing](/courses/javascript/optional-chaining-and-nullish) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `if / else` | General conditions and ranges |
+| `switch` | Fixed values, matched with `===`, `break` is needed |
+| Ternary | One of two values, in one line |
+| Object lookup | Mapping a value to a message or config |
+| Early return | Less nesting, cleaner code |
+
+<Callout variant="important" title="Remember">
+
+Use `if` for ranges, `switch` or object lookup for fixed values, and a **ternary** for a small two-option value. When nesting grows, use **early return**.
+
+</Callout>

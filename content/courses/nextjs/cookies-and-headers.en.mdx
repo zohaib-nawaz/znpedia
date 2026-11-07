@@ -1,0 +1,199 @@
+---
+title: Cookies & Headers
+description: Read Next.js cookies and headers with await cookies() and await headers(), and set cookies in Server Actions, following the Next.js 16 async rules.
+keywords:
+  - next.js cookies headers
+  - await cookies next.js 16
+  - next/headers
+  - next.js set cookie server action
+---
+
+## 1. What are cookies and headers?
+
+<Callout variant="tip" title="Short definition">
+
+**`cookies()` and `headers()` are async functions from `next/headers` that give you the cookies and HTTP headers of the current request on the server.**
+
+</Callout>
+
+A **cookie** is a small piece of data that the browser sends with every request, like a session token or a theme. A **header** is extra information about the request, like `user-agent`, `accept-language` or `referer`.
+
+In Next.js 16 both functions are **async**. You must write `await cookies()` and `await headers()`. The old synchronous access has been removed.
+
+## 2. Why does it matter?
+
+The server needs to know which user a request belongs to and where it came from. All of that lives in cookies and headers.
+
+<CompareTable leftTitle="Client side cookie handling" rightTitle="next/headers on the server">
+
+Reading the token with document.cookie | await cookies on the server
+JavaScript can steal the token | An httpOnly cookie is hidden from JS
+Parsing code everywhere | Ready made get, set, has, delete methods
+Language detected in the browser | accept-language header on the server
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Use case | What is used |
+| --- | --- |
+| **Login session** | An `httpOnly` session cookie |
+| **Theme preference** | A `theme` cookie, read in a Server Component |
+| **Language detection** | The `accept-language` header |
+| **Analytics or logging** | The `user-agent` and `x-forwarded-for` headers |
+| **Webhook verification** | A signature header in a Route Handler |
+
+## 4. How does it work?
+
+<Flow title="From request to cookies">
+
+Browser request + cookies + headers
+↓
+Next.js server
+↓
+await cookies or await headers
+↓
+A Server Component reads
++
+A Server Action or Route Handler sets or deletes
+↓
+Set-Cookie header in the response
+
+</Flow>
+
+| Where | Read | Set or delete |
+| --- | --- | --- |
+| Server Component | Yes | No |
+| Server Action | Yes | Yes |
+| Route Handler | Yes | Yes |
+| `proxy.ts` | `request.cookies` | `response.cookies` |
+
+`headers()` is always **read-only**. To change response headers, set them with the `Response` in a Route Handler or in `proxy.ts`.
+
+<Callout variant="important" title="Mental model">
+
+**A Server Component only reads. Writing is done by a Server Action, a Route Handler or the proxy, because a cookie cannot be set after the HTML stream has started.**
+
+</Callout>
+
+## 5. Code example
+
+### Example 1: reading in a Server Component
+
+```tsx
+import { Suspense } from "react";
+import { cookies, headers } from "next/headers";
+
+async function Greeting() {
+  const cookieStore = await cookies();
+  const headerList = await headers();
+
+  const theme = cookieStore.get("theme")?.value ?? "light";
+  const language = headerList.get("accept-language")?.split(",")[0] ?? "en";
+
+  return (
+    <p>
+      Theme: {theme}, Language: {language}
+    </p>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<p>Loading...</p>}>
+      <Greeting />
+    </Suspense>
+  );
+}
+```
+
+### Example 2: setting and deleting a cookie in a Server Action
+
+```ts
+"use server";
+
+import { cookies } from "next/headers";
+
+export async function setTheme(theme: "light" | "dark") {
+  const cookieStore = await cookies();
+  cookieStore.set("theme", theme, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+  });
+}
+
+export async function clearTheme() {
+  const cookieStore = await cookies();
+  cookieStore.delete("theme");
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `await cookies()` | The store of the request's cookies, async in Next.js 16 |
+| `cookieStore.get("theme")?.value` | The value of the cookie, or `undefined` |
+| `await headers()` | Read-only request headers |
+| `<Suspense>` | This is runtime data, so it streams in with Cache Components |
+| `httpOnly: true` | Browser JavaScript cannot read the cookie |
+| `sameSite: "lax"` | Protects against CSRF on cross-site requests |
+| `maxAge` | The lifetime in seconds, here one year |
+
+### Interview tip
+
+"Why can't you set a cookie in a Server Component?" Answer: a cookie is a response header, and by the time a Server Component renders, the response has already started streaming. That is why setting happens in a Server Action or a Route Handler.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Using cookies without await"
+  why="In Next.js 16, cookies returns a Promise, and calling get directly gives an error."
+  better="Always write const cookieStore = await cookies(), then call get or set."
+/>
+
+<Mistake
+  title="Setting a cookie inside a Server Component"
+  why="Response headers cannot be changed during render, and Next.js throws an error."
+  better="Set or delete cookies in a Server Action or a Route Handler."
+/>
+
+<Mistake
+  title="Keeping the session token without httpOnly"
+  why="In an XSS attack, JavaScript can steal the token."
+  better="Always set session cookies with httpOnly, secure and sameSite."
+/>
+
+<Mistake
+  title="Reading cookies in a function that uses use cache"
+  why="A cached result is shared between all users, so runtime data is not allowed there."
+  better="Read the cookie value outside and pass it to the cached function as an argument."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Server & Client Components](/courses/nextjs/server-and-client-components), [Server Actions](/courses/nextjs/server-actions) |
+| **Alongside** | [Route Handlers (API)](/courses/nextjs/route-handlers), [Proxy (formerly Middleware)](/courses/nextjs/proxy) |
+| **After** | [Authentication](/courses/nextjs/authentication), [Cache Components & use cache](/courses/nextjs/cache-components) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Import | `import { cookies, headers } from "next/headers"` |
+| Async | `await cookies()`, `await headers()` |
+| Read | Server Components, Actions, Route Handlers |
+| Write cookies | Only Server Actions and Route Handlers |
+| Headers | Read-only |
+| Secure cookie | `httpOnly`, `secure`, `sameSite` |
+
+<Callout variant="important" title="Remember">
+
+In Next.js 16, both `cookies()` and `headers()` are async. You can read anywhere on the server, but you can write cookies only in a Server Action or a Route Handler.
+
+</Callout>

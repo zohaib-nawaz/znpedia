@@ -1,0 +1,190 @@
+---
+title: Closures
+description: What JavaScript closures are, how an inner function remembers outer variables, and how they are used in counters, private data and factories.
+keywords:
+  - javascript closures
+  - closure in javascript
+  - lexical scope
+  - private variables javascript
+  - function factory
+---
+
+## 1. What are closures?
+
+<Callout variant="tip" title="Short definition">
+
+**A closure is a function that remembers the variables of its outer scope, even after the outer function has finished running.**
+
+</Callout>
+
+In JavaScript, whenever a function is created inside another function, it carries a reference to the variables around it. This "backpack" is the closure.
+
+A closure is not a special syntax. Every function creates one, but the difference only shows when the inner function is returned outside and runs later.
+
+## 2. Why does it matter?
+
+Without closures, keeping data private and remembering state between function calls is hard. Global variables are dangerous for that job.
+
+<CompareTable leftTitle="State with a global variable" rightTitle="State with a closure">
+
+Any file can change the value | Only the inner functions can change it
+Risk of name collisions | Every instance has its own private data
+Two counters share one value | Each counter keeps its own value
+Hard to test | State is encapsulated and predictable
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Area | What the closure does |
+| --- | --- |
+| **Counters and state** | `createCounter()` remembers the count of each call |
+| **Private data** | Data like a bank balance cannot be changed directly from outside |
+| **Function factories** | Making a `double` function with `makeMultiplier(2)` |
+| **Event handlers** | The handler remembers its own `id` on click |
+| **Debounce / throttle** | Remembering the timer id between calls |
+| **React hooks** | `useState` and handlers run on closures |
+
+## 4. How does it work?
+
+A closure stands on **lexical scope**. The variables of the place where a function was written become part of its scope chain.
+
+<Flow title="How a closure is formed">
+
+The outer function runs and creates a variable
+↓
+An inner function is created inside
+↓
+The outer function returns the inner function
+↓
+The outer function ends, but the variable stays alive
+↓
+The inner function keeps using that variable later
+
+</Flow>
+
+An important point: a closure keeps a **live reference**, not a **copy**, of the variable. If the variable changes, the closure sees the new value.
+
+<Callout variant="important" title="Mental model">
+
+**Function + the variables of the place where it was born = closure**
+
+</Callout>
+
+## 5. Code example
+
+### Counter with private state
+
+```js
+function createCounter(start = 0) {
+  let count = start;
+
+  return {
+    increment: () => ++count,
+    decrement: () => --count,
+    value: () => count,
+  };
+}
+
+const a = createCounter();
+const b = createCounter(10);
+
+a.increment();
+a.increment();
+b.decrement();
+
+console.log(a.value());
+console.log(b.value());
+console.log(a.count);
+```
+
+### Function factory
+
+```js
+function makeMultiplier(factor) {
+  return (n) => n * factor;
+}
+
+const double = makeMultiplier(2);
+const triple = makeMultiplier(3);
+
+console.log(double(5));
+console.log(triple(5));
+```
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `let count` | A private variable inside `createCounter` |
+| Returned methods | All three arrow functions remember `count` through the closure |
+| `a` and `b` | Each call has its own separate `count`, so `2` and `9` |
+| `a.count` | `undefined`, because `count` is not accessible from outside |
+| `makeMultiplier(2)` | A new function that remembers `factor = 2` |
+| Output | `10` and `15` |
+
+### Interview tip
+
+The classic question: in a `var` loop, why does `setTimeout` print the last value every time? Because all the callbacks share the closure of one `var i`. `let` creates a new binding for each iteration, so each callback has its own value.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Thinking a closure is a copy of the value"
+  why="A closure keeps a live reference, so if the variable changes later, the closure sees the new value too."
+  better="If you need to fix the value at that moment, pass it into a new const or a function parameter."
+/>
+
+<Mistake
+  title="Callbacks in a loop with var"
+  why="All the callbacks share one variable, and the last value is printed."
+  better="Use let in the loop so that each iteration has its own binding."
+/>
+
+<Mistake
+  title="Holding big things in a closure for no reason"
+  why="As long as the closure is alive, the objects it references are not garbage collected, and memory keeps growing."
+  better="Capture only the data you need, and remove or clear event listeners and timers when their job is done."
+/>
+
+<Mistake
+  title="Old state in a React handler (stale closure)"
+  why="The handler captured the value from the previous render, so it does not see the new state."
+  better="Use an updater function, like setCount(c => c + 1), and keep the effect dependencies correct."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Functions](/courses/javascript/functions), [Scope & Hoisting](/courses/javascript/scope-and-hoisting) |
+| **Alongside** | [Higher-Order Functions](/courses/javascript/higher-order-functions), [Timers](/courses/javascript/timers) |
+| **Later** | [Debounce & Throttle](/courses/javascript/debounce-and-throttle), [Modules](/courses/javascript/modules) |
+
+<Flow title="Suggested order">
+
+Scope & Hoisting
+↓
+Closures
+↓
+Higher-Order Functions
+↓
+Debounce & Throttle
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Closure | A function + its lexical environment |
+| When it forms | Whenever a function is created, it shows when it runs later |
+| Reference or copy | A live reference |
+| Benefit | Private state, factories, handlers |
+| Risk | Stale values and memory leaks |
+
+<Callout variant="important" title="Remember">
+
+An inner function carries the variables of the place where it was born. With this you can build private state and reusable function factories.
+
+</Callout>

@@ -1,0 +1,177 @@
+---
+title: Portals
+description: Learn how React createPortal renders a modal, tooltip or toast into another DOM node, with simple examples for beginners.
+keywords:
+  - react createportal
+  - react portals
+  - react modal portal
+  - render outside root react
+---
+
+## 1. What are Portals?
+
+<Callout variant="tip" title="Short definition">
+
+**A portal lets a component render its children into a different DOM node, while they stay in the same place in the React tree.**
+
+</Callout>
+
+A portal is created with the `createPortal` function from the `react-dom` package. You give it some JSX and a DOM node, and React paints that JSX inside that node.
+
+The key point is that only the **DOM position** changes. Props, state, context and events all work as if the component were inside its parent.
+
+## 2. Why does it matter?
+
+If a modal or tooltip renders inside a card, the parent's `overflow: hidden`, `z-index` or `transform` can clip it or hide it underneath.
+
+<CompareTable leftTitle="Without a Portal" rightTitle="With a Portal">
+
+The modal gets clipped by the parent's overflow | The modal sits right under body and is fully visible
+z-index battles everywhere | One top-level layer, clean stacking
+The tooltip hides inside a scroll container | The tooltip renders outside the container
+Layout CSS hacks | Simple, predictable placement
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Use case | Why a Portal |
+| --- | --- |
+| **Modals and dialogs** | They need an overlay above the whole screen |
+| **Tooltips and popovers** | To escape the parent's overflow |
+| **Toast notifications** | In one fixed corner container |
+| **Dropdown menus** | To get out of a table or scroll area |
+| **Non-React page parts** | React UI inside a div of older server-rendered HTML |
+
+## 4. How does it work?
+
+React treats two trees separately: the **React tree** (the hierarchy of components) and the **DOM tree** (the actual browser elements). A portal only changes the position in the DOM tree.
+
+<Flow title="The mental model of a portal">
+
+The parent component renders
+↓
+createPortal(jsx, document.body)
+↓
+DOM: the jsx is painted inside body
++
+React tree: the jsx stays a child of the Parent
+↓
+Context, state and event bubbling reach the Parent
+
+</Flow>
+
+So if a button inside the portal is clicked, the `onClick` event bubbles up the React tree to the Parent, even though in the DOM it sits inside body.
+
+## 5. Code example
+
+### Example 1: A simple modal
+
+```jsx
+import { useState } from "react";
+import { createPortal } from "react-dom";
+
+function Modal({ onClose, children }) {
+  return createPortal(
+    <div className="overlay" role="dialog" aria-modal="true">
+      <div className="box">
+        {children}
+        <button onClick={onClose}>Close</button>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+export default function ProductCard() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div style={{ overflow: "hidden" }}>
+      <button onClick={() => setOpen(true)}>View details</button>
+      {open && (
+        <Modal onClose={() => setOpen(false)}>
+          <p>Full product details</p>
+        </Modal>
+      )}
+    </div>
+  );
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `createPortal(jsx, document.body)` | The modal's DOM is created inside body |
+| `overflow: "hidden"` | The card's CSS no longer clips the modal |
+| `onClose` prop | Works like any normal prop |
+| `open && ...` | The modal mounts only when needed |
+
+### Example 2: A dedicated container
+
+```html
+<body>
+  <div id="root"></div>
+  <div id="toast-root"></div>
+</body>
+```
+
+```jsx
+import { createPortal } from "react-dom";
+
+export function Toast({ message }) {
+  const container = document.getElementById("toast-root");
+  return createPortal(<div className="toast">{message}</div>, container);
+}
+```
+
+Keeping a separate container stacks all the toasts in one place and makes the CSS easier to manage.
+
+### Interview tip
+
+A common question is, "How far does a click event inside a portal travel?" The answer: along the React tree, up to the parent that created the portal. The DOM position does not change event propagation in React.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Thinking events from a portal do not reach the parent"
+  why="React events bubble along the React tree, so the parent's onClick can run too, which surprises people."
+  better="If you do not want the event to reach the parent, use event.stopPropagation() inside the portal."
+/>
+
+<Mistake
+  title="Accessing document.body during server render"
+  why="document does not exist on the server, so SSR crashes."
+  better="Render the portal only on the client, for example after mount or inside a Client Component."
+/>
+
+<Mistake
+  title="Forgetting accessibility in a modal"
+  why="Screen reader users do not know a dialog opened, and focus stays behind it."
+  better="Add role=dialog, aria-modal, focus management and closing with Escape, or use the native dialog element."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Components](/courses/react/components), [Children & Composition](/courses/react/children-and-composition), [Conditional Rendering](/courses/react/conditional-rendering) |
+| **Alongside** | [Handling Events](/courses/react/events), [useRef](/courses/react/use-ref), [useContext](/courses/react/use-context) |
+| **After** | [Suspense & lazy()](/courses/react/suspense-and-lazy), [Activity Component](/courses/react/activity) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Function | `createPortal(children, domNode)` from `react-dom` |
+| DOM | Children render into another node |
+| React tree | The component stays in its own place |
+| Events | Bubble up the React tree to the parent |
+| Use cases | Modal, tooltip, toast, dropdown |
+
+<Callout variant="important" title="Remember">
+
+A portal changes the **place in the DOM**, not the **relationship in React**. Context, state and events work exactly like a normal child.
+
+</Callout>

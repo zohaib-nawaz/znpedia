@@ -1,0 +1,185 @@
+---
+title: Introduction
+description: What JavaScript is, why it is the programming language of the web, and where it runs in browsers, servers and apps. A simple start for beginners.
+keywords:
+  - what is javascript
+  - javascript for beginners
+  - learn javascript
+  - javascript basics
+---
+
+## 1. What is JavaScript?
+
+<Callout variant="tip" title="Short definition">
+
+**JavaScript is a programming language that makes web pages interactive, and today it also runs on servers and in apps, not just in the browser.**
+
+</Callout>
+
+HTML builds the structure of a page, CSS styles it, and JavaScript gives it **behavior**. Doing something when a button is clicked, checking a form, loading data: all of this is JavaScript's job.
+
+<Flow title="The three parts of a web page">
+
+HTML (structure)
+   +
+CSS (design)
+   +
+JavaScript (behavior)
+   ↓
+Complete interactive page
+
+</Flow>
+
+The official standard for JavaScript is called **ECMAScript**. A new version comes out every year (ES2024, ES2025), which is why you often hear terms like "ES6" or "modern JavaScript".
+
+## 2. Why does it matter?
+
+With only HTML and CSS, a page stays static. No matter what the user does, the page shows what was written in advance. JavaScript makes the page **alive**.
+
+<CompareTable leftTitle="Without JavaScript" rightTitle="With JavaScript">
+
+The page only displays content | The page reacts to user actions
+A wrong form goes all the way to the server | The form is checked instantly in the browser
+New data needs a full page reload | Data loads in the background, no page reload
+No animations or live updates | Live search, notifications, animations
+
+</CompareTable>
+
+Another big reason: JavaScript is **built into every browser**. Without installing anything, it runs in Chrome, Firefox and Safari. That makes it the essential language for frontend development.
+
+## 3. Where is it used?
+
+| Area | What JavaScript does |
+| --- | --- |
+| **Websites** | Menus, sliders, forms, modals, live search |
+| **Web apps** | Full apps built with tools like React and Next.js |
+| **Server / backend** | APIs and databases through Node.js, Deno and Bun |
+| **Mobile apps** | Android and iOS apps with React Native |
+| **Desktop apps** | Apps like VS Code, built with Electron |
+| **Tools** | Build tools, scripts, automation |
+
+This means that by learning one language you can work on the frontend, the backend and mobile.
+
+## 4. How does it work?
+
+JavaScript code is run by an **engine**. Inside the browser there is such an engine (V8 in Chrome). The engine reads the code, turns it into something the machine understands, and runs it.
+
+<Flow title="From code to result">
+
+You write JavaScript code
+     ↓
+The browser or Node.js loads the code
+     ↓
+The JavaScript engine runs the code
+     ↓
+The page updates or output is shown
+
+</Flow>
+
+The details of this process are in the [How JavaScript Runs](/courses/javascript/how-javascript-runs) chapter. For now, just remember that JavaScript needs a **runtime** to run, such as a browser or Node.js.
+
+<Callout variant="important" title="Mental model">
+
+**JavaScript = instructions. Engine = the thing that runs the instructions. Runtime = engine + extra features (like the DOM or the file system).**
+
+</Callout>
+
+## 5. Code example
+
+The smallest JavaScript program, which prints a message to the console:
+
+```js
+console.log("Hello, JavaScript!");
+```
+
+A small interactive example that changes some text when a button is clicked in the browser:
+
+```html
+<button id="greet">Click me</button>
+<p id="message">Nothing has happened yet</p>
+
+<script>
+  const button = document.querySelector("#greet");
+  const message = document.querySelector("#message");
+
+  button.addEventListener("click", () => {
+    message.textContent = "Thanks, you clicked!";
+  });
+</script>
+```
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `console.log()` | Prints a value to the console |
+| `document.querySelector()` | Finds one element on the page |
+| `const` | A variable that cannot be assigned again |
+| `addEventListener("click", ...)` | Runs a function when a click happens |
+| `textContent` | Changes the text of an element |
+
+You do not need to understand every line yet. The next chapters cover [Variables](/courses/javascript/variables), [DOM Basics](/courses/javascript/dom-basics) and [DOM Events](/courses/javascript/dom-events) in detail.
+
+### Interview tip
+
+If you are asked "What is the difference between JavaScript and Java?", the answer is: they are completely different languages. The similar name is only a marketing accident. JavaScript is dynamically typed and mostly runs in browsers and Node.js.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Thinking JavaScript is a smaller version of Java"
+  why="They have different syntax, typing systems and use cases. This confusion creates wrong expectations early on."
+  better="Learn JavaScript as its own language, one that was built for the web."
+/>
+
+<Mistake
+  title="Starting directly with a framework"
+  why="Everything in React or Next.js is built on JavaScript. If your basics are weak, every error feels hard."
+  better="First get comfortable with variables, functions, arrays, objects and async basics, then move on to a framework."
+/>
+
+<Mistake
+  title="Learning var and old syntax from outdated tutorials"
+  why="Many old tutorials rely on var and callbacks, which are used less in today's code."
+  better="Learn modern syntax: let, const, arrow functions, template literals, async and await."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | Basic HTML and CSS, using a computer and a browser |
+| **After this** | [How JavaScript Runs](/courses/javascript/how-javascript-runs), [Setup & First Program](/courses/javascript/setup-and-first-program) |
+| **Then the basics** | [Variables](/courses/javascript/variables), [Data Types](/courses/javascript/data-types), [Operators](/courses/javascript/operators) |
+
+<Flow title="Suggested order">
+
+Introduction
+     ↓
+How JavaScript Runs
+     ↓
+Setup and first program
+     ↓
+Variables and data types
+     ↓
+Functions, arrays, objects
+     ↓
+Async JavaScript and the DOM
+
+</Flow>
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| What JavaScript is | The programming language of the web |
+| Job | Make pages interactive, run logic |
+| Where it runs | Browser, Node.js, Deno, Bun |
+| Name of the standard | ECMAScript (ES2024, ES2025) |
+| Relation to Java | None, it is a different language |
+
+<Callout variant="important" title="Remember">
+
+HTML is structure, CSS is design, and **JavaScript is behavior**. With one language you can build frontend, backend and mobile apps.
+
+</Callout>

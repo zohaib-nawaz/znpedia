@@ -1,0 +1,230 @@
+---
+title: Next.js Practices
+description: Next.js best practices for Next.js 16. Server-first rendering, thin route handlers and server actions, a src/lib service layer, proxy.ts, use cache, config and testing.
+keywords:
+  - next.js best practices
+  - nextjs 16 best practices
+  - server first rendering
+  - thin route handlers server actions
+  - nextjs project config testing
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Server component by default, and `"use client"` only on small leaves. Route handlers and server actions stay thin and call a service in `src/lib`. Config, env and tests follow a settled shape from day one.**
+
+</Callout>
+
+This chapter is the Next.js framework layer. The rules for components and hooks are in [React Component Practices](/courses/best-practices/react-component-practices). The questions here are: should code run on the server or the client, where does data come from, and how do the new Next.js 16 tools (`proxy.ts`, async `params`, `"use cache"`) fit in the right places.
+
+## 2. Why does it matter?
+
+Real problems that keep showing up in Next.js projects:
+
+- A whole page was made `"use client"`. The bundle grew, data came through `useEffect`, and the first paint was an empty skeleton.
+- A module that read a secret key was imported by a client component by mistake. With `server-only` the build would have failed right there.
+- `middleware.ts` (now `proxy.ts`) was treated as the only wall for auth. One matcher mistake left an API route open without auth.
+
+<CompareTable leftTitle="Client-first and fat routes" rightTitle="Server-first and thin routes">
+
+The page is a client component, big bundle | The page is a server component, only leaves are client
+Fetch with useEffect, loading flash | Data on the server, arrives with the HTML
+A module with secrets can be imported into the client | The server-only import fails the build
+Proxy is the only security, one matcher mistake opens everything | Every page and route resolves the caller itself
+Queries and rules inside the route handler | A thin handler, logic in src/lib
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Understand the difference between server and client components, and await `params` | This is the basic mental model of Next.js |
+| **Production code** | All required: thin handlers, `server-only`, an env module, security headers, endpoint tests | Both performance and security are decided here |
+| **Senior level** | Design the caching strategy and the boundaries | If `"use cache"` is in the wrong place, one user's data can show up for another |
+
+## 4. Bad vs good code
+
+### Bad: a client page, a secret and sync params
+
+```tsx
+"use client";
+
+import { useEffect, useState } from "react";
+
+export default function PostPage({ params }: { params: { slug: string } }) {
+  const [post, setPost] = useState<Post | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/posts/${params.slug}`).then((response) => response.json()).then(setPost);
+  }, [params.slug]);
+
+  return <article>{post?.body}</article>;
+}
+```
+
+In Next.js 16 `params` is a Promise, and sync access does not work. Also the whole page is on the client for no reason.
+
+### Good: a server page, a cached service, a thin handler
+
+```tsx
+import { notFound } from "next/navigation";
+
+import { PostView } from "@/components/PostView/PostView";
+import { find } from "@/lib/posts/posts";
+
+export default async function PostPage({ params }: PageProps<"/blog/[slug]">) {
+  const { slug } = await params;
+  const post = await find(slug);
+
+  if (!post) {
+    notFound();
+  }
+
+  return <PostView post={post} />;
+}
+```
+
+```ts
+import "server-only";
+
+import { cacheLife, cacheTag } from "next/cache";
+
+import { db } from "@/lib/db";
+
+export async function find(slug: string) {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(`post-${slug}`);
+
+  return db.post.findUnique({ where: { slug } });
+}
+```
+
+The route handler that creates a comment also does the same four steps:
+
+```ts
+import { NextResponse } from "next/server";
+
+import { requireUser } from "@/lib/auth/auth";
+import { create } from "@/lib/comments/comments";
+import { INVALID_COMMENT, createCommentSchema } from "@/lib/comments/comments.types";
+import { limit } from "@/lib/rate-limit/rate-limit";
+
+export async function POST(request: Request, { params }: RouteContext<"/api/posts/[id]/comments">) {
+  const user = await requireUser();
+  await limit(user.id);
+  const { id } = await params;
+  const parsed = createCommentSchema.safeParse(await request.json());
+
+  if (!parsed.success) {
+    return NextResponse.json({ error: INVALID_COMMENT }, { status: 422 });
+  }
+
+  return NextResponse.json(await create(user.id, id, parsed.data), { status: 201 });
+}
+```
+
+### What is the difference?
+
+| Thing | Bad | Good |
+| --- | --- | --- |
+| Rendering | The whole page on the client | A server page, `PostView` as a client leaf only if needed |
+| `params` | Sync access | `await params` |
+| Data | Through `useEffect`, flash | From a service, with `"use cache"` |
+| Secret safety | No guard | `server-only` import |
+| Handler shape | No settled shape | Auth, rate limit, parse, one call, respond |
+
+## 5. How to apply it
+
+<Flow title="Flow of a Next.js feature">
+
+The page is a server component, await params
+↓
+Data from a src/lib service, with server-only
+↓
+use cache and cacheTag on public and shared data
+↓
+Mutations through a route handler or server action, both thin
+↓
+updateTag or refresh after a write
+↓
+An endpoint test in tests/api
+
+</Flow>
+
+| Area | Practice |
+| --- | --- |
+| `proxy.ts` | One job only: session refresh or redirect. Security lives in every page and handler |
+| Route handler vs server action | A route handler for data APIs, a server action for one page's form. Never both for one resource |
+| Private pages | `robots: { index: false }` in metadata |
+| Finite slugs | `generateStaticParams` with `dynamicParams = false`, an unknown slug gives 404 |
+| `next.config.ts` | Security headers (CSP, `nosniff`, HSTS), exact hosts in `images.remotePatterns`, `cacheComponents: true` |
+| `tsconfig.json` | `strict: true`, the `@/*` alias pointing to `src/*` |
+| Env | `requireEnv()` from `src/lib/env.ts`, never `process.env.X!` |
+| Node APIs | `export const runtime = "nodejs"` on the handler, `maxDuration` for long work |
+| Tests | Vitest. Endpoint tests with a seeded user in `tests/api`, pure tests in `tests/lib`, alias `server-only` to a stub |
+
+## 6. Exceptions and common mistakes
+
+`"use cache"` is only for data that is the same for all users. Putting user-specific data in a shared cache is a data leak.
+
+Teams differ a lot on "route handler or server action". Many teams do all mutations with server actions, and it is also the path Next.js promotes. The strict rule here keeps data APIs in route handlers because a mobile app, cron and tests can also call them directly over HTTP. The trade-off: server actions have less boilerplate, route handlers are more reusable. Whichever you choose, use only one for each resource.
+
+<Mistake
+  title="Putting use client on a page or layout"
+  why="The whole tree goes into the client bundle and the benefit of loading data on the server is lost."
+  better="Put use client only on the small leaf that needs state, an effect or a browser API."
+/>
+
+<Mistake
+  title="Treating proxy.ts as the only security wall"
+  why="One matcher mistake, or a new route outside the matcher, opens up with no auth."
+  better="Every page and route handler resolves the caller itself. Proxy only refreshes the session or redirects."
+/>
+
+<Mistake
+  title="Queries and business rules inside a server action"
+  why="A server action is also a controller. If rules get stuck there, cron and the API cannot reuse them."
+  better="The action also does auth, parse, one service call and updateTag. The rule lives in src/lib."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Server & Client Components](/courses/nextjs/server-and-client-components), [Service Layer & Thin Controllers](/courses/best-practices/service-layer) |
+| **Alongside** | [Cache Components & use cache](/courses/nextjs/cache-components), [Proxy (formerly Middleware)](/courses/nextjs/proxy) |
+| **After** | [Security Baseline](/courses/best-practices/security-baseline), [Endpoint Tests First](/courses/best-practices/endpoint-tests-first) |
+
+<Flow title="Suggested order">
+
+Server & Client Components
+↓
+Service Layer & Thin Controllers
+↓
+Next.js Practices
+↓
+Endpoint Tests First
+
+</Flow>
+
+## Final quick revision
+
+| Check | Yes / No |
+| --- | --- |
+| Pages and layouts are server components | Yes |
+| `params` and `searchParams` awaited | Yes |
+| `server-only` in modules with secrets | Yes |
+| Handler: auth, rate limit, parse, one call, respond | Yes |
+| `"use cache"` on user-specific data | No |
+| `proxy.ts` as the only security | No |
+| `process.env.X!` | No, `requireEnv()` |
+
+<Callout variant="important" title="Remember">
+
+Start on the server, and use the client only where needed. Keep every route thin, every rule in `src/lib`, every secret behind `server-only`, and let every page check its own caller.
+
+</Callout>

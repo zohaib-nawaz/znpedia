@@ -1,0 +1,173 @@
+---
+title: Setup & First Program
+description: Write your first JavaScript hello world console program. Set up browser DevTools, VS Code and Node.js step by step.
+keywords:
+  - javascript hello world console
+  - javascript setup
+  - run javascript in browser
+  - node.js first program
+  - console.log
+---
+
+## 1. What are setup and the first program?
+
+<Callout variant="tip" title="Short definition">
+
+**Setup means preparing a place to write and run JavaScript, and the first program is usually printing "Hello World" to the console.**
+
+</Callout>
+
+There are three easy ways to run JavaScript:
+
+1. **Browser console**, nothing to install.
+2. A `script` tag inside an **HTML file**.
+3. **Node.js**, running a file from the terminal.
+
+**VS Code** is the most common editor for writing code.
+
+## 2. Why does it matter?
+
+While learning, the most important thing is to write code, run it and see the result right away. A good setup makes this cycle fast.
+
+<CompareTable leftTitle="Without a proper setup" rightTitle="With a proper setup">
+
+Code in Notepad, no help | Autocomplete and error hints in VS Code
+Errors go unnoticed | The console shows the error and line number
+Hunting for the page for every test | One command in the terminal to run
+Guessing the output | Seeing every value with console.log
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Method | When to use it |
+| --- | --- |
+| **Browser console** | When you want to test something small right away |
+| **HTML + script file** | When you are working with a web page |
+| **Node.js** | When you are building scripts, a backend or tools |
+| **VS Code** | For writing any kind of code |
+
+## 4. How does it work?
+
+<Flow title="Flow of running your first program">
+
+Create a file in VS Code
+     ↓
+Write JavaScript code
+     ↓
+Run it in the browser or Node.js
+     ↓
+See the output in the console
+
+</Flow>
+
+**Opening the browser console:** In Chrome, right click on the page, choose **Inspect**, then open the **Console** tab. Shortcut: `Ctrl + Shift + J` on Windows, `Cmd + Option + J` on Mac.
+
+**Installing Node.js:** Install the **LTS** version from [nodejs.org](https://nodejs.org). Then check the version in the terminal:
+
+```bash
+node --version
+npm --version
+```
+
+<Callout variant="note" title="What is console.log?">
+
+`console.log()` prints a value to the console. It is the most basic tool for learning JavaScript and for debugging.
+
+</Callout>
+
+## 5. Code example
+
+**Method 1: Browser console.** Type this in the console and press Enter:
+
+```js
+console.log("Hello, World!");
+```
+
+**Method 2: HTML file.** Create `index.html` and `app.js` in a folder:
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>My first program</title>
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <h1>I am learning JavaScript</h1>
+  </body>
+</html>
+```
+
+```js
+const name = "Ayesha";
+console.log("Hello, World!");
+console.log(`My name is ${name}`);
+```
+
+Open `index.html` in the browser and check the console.
+
+**Method 3: Node.js.** Run the same `app.js` from the terminal:
+
+```bash
+node app.js
+```
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `script src="app.js"` | Tells the browser to load this JavaScript file |
+| `defer` | The script runs after the HTML is fully parsed |
+| `console.log("...")` | The text is printed to the console |
+| Backticks and `${name}` | A template literal, which inserts a variable into text |
+| `node app.js` | Node.js runs the file in the terminal |
+
+### Interview tip
+
+The difference between `defer` and `async` is asked often. Scripts with `defer` run in their own order after the HTML is parsed. Scripts with `async` run as soon as they are downloaded, and the order is not fixed.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Putting the script in the head without defer"
+  why="The script runs before the HTML, the elements do not exist yet, so querySelector returns null."
+  better="Add defer to the script tag or use type module, both run after the HTML."
+/>
+
+<Mistake
+  title="Writing the file path wrong"
+  why="The browser cannot find the file and the console shows a 404 error, so the code never runs."
+  better="Check the Network tab or the console and fix the src path relative to the HTML file."
+/>
+
+<Mistake
+  title="Forgetting to open the console"
+  why="The output of console.log appears in the DevTools console, not on the page. It looks like the code is not working."
+  better="Keep DevTools open while you work and read errors right away."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Introduction](/courses/javascript/introduction), [How JavaScript Runs](/courses/javascript/how-javascript-runs) |
+| **After this** | [Variables](/courses/javascript/variables), [Data Types](/courses/javascript/data-types) |
+| **Related** | [Debugging JavaScript](/courses/javascript/debugging), [npm & Packages](/courses/javascript/npm-and-packages) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Editor | VS Code |
+| Quick test | Browser DevTools console |
+| With a web page | `script src` + `defer` |
+| From the terminal | `node app.js` |
+| Seeing output | `console.log()` |
+
+<Callout variant="important" title="Remember">
+
+Write code, run it, check the console. The more you repeat this small cycle, the faster you will learn JavaScript.
+
+</Callout>

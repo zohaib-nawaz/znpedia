@@ -1,0 +1,185 @@
+---
+title: "Server & Client Components"
+description: "Next.js server client components: when to use a Server Component, when to add use client, fetching data on the server and keeping interactive parts in Client Components."
+keywords:
+  - next.js server client components
+  - use client directive
+  - react server components next.js
+  - next.js client component
+  - server-only package
+---
+
+## 1. What are Server and Client Components?
+
+<Callout variant="tip" title="Short definition">
+
+**A Server Component renders only on the server and its JavaScript is never sent to the browser. A Client Component is created with `"use client"`, hydrates in the browser and can use state, events and hooks.**
+
+</Callout>
+
+In the App Router, **every component is a Server Component by default**. When you need `useState`, `onClick` or a browser API, you add `"use client"` at the top of the file.
+
+## 2. Why does it matter?
+
+<CompareTable leftTitle="Everything on the client" rightTitle="Server + Client mix">
+
+JS for the whole UI goes to the browser | JS only for the interactive parts
+API route + useEffect to get data | Direct await in a Server Component
+You have to worry about hiding API keys | Secrets stay on the server
+A loading spinner first | HTML arrives with the data
+Large bundle, hard on slow phones | Small bundle, fast load
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Task | Which component |
+| --- | --- |
+| Fetching from a database or API | Server |
+| Secrets, API keys, tokens | Server |
+| Large libraries (markdown parser, date formatting) | Server |
+| `onClick`, `onChange`, live form state | Client |
+| `useState`, `useEffect`, `useContext` | Client |
+| `window`, `localStorage`, geolocation | Client |
+
+## 4. How does it work?
+
+`"use client"` is a **boundary**. The file that contains it, and all the components that file imports, go into the client bundle.
+
+<Flow title="The rendering journey">
+
+Server Components render on the server
+   ↓
+RSC payload + HTML are created
+   ↓
+HTML goes to the browser (visible immediately)
+   ↓
+JS for Client Components loads
+   ↓
+Hydration, buttons become interactive
+
+</Flow>
+
+Remember two rules:
+
+- A Server Component can **import** a Client Component.
+- A Client Component cannot import a Server Component, but it can receive one through **`children` or props**.
+
+Props that go from the Server to the Client must be **serializable**: strings, numbers, plain objects, arrays and Promises. Functions cannot be passed (except Server Actions).
+
+## 5. Code example
+
+### A Server Component page that uses a Client Component
+
+```tsx
+import { LikeButton } from "./like-button";
+
+async function getPost(id: string) {
+  const res = await fetch(`https://api.example.com/posts/${id}`);
+  return res.json();
+}
+
+export default async function PostPage({ params }: PageProps<"/posts/[id]">) {
+  const { id } = await params;
+  const post = await getPost(id);
+
+  return (
+    <article>
+      <h1>{post.title}</h1>
+      <p>{post.body}</p>
+      <LikeButton initialLikes={post.likes} />
+    </article>
+  );
+}
+```
+
+### Client Component
+
+```tsx
+"use client";
+
+import { useState } from "react";
+
+export function LikeButton({ initialLikes }: { initialLikes: number }) {
+  const [likes, setLikes] = useState(initialLikes);
+  return <button onClick={() => setLikes(likes + 1)}>Like {likes}</button>;
+}
+```
+
+### Protecting server-only code
+
+```ts
+import "server-only";
+
+export async function getSecretStats() {
+  const res = await fetch("https://api.example.com/stats", {
+    headers: { Authorization: `Bearer ${process.env.STATS_API_KEY}` },
+  });
+  return res.json();
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `PostPage` | A Server Component, async, fetches data directly |
+| `LikeButton` | A Client Component, uses `useState` and `onClick` |
+| `initialLikes` | A serializable prop passed from the server to the client |
+| `"use client"` | A boundary, everything below this file goes into the client bundle |
+| `import "server-only"` | Causes a build error if it is imported into the client by mistake |
+
+### Interview tip
+
+"Does `use client` mean the component does not render on the server?" No. Client Components also render on the server the first time to produce HTML, and then hydrate in the browser.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Adding use client at the top of a page"
+  why="The whole page and all its imports go into the client bundle, and you lose the benefits of the server."
+  better="Move the interactive part into a small separate Client Component and keep the page a Server Component."
+/>
+
+<Mistake
+  title="Importing a Server Component into a Client Component"
+  why="As soon as it is imported, it becomes a client component too, and server-only code fails."
+  better="Pass the Server Component into the Client Component through the children prop."
+/>
+
+<Mistake
+  title="Passing a function prop from the server"
+  why="Functions are not serializable, so Next.js throws an error."
+  better="Pass data, or pass a Server Action for mutations."
+/>
+
+<Mistake
+  title="Using a secret env variable in a Client Component"
+  why="Without NEXT_PUBLIC it will be undefined, and adding NEXT_PUBLIC leaks the secret into the browser."
+  better="Read secrets only in Server Components or server-only files."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [React Server Components](/courses/react/server-components), [React state](/courses/react/state), [Routing & Pages](/courses/nextjs/routing-and-pages) |
+| **Alongside** | [Data Fetching](/courses/nextjs/data-fetching), [Environment Variables](/courses/nextjs/environment-variables) |
+| **After** | [Rendering Strategies](/courses/nextjs/rendering-strategies), [Streaming & Suspense](/courses/nextjs/streaming-and-suspense), [Server Actions](/courses/nextjs/server-actions) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Default | Server Component |
+| When to use Client | State, events, hooks, browser APIs |
+| Boundary | `"use client"` at the top of the file |
+| Server inside client | Through `children` or props |
+| Props | Must be serializable |
+| Protection | `import "server-only"` |
+
+<Callout variant="important" title="Remember">
+
+**Data and secrets on the server, interactivity on the client.** Keep `"use client"` as low as you can (in leaf components).
+
+</Callout>

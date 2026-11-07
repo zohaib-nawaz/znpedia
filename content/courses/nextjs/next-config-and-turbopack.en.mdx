@@ -1,0 +1,189 @@
+---
+title: next.config & Turbopack
+description: Set up next.config and Turbopack in Next.js 16 - typed next.config.ts, redirects, headers, the turbopack key and how to opt out with --webpack.
+keywords:
+  - next.config turbopack
+  - next.config.ts
+  - turbopack next.js 16
+  - next.js webpack opt out
+---
+
+## 1. What are next.config and Turbopack?
+
+<Callout variant="tip" title="Short definition">
+
+**`next.config.ts` is a file in the project root that configures Next.js behavior, and Turbopack is a bundler written in Rust that is the default for both `next dev` and `next build` in Next.js 16.**
+
+</Callout>
+
+In `next.config.ts` you put settings like images, redirects, headers, output mode, the React Compiler and bundler options. Turbopack is the engine that bundles your code and produces the output for the browser and the server.
+
+## 2. Why does it matter?
+
+Every project has different needs: some need remote images, some need to redirect old URLs, some want to import SVGs as components. All of this lives in one place, in a typed config.
+
+<CompareTable leftTitle="Old setup" rightTitle="Next.js 16">
+
+next.config.js without types | next.config.ts and the NextConfig type
+The --turbopack flag for Turbopack in dev | Turbopack is the default in both dev and build
+The experimental.turbo key | A top-level turbopack key
+Slow webpack builds | Fast Turbopack builds and Fast Refresh
+Webpack as the only option | Opt out with --webpack if you need to
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Need | Config key |
+| --- | --- |
+| Allow remote images | `images.remotePatterns` |
+| Send old URLs to new ones | `redirects()` |
+| Add security headers | `headers()` |
+| A small output for Docker | `output: "standalone"` |
+| Turn on Cache Components | `cacheComponents: true` |
+| Turn SVGs into React components | `turbopack.rules` |
+| Change an import alias | `turbopack.resolveAlias` |
+
+## 4. How does it work?
+
+<Flow title="From config to bundle">
+
+Run next dev or next build
+↓
+Next.js reads next.config.ts
+↓
+Turbopack applies the config's rules and aliases
+↓
+Only the needed modules are compiled, and results are cached
+↓
+Output for the browser and the server
+
+</Flow>
+
+Turbopack is incremental: only the file that changed is compiled again. That is why the dev server starts quickly even in big projects and changes show up right away.
+
+## 5. Code example
+
+### Typed `next.config.ts`
+
+```ts
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  reactCompiler: true,
+  images: {
+    remotePatterns: [new URL("https://cdn.example.com/**")],
+  },
+  async redirects() {
+    return [
+      { source: "/old-blog/:slug", destination: "/blog/:slug", permanent: true },
+    ];
+  },
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [{ key: "X-Frame-Options", value: "DENY" }],
+      },
+    ];
+  },
+  turbopack: {
+    rules: {
+      "*.svg": {
+        loaders: ["@svgr/webpack"],
+        as: "*.js",
+      },
+    },
+    resolveAlias: {
+      underscore: "lodash",
+    },
+  },
+};
+
+export default nextConfig;
+```
+
+### Scripts and the webpack opt out
+
+```json
+{
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "build:webpack": "next build --webpack",
+    "start": "next start"
+  }
+}
+```
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `NextConfig` type | The editor shows an error for a wrong key or value |
+| `reactCompiler` | Turns on the React Compiler (needs `babel-plugin-react-compiler` installed) |
+| `redirects()` | A 308 redirect with `permanent: true` |
+| `headers()` | Headers on the response of every matching route |
+| `turbopack.rules` | A webpack loader for a file pattern, and `as` says what type the output is |
+| `turbopack.resolveAlias` | Maps imports of one package to another package |
+| `--webpack` | Uses webpack instead of Turbopack for this command |
+
+<Callout variant="note" title="Turbopack needs fewer loaders">
+
+Turbopack handles CSS, PostCSS, Sass and modern JavaScript out of the box. You do not need loaders like `css-loader` or `babel-loader`. Add only the loaders that return JavaScript, such as `@svgr/webpack` or `raw-loader`.
+
+</Callout>
+
+## 6. Common mistakes
+
+<Mistake
+  title="Using the old experimental.turbo key"
+  why="This is the old name, and since Next.js 15.3 the config has moved to the top-level turbopack key."
+  better="Put the settings in the turbopack key, or run the next-experimental-turbo-to-turbopack codemod."
+/>
+
+<Mistake
+  title="Keeping a custom webpack function and expecting Turbopack to read it"
+  why="Turbopack does not run the webpack() config function, so a build with such a config can fail or behave differently."
+  better="Migrate the logic to turbopack.rules and resolveAlias, or temporarily use the --webpack flag."
+/>
+
+<Mistake
+  title="Not restarting the dev server after a config change"
+  why="next.config.ts is read at startup, so new redirects or images settings do not apply to a running server."
+  better="Run next dev again after changing the config."
+/>
+
+<Mistake
+  title="Hardcoding secrets in next.config"
+  why="The config is committed to the repo and some values can even reach the client bundle."
+  better="Keep secrets in .env files and process.env."
+/>
+
+### Interview tip
+
+"Why is Turbopack faster than webpack?" Three reasons: it is written in Rust, it does incremental caching at the function level, and in dev it compiles only the routes that were requested.
+
+## 7. What to learn before and after
+
+| Stage | Chapters |
+| --- | --- |
+| Before | [Installation & Project Structure](/courses/nextjs/installation-and-project-structure), [What's New in Next.js 16](/courses/nextjs/nextjs-16-whats-new) |
+| Alongside | [Environment Variables](/courses/nextjs/environment-variables), [Image Optimization](/courses/nextjs/image-optimization) |
+| After | [Performance & Core Web Vitals](/courses/nextjs/performance), [Deployment](/courses/nextjs/deployment) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Config file | `next.config.ts` and the `NextConfig` type |
+| Default bundler | Turbopack, in both dev and build |
+| Opt out | `next dev --webpack`, `next build --webpack` |
+| Turbopack options | Top-level `turbopack`: `rules`, `resolveAlias`, `resolveExtensions`, `root` |
+| Routing config | `redirects()`, `rewrites()`, `headers()` |
+
+<Callout variant="important" title="Remember">
+
+Turbopack is the default in Next.js 16. Keep your config typed in `next.config.ts`, put bundler settings in the top-level `turbopack` key, and use webpack only when you need it, with `--webpack`.
+
+</Callout>

@@ -1,0 +1,185 @@
+---
+title: Naming Things
+description: How naming conventions work in clean code. Names for functions, booleans, hooks, files and exports that explain their job without any comments.
+keywords:
+  - naming conventions clean code
+  - variable naming best practices
+  - boolean naming is has
+  - function naming conventions
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**Build names from the full words of the problem domain, make a function's name say what it does or returns, and keep one fixed pattern for each kind of thing.**
+
+</Callout>
+
+When code has no comments, all the explaining falls on the names. A good name is half the documentation.
+
+| Thing | Convention | Example |
+| --- | --- | --- |
+| Function | One short verb, the module gives the context | `invoices.create`, `dispatch`, `record` |
+| Boolean | `is`, `has`, `can`, `should` prefix | `isExpired`, `hasQuotaLeft` |
+| Production check | `ensure` or `require`, `assert` only in tests | `ensureOwner(caller, doc)` |
+| Custom hook | A named state object, not a tuple or JSX | `{ leads, isLoading, refresh }` |
+| Component file | PascalCase | `LeadTable.tsx` |
+| Hook or module file | kebab-case | `use-lead-table.ts` |
+| Env variable | SCREAMING_SNAKE | `DATABASE_URL` |
+| Export | Named export, default only where the framework asks | `export function price()` |
+
+Do not mark something private with an underscore (`_cache`). Visibility comes from the language: do not export it from the module, or use `private` / `#field` in a class.
+
+## 2. Why does it matter?
+
+A bad name steals a little time from every reader. Across 100 files that adds up to hours, and a wrong name directly causes bugs.
+
+<CompareTable leftTitle="Bad names" rightTitle="Good names">
+
+data, temp, obj, x everywhere | invoice, overdueInvoices, customer
+You have to guess what a flag means | isArchived answers the question itself
+A hook tuple, you must remember the order | Named fields, no order problem
+Default export, imported under a different name in every file | Named export, one name everywhere, easy to search
+PascalCase and kebab-case mixed in one folder | The import path is predictable instead of a guess
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Very important | Naming is the cheapest habit with the biggest payoff |
+| **Production code** | Follow the repo's convention fully | Two styles in one repo make search and imports harder |
+| **Senior level** | Write conventions down and enforce them with lint | A rule that is not written down becomes an argument in review |
+
+## 4. Bad vs good code
+
+```tsx
+export default function useData(id: string) {
+  const [d, setD] = useState<any>(null);
+  const [l, setL] = useState(true);
+  const _load = () => fetchLeadsForCampaignById(id).then(setD).finally(() => setL(false));
+
+  useEffect(_load, [id]);
+
+  return [d, l, _load] as const;
+}
+
+const [leads, loading] = useData(campaignId);
+```
+
+```tsx
+export function useLeads(campaignId: string) {
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const refresh = useCallback(async () => {
+    setLeads(await campaigns.leads(campaignId));
+    setIsLoading(false);
+  }, [campaignId]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return { leads, isLoading, refresh };
+}
+
+const { leads, isLoading } = useLeads(campaignId);
+```
+
+| What is the difference? | Bad | Good |
+| --- | --- | --- |
+| Hook name | `useData`, which data? | `useLeads` is clear |
+| State name | `d`, `l` | `leads`, `isLoading` |
+| Function name | `fetchLeadsForCampaignById`, a whole sentence | `campaigns.leads`, the module gives the context |
+| Private | `_load` | Not exported at all, so no underscore needed |
+| Return | A tuple, a wrong order is a bug | An object, take values by name |
+| Export | Default | Named |
+
+### A one-word verb
+
+The strict house style says a function name should be **one short verb**: `create`, `cancel`, `record`. The context comes from the module or class name, and `invoices.cancel(id)` reads like a sentence.
+
+```ts
+export const invoices = {
+  create,
+  cancel,
+  send,
+};
+```
+
+## 5. How to apply it
+
+<Flow title="Before choosing a name">
+
+What is this thing called in the domain?
+↓
+If it is a function, what does it do or return?
+↓
+If it is a boolean, add is, has, can or should
+↓
+Does the module name already give the context? Then keep the name short
+↓
+Does the repo already have a pattern for this kind of thing? Follow that
+
+</Flow>
+
+## 6. Exceptions and common mistakes
+
+Loop counters `i`, `j` and coordinates `x`, `y` are fine, everyone knows them. Well-known domain abbreviations (`id`, `url`, `api`, `html`) are fine too.
+
+React's own `useState` gives a tuple, and that is the framework's decision. The named object rule is for your **custom** hooks.
+
+**An honest note:** "a one-word verb" is a strong opinion. Many teams prefer longer names like `fetchUserProfile` or `calculateInvoiceTotal`, especially when functions are imported from different files and the module context is not visible. The trade-off: a short name is good when the call site has context like `invoices.create`. Without context, a bare `create` is vague. Whichever you choose, keep it the same across the whole repo.
+
+<Mistake
+  title="Generic names like data, info, handle, manager"
+  why="These words fit everything, so they say nothing."
+  better="Use the real domain word, like invoice, overdueInvoices or sendReminder."
+/>
+
+<Mistake
+  title="A boolean name that does not read like a question"
+  why="Looking at status or flag, you cannot tell what true means."
+  better="A name like isActive, hasPaid or canEdit that is a yes or no question."
+/>
+
+<Mistake
+  title="Naming a production check assertX"
+  why="assert is a testing word, and the reader assumes it runs only in tests."
+  better="Name production checks ensureX or requireX."
+/>
+
+<Mistake
+  title="Returning JSX from a hook"
+  why="A hook's job is to give state and logic, and returning JSX traps the UI and the logic in one place."
+  better="The hook gives named state, and the component builds the JSX from it."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Self-Documenting Code](/courses/best-practices/self-documenting-code), [Variables](/courses/javascript/variables) |
+| **Alongside** | [Custom Hooks](/courses/react/custom-hooks), [Constants & Magic Values](/courses/best-practices/constants-and-magic-values) |
+| **After** | [Early Returns & Braces](/courses/best-practices/early-returns-and-braces), [Project Structure](/courses/best-practices/project-structure), [Database Naming & Design](/courses/best-practices/database-design) |
+
+## Final quick revision
+
+| Check | Question |
+| --- | --- |
+| Domain | Is the name the real business word? |
+| Function | Does the name say what it does or returns? |
+| Boolean | Does it start with is, has, can or should? |
+| Hook | Does it return a named object, not a tuple or JSX? |
+| Private | Was it hidden by not exporting, instead of an underscore? |
+| Files | Is there one naming style in the folder? |
+| Export | Is it a named export? |
+
+<Callout variant="important" title="Remember">
+
+Make the name so clear that a reader understands without opening the file. If a name still needs a comment, the name is not right yet.
+
+</Callout>

@@ -1,0 +1,179 @@
+---
+title: Server Components
+description: React server components explained, how components render on the server, what the use client and use server boundaries do, and when to use each one.
+keywords:
+  - react server components
+  - use client directive
+  - use server directive
+  - rsc react
+---
+
+## 1. What are Server Components?
+
+<Callout variant="tip" title="Short definition">
+
+**A Server Component is a React component that renders only on the server (or at build time), and its JavaScript code never goes to the browser.**
+
+</Callout>
+
+With Server Components (RSC) you can read data straight from a database or the file system, use `async` / `await`, and only the rendered output is sent to the client.
+
+For interactivity there are **Client Components**, which you mark with `"use client"` at the top of the file. Server Components run through a framework, such as the Next.js App Router.
+
+## 2. Why does it matter?
+
+In traditional client-side React, to fetch data you first download JavaScript, then the component mounts, then an API call goes out. Every library also ends up in the bundle.
+
+<CompareTable leftTitle="Client Components only" rightTitle="With Server Components">
+
+JS first, then fetch, then UI | The UI is ready on the server with its data
+A separate API endpoint for data | The component reads straight from the DB or a service
+A Markdown or date library in the bundle | Heavy libraries stay on the server
+Risk of leaking secrets to the client | API keys stay safe on the server
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Component | Server or Client | Why |
+| --- | --- | --- |
+| **Blog post page** | Server | Just reading content, no interactivity |
+| **Product list** | Server | Data from the DB, SEO-friendly HTML |
+| **Like button** | Client | Needs `onClick` and `useState` |
+| **Search input** | Client | State changes as the user types |
+| **Layout and navbar shell** | Server | Static structure, with small client parts inside |
+
+## 4. How does it work?
+
+By default (in a framework like Next.js) every component is a Server Component. A file with `"use client"` at the top, and everything it imports, becomes part of the client bundle. That line is a **boundary**.
+
+<Flow title="From request to screen">
+
+A request arrives at the server
+↓
+Server Components render and fetch data
+↓
+The output is serialized into the RSC payload
++
+The JS for Client Components goes in a separate bundle
+↓
+The browser shows the UI
+↓
+Client Components hydrate and become interactive
+
+</Flow>
+
+Props passed from a Server Component to a Client Component must be **serializable**: string, number, plain object, array, Date, Promise, JSX. Normal functions cannot be passed, only Server Functions marked with `"use server"`.
+
+## 5. Code example
+
+### Example 1: A Server Component that uses a Client Component
+
+```tsx
+import { db } from "@/lib/db";
+import LikeButton from "./LikeButton";
+
+export default async function PostPage({ id }: { id: string }) {
+  const post = await db.post.findUnique({ where: { id } });
+
+  if (!post) {
+    return <p>Post not found</p>;
+  }
+
+  return (
+    <article>
+      <h1>{post.title}</h1>
+      <p>{post.body}</p>
+      <LikeButton postId={post.id} initialLikes={post.likes} />
+    </article>
+  );
+}
+```
+
+```tsx
+"use client";
+
+import { useState } from "react";
+
+export default function LikeButton({ postId, initialLikes }: { postId: string; initialLikes: number }) {
+  const [likes, setLikes] = useState(initialLikes);
+  return <button onClick={() => setLikes(likes + 1)}>Like {likes}</button>;
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `async function PostPage` | A Server Component can be `async` |
+| `await db.post...` | A direct DB call, no API route |
+| `"use client"` | `LikeButton` and its imports go into the client bundle |
+| `postId`, `initialLikes` | Serializable props from server to client |
+
+### Example 2: A Server Function ("use server")
+
+```tsx
+"use server";
+
+import { db } from "@/lib/db";
+
+export async function addLike(postId: string) {
+  await db.post.update({ where: { id: postId }, data: { likes: { increment: 1 } } });
+}
+```
+
+A Client Component can import `addLike` and call it, or pass it to a form's `action`. React turns it into a network request. Note: `"use server"` is **not** for Server Components, it only marks server functions.
+
+### Interview tip
+
+Keep two misconceptions straight: (1) A Server Component needs no directive, it is the default. (2) Client Components are also pre-rendered to HTML on the server the first time, "client" means their JS also runs in the browser.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Using useState or onClick in a Server Component"
+  why="Server Components do not support hooks or event handlers, because they never run in the browser."
+  better="Pull the interactive part into a small Client Component and add use client there."
+/>
+
+<Mistake
+  title="Putting use client at the root of the whole app"
+  why="Then the entire tree goes into the client bundle and you lose the benefits of Server Components."
+  better="Keep use client as low as possible, on leaf components."
+/>
+
+<Mistake
+  title="Passing a function prop from server to client"
+  why="Normal functions cannot be serialized, so you get an error."
+  better="Pass data, or pass a Server Function marked with use server."
+/>
+
+<Mistake
+  title="Importing a Server Component into a Client Component"
+  why="As soon as it is imported it becomes a client module too, and server-only code breaks."
+  better="Pass the Server Component into the Client Component as children or a prop."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Async / Await](/courses/javascript/async-await), [Props](/courses/react/props), [Suspense & lazy()](/courses/react/suspense-and-lazy) |
+| **Alongside** | [The use() API](/courses/react/use-hook), [Actions, useActionState & useOptimistic](/courses/react/actions-and-form-hooks) |
+| **After** | [Server & Client Components in Next.js](/courses/nextjs/server-and-client-components), [Server Actions](/courses/nextjs/server-actions), [Data Fetching](/courses/react/data-fetching) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Server Component | Renders on the server, JS does not reach the client |
+| Default | In a framework every component runs on the server, no directive needed |
+| `"use client"` | The client boundary, hooks and events live here |
+| `"use server"` | Marks Server Functions, not components |
+| Props | Only serializable values go from server to client |
+
+<Callout variant="important" title="Remember">
+
+Data and heavy work on the **server**, interactivity on the **client**. Keep `"use client"` close to the leaves so the bundle stays small.
+
+</Callout>

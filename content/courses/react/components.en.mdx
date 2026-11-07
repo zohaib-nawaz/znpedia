@@ -1,0 +1,178 @@
+---
+title: Components
+description: Learn what React components are, how to create function components, naming rules, exports and how to combine components to build a UI.
+keywords:
+  - react components
+  - function components react
+  - react component tree
+  - reusable ui components
+---
+
+## 1. What are components?
+
+<Callout variant="tip" title="Short definition">
+
+**A React component is a JavaScript function that returns a piece of UI (JSX).**
+
+</Callout>
+
+Every button, card, navbar and even a whole page can be a component. You build a whole app by joining components like **Lego blocks**. Modern React uses only **function components**, and class components are the old way.
+
+## 2. Why do they matter?
+
+Imagine the same product card appears in 20 places on your site. Without components, the same HTML is copied everywhere, and one design change means editing 20 places.
+
+<CompareTable leftTitle="Without components" rightTitle="With components">
+
+The same markup copied again and again | Write it once, use it everywhere
+Edit many files for one change | Change one component, it updates everywhere
+All the UI in one huge file | Clean code in small pieces
+Hard to test | Each component can be tested separately
+
+</CompareTable>
+
+## 3. Where are they used?
+
+| Level | Example components |
+| --- | --- |
+| **Small UI pieces** | `Button`, `Avatar`, `Badge`, `Input` |
+| **Sections** | `Navbar`, `ProductCard`, `CommentList` |
+| **Pages** | `HomePage`, `DashboardPage` |
+| **Layouts** | `AppLayout` with a `Sidebar` |
+| **Libraries** | Ready-made components like shadcn/ui and MUI |
+
+## 4. How do they work?
+
+React calls your component function, it returns JSX, and React shows that JSX on the screen. One component uses other components, which creates a **component tree**.
+
+<Flow title="Component tree">
+
+App
+↓
+Header + ProductList + Footer
+↓
+Many ProductCard inside ProductList
+↓
+A Button inside every ProductCard
+
+</Flow>
+
+### Component rules
+
+| Rule | Reason |
+| --- | --- |
+| The name starts with a **capital letter** | React treats a lowercase name as an HTML tag |
+| It returns JSX | Or `null` if there is nothing to show |
+| It is pure | The same input gives the same output, no side effects during render |
+| It is defined at the top level | Do not define a component inside another component |
+
+## 5. Code example
+
+### Creating and exporting a component
+
+```jsx
+// src/components/Button.jsx
+export function Button({ label }) {
+  return <button className="btn">{label}</button>;
+}
+```
+
+```jsx
+// src/components/ProductCard.jsx
+import { Button } from "./Button.jsx";
+
+export function ProductCard({ name, price }) {
+  return (
+    <article className="card">
+      <h3>{name}</h3>
+      <p>Rs. {price}</p>
+      <Button label="Add to cart" />
+    </article>
+  );
+}
+```
+
+### Combining components
+
+```jsx
+// src/App.jsx
+import { ProductCard } from "./components/ProductCard.jsx";
+
+export default function App() {
+  return (
+    <main>
+      <h1>Our Shop</h1>
+      <ProductCard name="Keyboard" price={4500} />
+      <ProductCard name="Mouse" price={1800} />
+    </main>
+  );
+}
+```
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `function Button(...)` | A component is just a function |
+| `{ label }` | Destructuring the props, data comes from the parent |
+| `export function` | A named export, which another file can import |
+| `<Button label="..." />` | Using a component like a tag |
+| `price={4500}` | A number or JavaScript value in braces |
+| Two `ProductCard` | The same component, different data, different output |
+
+The full details of props are in the [Props](/courses/react/props) chapter.
+
+### Interview tip
+
+"What is the difference between a component and an element?" A component is a function (`ProductCard`). An element is the object created when you write JSX (`<ProductCard />`), which tells React to render this component.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Giving a component a lowercase name"
+  why="React treats button as the HTML button tag, and your component is not rendered."
+  better="Always use a PascalCase name, like ProductCard."
+/>
+
+<Mistake
+  title="Defining a component inside another component"
+  why="A new component is created on every render, its state resets and performance suffers."
+  better="Define every component at the top level of the file."
+/>
+
+<Mistake
+  title="Calling the component function yourself"
+  why="If you write ProductCard(), React does not treat it as a component, and hooks and state do not work properly."
+  better="Always use it like a JSX tag, with ProductCard inside angle brackets."
+/>
+
+<Mistake
+  title="Writing the whole app in one component"
+  why="The file gets long, hard to read and impossible to reuse."
+  better="When a part repeats or does a separate job, turn it into a new component."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [JSX](/courses/react/jsx), [Functions](/courses/javascript/functions), [Modules](/courses/javascript/modules) |
+| **Alongside** | [How React Renders](/courses/react/how-react-renders) |
+| **After** | [Props](/courses/react/props), [Children & Composition](/courses/react/children-and-composition), [State with useState](/courses/react/state) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Component | A function that returns JSX |
+| Name | PascalCase, like `UserCard` |
+| Use | Like a tag, `<UserCard />` |
+| Data | From the parent through props |
+| Structure | A component tree made of components |
+| Old way | Class components, not in new code |
+
+<Callout variant="important" title="Remember">
+
+Component = **a function with a capitalized name that returns JSX**. Build small, reusable and pure components.
+
+</Callout>

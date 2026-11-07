@@ -6,7 +6,14 @@ import { useSyncExternalStore } from "react";
 
 const subscribe = () => () => {};
 
-export function ThemeToggle() {
+type ThemeToggleProps = {
+  labels: {
+    toLight: string;
+    toDark: string;
+  };
+};
+
+export function ThemeToggle({ labels }: ThemeToggleProps) {
   const { resolvedTheme, setTheme } = useTheme();
   const mounted = useSyncExternalStore(subscribe, () => true, () => false);
 
@@ -31,10 +38,10 @@ export function ThemeToggle() {
 
   const describe = () => {
     if (isDark) {
-      return "Switch to light mode";
+      return labels.toLight;
     }
 
-    return "Switch to dark mode";
+    return labels.toDark;
   };
 
   const toggle = () => {

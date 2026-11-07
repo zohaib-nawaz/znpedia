@@ -1,0 +1,184 @@
+---
+title: Numbers & Math
+description: A guide to JavaScript numbers and Math, the floating point problem, toFixed, Math.round, random numbers and Intl.NumberFormat.
+keywords:
+  - javascript numbers math
+  - javascript math object
+  - javascript random number
+  - 0.1 + 0.2 javascript
+  - intl numberformat
+---
+
+## 1. What are numbers and Math?
+
+<Callout variant="tip" title="Short definition">
+
+**In JavaScript, `number` is a single type that holds both integers and decimals, and `Math` is a built-in object that does things like rounding, powers and random numbers.**
+
+</Callout>
+
+Under the hood, every `number` is a **64-bit floating point** value. That is why `5` and `5.0` are exactly the same. There are also some special values:
+
+| Value | When you get it |
+| --- | --- |
+| `Infinity` | `1 / 0` |
+| `-Infinity` | `-1 / 0` |
+| `NaN` | Invalid math, like `"abc" * 2` |
+| `Number.MAX_SAFE_INTEGER` | `9007199254740991`, precision breaks above this |
+
+## 2. Why does it matter?
+
+Prices, discounts, ratings, pagination, all of it is numbers. If you do not know the floating point problem, you are surprised to see `0.30000000000000004` as the answer to `0.1 + 0.2`, and wrong amounts end up in a bill.
+
+<CompareTable leftTitle="Without understanding" rightTitle="With understanding">
+
+Adding rupees as decimals | Keeping paisa as integers, dividing at the end
+Formatting numbers by hand | Currency format with Intl.NumberFormat
+Strange formulas for random | The standard pattern of Math.floor and Math.random
+Counting zeros in big numbers | Numeric separators like 1_000_000
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Real use | Tool |
+| --- | --- |
+| **Showing a price with 2 decimals** | `toFixed(2)` or `Intl.NumberFormat` |
+| **Rounding a rating** | `Math.round()` |
+| **Total pages** | `Math.ceil(total / perPage)` |
+| **OTP or dice** | `Math.random()` + `Math.floor()` |
+| **The largest value** | `Math.max(...values)` |
+| **Number checks** | `Number.isInteger()`, `Number.isNaN()` |
+
+## 4. How does it work?
+
+The computer stores numbers in **binary**. Decimals like `0.1` cannot be written exactly in binary, so a tiny difference is left over.
+
+<Flow title="The journey of 0.1 + 0.2">
+
+0.1 in binary, slightly approximate
+     ↓
+0.2 in binary, slightly approximate
+     ↓
+Add both, the small errors add up
+     ↓
+0.30000000000000004
+
+</Flow>
+
+<Callout variant="important" title="Mental model">
+
+**Do money calculations in integers (paisa), and convert to decimals only when displaying.**
+
+</Callout>
+
+## 5. Code example
+
+Floating point and a safe comparison:
+
+```js
+console.log(0.1 + 0.2);
+console.log(0.1 + 0.2 === 0.3);
+
+const close = Math.abs(0.1 + 0.2 - 0.3) < Number.EPSILON;
+console.log(close);
+
+const pricesInPaisa = [1050, 2099, 350];
+const totalPaisa = pricesInPaisa.reduce((sum, p) => sum + p, 0);
+console.log(totalPaisa / 100);
+```
+
+Output: `0.30000000000000004`, `false`, `true`, `34.99`.
+
+Math methods:
+
+```js
+console.log(Math.round(4.5));
+console.log(Math.floor(4.9));
+console.log(Math.ceil(4.1));
+console.log(Math.trunc(-4.7));
+console.log(Math.max(3, 9, 1));
+console.log(Math.abs(-12));
+console.log(2 ** 10);
+
+const dice = Math.floor(Math.random() * 6) + 1;
+console.log(dice);
+```
+
+Output: `5`, `4`, `5`, `-4`, `9`, `12`, `1024`, and a random number from `1` to `6`.
+
+Formatting:
+
+```js
+const salary = 1_250_000;
+
+console.log((19.987).toFixed(2));
+
+const pkr = new Intl.NumberFormat("en-PK", {
+  style: "currency",
+  currency: "PKR",
+});
+console.log(pkr.format(salary));
+```
+
+`toFixed(2)` gives the string `"19.99"`. `Intl.NumberFormat` adds the currency and commas according to the locale.
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `Number.EPSILON` | A tiny margin for two numbers being "almost equal" |
+| `Math.floor` / `Math.ceil` | Down / up to the nearest integer |
+| `Math.trunc` | Cuts off the decimal part |
+| `Math.random()` | A random decimal from `0` up to (not including) `1` |
+| `1_250_000` | A numeric separator, only for easier reading |
+| `toFixed(2)` | A **string** with 2 decimals |
+
+### Interview tip
+
+"Why is `0.1 + 0.2 !== 0.3`?" Answer: JavaScript uses IEEE 754 double precision floats. In binary, `0.1` and `0.2` are not exact, so a small rounding error appears. This is not only JavaScript, most languages do it.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Treating the result of toFixed as a number"
+  why="toFixed returns a string, so using plus on it joins text."
+  better="Do calculations with numbers, and use toFixed or Intl.NumberFormat only for display."
+/>
+
+<Mistake
+  title="Comparing decimals directly with ==="
+  why="Because of floating point error, 0.1 + 0.2 === 0.3 gives false."
+  better="Work in integers (like paisa) or use a tolerance check with Number.EPSILON."
+/>
+
+<Mistake
+  title="Using Math.random for security"
+  why="Math.random is not cryptographically secure, so its numbers can be predicted."
+  better="Use crypto.getRandomValues or crypto.randomUUID for tokens or passwords."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Data Types](/courses/javascript/data-types), [Operators](/courses/javascript/operators), [Type Conversion](/courses/javascript/type-conversion) |
+| **After this** | [Conditionals](/courses/javascript/conditionals), [Loops](/courses/javascript/loops) |
+| **Further on** | [Array Methods](/courses/javascript/array-methods), [Spread & Rest](/courses/javascript/spread-and-rest) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| One `number` type | Both integers and decimals, a 64-bit float |
+| Floating point | `0.1 + 0.2` is not exactly `0.3` |
+| Money | Calculate in integers |
+| Rounding | `round`, `floor`, `ceil`, `trunc` |
+| Random int | `Math.floor(Math.random() * n) + 1` |
+| Formatting | `Intl.NumberFormat`, `toFixed` gives a string |
+
+<Callout variant="important" title="Remember">
+
+**Calculate with numbers, format only at the end.** And for security, use `crypto`, not `Math.random()`.
+
+</Callout>

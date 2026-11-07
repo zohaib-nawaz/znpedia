@@ -1,0 +1,177 @@
+---
+title: useContext
+description: Learn how the React useContext hook shares data without prop drilling, including the React 19 syntax that lets Context act as its own provider.
+keywords:
+  - react usecontext
+  - react context api
+  - prop drilling solution
+  - createcontext react 19
+---
+
+## 1. What is useContext?
+
+<Callout variant="tip" title="Short definition">
+
+**`useContext` is a hook that lets any component below read a value that was placed higher up in the component tree.**
+
+</Callout>
+
+Normally, data travels from parent to child through props. But if a value (like the theme or the logged-in user) is needed by many components, passing props through every level gets tiring.
+
+Context works like a "broadcast". Put a value in one place at the top, and any component below that needs it can pick it up with `useContext`.
+
+## 2. Why does it matter?
+
+This problem is called **prop drilling**: components in the middle receive and forward props that they do not need themselves.
+
+<CompareTable leftTitle="Prop drilling" rightTitle="With Context">
+
+App passes a theme prop to Layout | App puts the theme in Context once
+Layout passes a theme prop to Sidebar | Sidebar does not need to pass anything
+Sidebar passes a theme prop to Button | Button reads the theme itself with useContext
+Add a new level and you change every place | The components in the middle stay untouched
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Use case | What goes in Context |
+| --- | --- |
+| **Theme** | `"light"` or `"dark"` mode |
+| **Auth** | The current user and a logout function |
+| **Language** | The selected locale, like `"ur"` or `"en"` |
+| **Design system** | The shared size and variant of a form or table |
+
+Context is best for values that **change rarely** and are **needed in many places**. You do not need to put everything in Context.
+
+## 4. How does it work?
+
+There are three steps: create the Context, provide a value, and read it below.
+
+<Flow title="The Context flow">
+
+Create ThemeContext with createContext
+↓
+Wrap the tree at the top with ThemeContext and a value
+↓
+Call useContext(ThemeContext) in any component below
+↓
+React gives it the value from the closest provider
+
+</Flow>
+
+When the provider's value changes, **all components** that read that Context re-render. This is why you should design the value carefully.
+
+<Callout variant="note" title="New syntax in React 19">
+
+Since React 19, you can render Context directly as the provider: `<ThemeContext value="dark">`. The old `<ThemeContext.Provider>` still works, but it will be deprecated later.
+
+</Callout>
+
+## 5. Code example
+
+### Theme Context
+
+```tsx
+import { createContext, useContext, useState } from "react";
+
+type Theme = "light" | "dark";
+
+const ThemeContext = createContext<Theme>("light");
+
+export default function App() {
+  const [theme, setTheme] = useState<Theme>("light");
+
+  return (
+    <ThemeContext value={theme}>
+      <button onClick={() => setTheme(theme === "light" ? "dark" : "light")}>
+        Toggle theme
+      </button>
+      <Toolbar />
+    </ThemeContext>
+  );
+}
+
+function Toolbar() {
+  return <SaveButton />;
+}
+
+function SaveButton() {
+  const theme = useContext(ThemeContext);
+  return <button className={`btn-${theme}`}>Save</button>;
+}
+```
+
+### How does the code work?
+
+| Line | Meaning |
+| --- | --- |
+| `createContext<Theme>("light")` | Creates the Context, with `"light"` as the default value |
+| `<ThemeContext value={theme}>` | All components below now have access to `theme` |
+| `Toolbar` | The component in the middle, which passed no props |
+| `useContext(ThemeContext)` | `SaveButton` read the theme directly |
+
+### A clean pattern with a custom hook
+
+```tsx
+const AuthContext = createContext<{ user: string | null } | null>(null);
+
+export function useAuth() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) {
+    throw new Error("useAuth must be used inside AuthProvider");
+  }
+  return ctx;
+}
+```
+
+This pattern throws an error right away if the hook is used in the wrong place, and the rest of your code only needs to write `useAuth()`.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Calling useContext outside a provider"
+  why="If no provider is found, React gives you the default value, and the bug stays hidden."
+  better="Keep the component inside the provider, or add a null check in a custom hook and throw an error."
+/>
+
+<Mistake
+  title="Passing a new object as the value on every render"
+  why="A new object is different every time, so all consumers re-render for no reason."
+  better="Keep the value in useMemo, or use React Compiler, which handles this for you."
+/>
+
+<Mistake
+  title="Putting all state into Context"
+  why="Fast-changing state re-renders the whole tree and makes the app feel slow."
+  better="Keep local state local. Use Context only for shared values that change rarely."
+/>
+
+### Interview tip
+
+If you are asked "Can Context replace Redux?", the answer is: Context is only a way to **pass data**, not state management. For large, complex state, `useReducer` + Context or a library like Zustand is a better fit.
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Props](/courses/react/props), [Lifting State Up](/courses/react/lifting-state-up), [State with useState](/courses/react/state) |
+| **Alongside** | [useReducer](/courses/react/use-reducer), [Custom Hooks](/courses/react/custom-hooks) |
+| **After** | [The use() API](/courses/react/use-hook), [State Management Libraries](/courses/react/state-management) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| What it is | Reading a value from higher in the tree directly |
+| Problem it solves | Prop drilling |
+| How to create it | `createContext(defaultValue)` |
+| Providing (React 19) | `<MyContext value={...}>` |
+| Reading | `useContext(MyContext)` or `use(MyContext)` |
+| Re-render | All consumers, when the value changes |
+
+<Callout variant="important" title="Remember">
+
+Context is a shortcut for **passing data**. Keep the value stable, and only put in what many components really need.
+
+</Callout>

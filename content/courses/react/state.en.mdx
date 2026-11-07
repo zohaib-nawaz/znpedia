@@ -1,0 +1,169 @@
+---
+title: State with useState
+description: Learn how to create and update component state with the React useState hook, including re-renders, functional updates and immutable objects.
+keywords:
+  - react usestate
+  - usestate hook example
+  - react state
+  - react re-render
+  - update state object react
+---
+
+## 1. What is state with useState?
+
+<Callout variant="tip" title="Short definition">
+
+**State is a component's own memory. The `useState` hook creates this memory and gives you a function to update it.**
+
+</Callout>
+
+A normal variable is created again on every render, and changing it does not update the screen. **State** is remembered between renders, and when you set it, React **renders the component again**.
+
+## 2. Why does it matter?
+
+<CompareTable leftTitle="Normal variable" rightTitle="useState">
+
+Value resets on every render | Value is remembered between renders
+Change the value, the screen stays the same | Set it, and React re-renders
+React does not know about the change | React tracks the change
+You cannot build an interactive UI | Counters, toggles and forms all become possible
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Use case | What to keep in state |
+| --- | --- |
+| **Counter / likes** | A number |
+| **Modal open/close** | A boolean |
+| **Form input** | A string |
+| **Todo list** | An array of objects |
+| **Selected tab** | A string or an id |
+
+## 4. How does it work?
+
+`useState(initialValue)` returns an array: the current value and a **setter function**.
+
+<Flow title="The state update cycle">
+
+The user clicks a button
+↓
+The setter function is called with a new value
+↓
+React schedules a re-render
+↓
+The component runs again and gets the new state
+↓
+The new JSX appears on the screen
+
+</Flow>
+
+<Callout variant="important" title="State is a snapshot">
+
+Inside one render, the state value is **fixed**. Even after you call the setter, that same render still sees the old value. The new value arrives in the next render.
+
+</Callout>
+
+## 5. Code example
+
+### Counter
+
+```jsx
+import { useState } from "react";
+
+export default function Counter() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <button onClick={() => setCount(count + 1)}>
+      Clicked {count} times
+    </button>
+  );
+}
+```
+
+### Functional update
+
+When the new value depends on the previous value, pass an updater function:
+
+```jsx
+function handleTripleClick() {
+  setCount((c) => c + 1);
+  setCount((c) => c + 1);
+  setCount((c) => c + 1);
+}
+```
+
+### Updating object state
+
+```jsx
+const [user, setUser] = useState({ name: "Ali", city: "Lahore" });
+
+function moveToKarachi() {
+  setUser({ ...user, city: "Karachi" });
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `useState(0)` | Initial value is 0, used only on the first render |
+| `[count, setCount]` | Array destructuring: the value and the setter |
+| `setCount(count + 1)` | Sets the new value and triggers a re-render |
+| `setCount((c) => c + 1)` | Calculates from the latest queued value, so running it three times gives +3 |
+| `{ ...user, city }` | Creates a new object instead of mutating the old one |
+
+## 6. Common mistakes
+
+<Mistake
+  title="Mutating state directly, such as assigning to user.city"
+  why="The object stays the same, so React does not notice the change and does not re-render."
+  better="Always create a new object or array. Use immutable patterns like spread, map and filter."
+/>
+
+<Mistake
+  title="Logging state right after calling the setter and expecting the new value"
+  why="State is a snapshot, so the current render still holds the old value."
+  better="If you need the new value now, calculate it in a variable first, or use it in the next render."
+/>
+
+<Mistake
+  title="Writing count + 1 directly in an update that depends on the previous value"
+  why="When several updates run in one event, they all use the same old value and the result is wrong."
+  better="Write an updater function: setCount(c => c + 1)."
+/>
+
+<Mistake
+  title="Turning a value that can be calculated into state as well"
+  why="You have to keep two states in sync, and that leads to bugs."
+  better="Calculate derived values during render, for example fullName = first + last."
+/>
+
+### Interview tip
+
+"Why does a state update feel async?" Answer: React **batches** updates and gives you the new value after the render. Each render sees one snapshot of state.
+
+## 7. What to learn before and after
+
+| Stage | Chapters |
+| --- | --- |
+| **Before** | [Props](/courses/react/props), [How React Renders](/courses/react/how-react-renders) |
+| **Alongside** | [Handling Events](/courses/react/events), [Forms & Controlled Inputs](/courses/react/forms) |
+| **After** | [Lifting State Up](/courses/react/lifting-state-up), [useReducer](/courses/react/use-reducer), [Rules of Hooks](/courses/react/rules-of-hooks) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `useState` | Creates memory for the component |
+| Return value | `[value, setValue]` |
+| Setter | Sets a new value and triggers a re-render |
+| Snapshot | The value does not change inside the current render |
+| Objects/arrays | Always make a new copy |
+
+<Callout variant="important" title="Remember">
+
+Set state, do not mutate it. If the update depends on the previous value, use an **updater function**.
+
+</Callout>

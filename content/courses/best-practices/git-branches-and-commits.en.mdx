@@ -1,0 +1,197 @@
+---
+title: Git Branches & Commits
+description: Git commit message best practices and branch naming, small checkpoint commits, never rewriting pushed history, and the dangers of stash on a shared tree.
+keywords:
+  - git commit message best practices
+  - git branch naming convention
+  - conventional commits vs plain commits
+  - git stash reset danger
+  - atomic commits
+---
+
+## 1. What is this practice?
+
+<Callout variant="tip" title="Rule">
+
+**`main` is always deployable. Work happens on a small `type/kebab-summary` branch, with a small commit at every meaningful checkpoint, and history that has been pushed is never rewritten.**
+
+</Callout>
+
+Some parts of this chapter are universal (main stays deployable, small commits, never rewriting pushed history) and some are a **house style** (one lowercase line, no body). Understand the two separately.
+
+## 2. Why does it matter?
+
+Git is your undo button and the team's memory at the same time. Big commits cannot be undone, wrong commands can erase other people's work, and rewritten history breaks the team's clones.
+
+<Callout variant="note" title="Real incident">
+
+Two people (a developer and an AI agent) were working on the same working tree. The agent ran `git stash` to clean up its own work. The stash also took the other person's uncommitted work. Then `git checkout <path>` erased the change in one more file, which was only caught when the typecheck failed.
+
+</Callout>
+
+<CompareTable leftTitle="Without discipline" rightTitle="With discipline">
+
+Commit straight to main | A short-lived branch, then a PR
+A day's work in one commit | A small commit at every checkpoint
+fixes, wip, update | A clear line saying what changed and why
+Amend and force push after pushing | Pushed history is never rewritten
+git add -A picks up everything | Stage only your own paths
+The branch lingers after merge | Delete it on merge
+
+</CompareTable>
+
+## 3. When to follow it
+
+| Level | How important | Why |
+| --- | --- | --- |
+| **Learning project** | Branches and clear commit messages | The earlier you build the Git habit, the better |
+| **Production code** | The full rule, with a protected main | A wrong merge or rewrite breaks production |
+| **Senior level** | Branch protection, PR rules, keeping history clean | Guard rails for the team |
+
+## 4. Bad vs good code
+
+### Branch names
+
+```bash
+git switch -c my-name/fixes
+git switch -c ui
+git switch -c feature/Payroll_Export
+```
+
+```bash
+git switch -c feat/payroll-export
+git switch -c fix/csv-upload-encoding
+git switch -c db/add-invoice-status-index
+```
+
+| Type | When |
+| --- | --- |
+| `feat/` | A new capability |
+| `fix/` | A bug fix |
+| `chore/` | Tooling, dependencies, cleanup |
+| `refactor/` | No change in behaviour |
+| `docs/` | Documentation only |
+| `db/` | A migration only |
+
+### Commit messages
+
+```bash
+git commit -m "fixes"
+git commit -m "WIP"
+git commit -m "Updated stuff."
+```
+
+```bash
+git commit -m "reject uploads that are not really csvs"
+git commit -m "show invoice total in the export header"
+git commit -m "retry webhook delivery twice before failing"
+```
+
+### Staging
+
+```bash
+git add -A
+git stash
+```
+
+```bash
+git add src/invoices/export.ts src/invoices/export.test.ts
+git commit -m "add csv export for invoices"
+```
+
+### What is the difference?
+
+| Thing | Bad | Good |
+| --- | --- | --- |
+| Branch | A person's name or something meaningless | Type and task |
+| Message | Says nothing | What changed, and why |
+| Staging | Everything | Only your own files |
+| Shared tree | `stash`, `reset`, `clean` | Work only on your own paths |
+
+## 5. How to apply it
+
+<Flow title="The git flow for one task">
+
+A new branch from main: type/kebab-summary
+↓
+Do the work, keep the tree working
+↓
+At every checkpoint stage your own paths and commit
+↓
+Before pushing, squash only your own unpushed fixups
+↓
+Open a PR
+↓
+Delete the branch after merge
+
+</Flow>
+
+### House style: one lowercase line
+
+In this style a commit message is a single lowercase line: what changed and why, under 72 characters, no period at the end. No body, no trailer, no attribution line (like "Generated with" or `Co-Authored-By`).
+
+The reasoning: the branch type already tells the category, small commits do not need long explanations, and reasoning that must last a long time goes into the repo's decisions log, where it is easy to find.
+
+**Other teams differ, and that is fine too:**
+
+| Style | Example | Where it is common |
+| --- | --- | --- |
+| Conventional Commits | `feat(api): add csv export` | Open source, automatic changelog and versioning |
+| Subject + body | A summary on the first line, a blank line, then a paragraph | The Linux kernel, git itself |
+| Trailers | `Co-Authored-By`, `Signed-off-by` | Pair programming, projects that use DCO |
+
+Follow the style of the team you are on. What matters is consistency and a clear "what and why".
+
+### Universal rules
+
+- Never change a pushed commit with `--amend` or a force push. It breaks other people's history.
+- Squash fixups only on your own unpushed branch.
+- Do not squash the whole repo history into one commit, all the reasoning is lost.
+- On a shared tree, `git stash`, `git checkout <path>`, `git reset`, `git clean` and `git restore` can take or erase someone else's work. Run them only when you are sure the tree holds only your work.
+
+## 6. Exceptions and common mistakes
+
+**When the rule does not apply:** in a solo learning repo, committing straight to `main` is fine. Release branches (`v1`) are fine in products that have a staging lane and where the README says which branch deploys where.
+
+<Mistake
+  title="One big commit at the end of the day"
+  why="If a bug shows up you cannot undo half the work, and review becomes hard."
+  better="Make a small commit at every working checkpoint."
+/>
+
+<Mistake
+  title="Amend or force push after pushing"
+  why="Teammates' local history diverges from yours and work can be lost."
+  better="Fix the mistake with a new commit."
+/>
+
+<Mistake
+  title="git stash on a shared tree"
+  why="Stash picks up every uncommitted change, not just yours."
+  better="Commit your own files explicitly, or work in a separate worktree."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Introduction](/courses/best-practices/introduction), [Definition of Done](/courses/best-practices/definition-of-done) |
+| **Alongside** | [Pull Requests & Code Review](/courses/best-practices/pull-requests-and-code-review), [Documentation & Decision Records](/courses/best-practices/documentation-and-decisions) |
+| **After** | [CI/CD & Environments](/courses/best-practices/ci-cd-and-environments), [Working with AI Coding Agents](/courses/best-practices/working-with-ai-agents) |
+
+## Final quick revision
+
+| Check | Yes? |
+| --- | --- |
+| Branch is `type/kebab-summary` | |
+| Small checkpoint commits | |
+| Message: what and why | |
+| Stage only your own paths | |
+| Pushed history not rewritten | |
+| Branch deleted after merge | |
+
+<Callout variant="important" title="Remember">
+
+A commit is your save point, and pushed history is the team's trust. Make small save points, and do not betray that trust.
+
+</Callout>

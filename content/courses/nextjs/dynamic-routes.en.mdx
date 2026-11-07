@@ -1,0 +1,180 @@
+---
+title: "Dynamic Routes"
+description: "Next.js dynamic routes params explained: [slug] folders, catch-all segments, awaiting async params, the PageProps helper and generateStaticParams."
+keywords:
+  - next.js dynamic routes params
+  - next.js slug page
+  - next.js catch all routes
+  - generatestaticparams
+  - next.js async params
+---
+
+## 1. What are dynamic routes?
+
+<Callout variant="tip" title="Short definition">
+
+**A dynamic route is a route where one segment is wrapped in square brackets, like `[slug]`, and the value from the URL reaches the page through the `params` prop.**
+
+</Callout>
+
+You cannot create 500 folders for 500 blog posts. Instead you create one folder, `app/blog/[slug]`, and `/blog/hello` and `/blog/nextjs-16` are all rendered by that same page.
+
+## 2. Why does it matter?
+
+<CompareTable leftTitle="Static folders" rightTitle="Dynamic segment">
+
+A separate folder for every post | One [slug] folder for all of them
+New post = new code | New post = just a database entry
+URL value is hardcoded | URL value comes from params
+Thousands of files | One page.tsx
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Route | Example URL | `params` |
+| --- | --- | --- |
+| `app/blog/[slug]/page.tsx` | `/blog/hello` | `{ slug: "hello" }` |
+| `app/shop/[category]/[id]/page.tsx` | `/shop/shoes/42` | `{ category: "shoes", id: "42" }` |
+| `app/docs/[...slug]/page.tsx` | `/docs/a/b` | `{ slug: ["a", "b"] }` |
+| `app/docs/[[...slug]]/page.tsx` | `/docs` | `{ slug: undefined }` |
+
+`[...slug]` is a **catch-all** (one or more segments). `[[...slug]]` is an **optional catch-all**, which also matches the empty `/docs`.
+
+## 4. How does it work?
+
+<Flow title="/blog/nextjs-16 request">
+
+URL: /blog/nextjs-16
+   ↓
+Next.js matches app/blog/[slug]
+   ↓
+params = Promise of slug nextjs-16
+   ↓
+Page awaits params
+   ↓
+Fetch the post using slug
+   ↓
+Render the post
+
+</Flow>
+
+In Next.js 16, `params` is a **Promise**. In a Server Component you use `await params`, in a Client Component page you use React's `use(params)`, and in any Client Component you can use the `useParams()` hook.
+
+If you give Next.js the slugs that are known at build time, `generateStaticParams` **prerenders** those pages in advance.
+
+## 5. Code example
+
+### Blog post page
+
+```tsx
+import { notFound } from "next/navigation";
+
+type Post = { slug: string; title: string; body: string };
+
+async function getPost(slug: string): Promise<Post | null> {
+  const res = await fetch(`https://api.example.com/posts/${slug}`);
+  if (!res.ok) return null;
+  return res.json();
+}
+
+export async function generateStaticParams() {
+  const posts: Post[] = await fetch("https://api.example.com/posts").then((r) =>
+    r.json()
+  );
+  return posts.map((post) => ({ slug: post.slug }));
+}
+
+export default async function PostPage({ params }: PageProps<"/blog/[slug]">) {
+  const { slug } = await params;
+  const post = await getPost(slug);
+
+  if (!post) notFound();
+
+  return (
+    <article>
+      <h1>{post.title}</h1>
+      <p>{post.body}</p>
+    </article>
+  );
+}
+```
+
+### Params in a Client Component
+
+```tsx
+"use client";
+
+import { useParams } from "next/navigation";
+
+export function ShareButton() {
+  const { slug } = useParams<{ slug: string }>();
+  return <button>Share {slug}</button>;
+}
+```
+
+### How does the code work?
+
+| Part | Meaning |
+| --- | --- |
+| `[slug]` folder | This part of the URL becomes a variable |
+| `PageProps<"/blog/[slug]">` | A global helper that creates the type of `params` for you |
+| `await params` | In Next.js 16, params is a Promise |
+| `generateStaticParams` | Tells Next.js which slugs to prerender at build time |
+| `notFound()` | Shows the `not-found.tsx` UI when the post does not exist |
+| `useParams()` | Gives the current params in a Client Component |
+
+<Callout variant="tip" title="Where do the type helpers come from?">
+
+`PageProps`, `LayoutProps` and `RouteContext` are global types that are generated from your routes when you run `next dev`, `next build` or `next typegen`. You do not need to import them.
+
+</Callout>
+
+### Interview tip
+
+"What is the difference between catch-all and optional catch-all?" `[...slug]` needs at least one segment, while `[[...slug]]` also matches the base path (`/docs`).
+
+## 6. Common mistakes
+
+<Mistake
+  title="Reading params.slug directly"
+  why="In Next.js 16, params is a Promise. Reading it directly gives undefined, and synchronous access has been removed."
+  better="Write const slug = (await params).slug, or destructure after awaiting."
+/>
+
+<Mistake
+  title="Showing an empty page when the post is missing"
+  why="The user sees a confusing page and search engines receive a 200 status."
+  better="Call notFound() when there is no data, so the 404 UI and the correct status are returned."
+/>
+
+<Mistake
+  title="Treating params as a number"
+  why="Every value that comes from the URL is a string, and in a catch-all it is an array of strings."
+  better="Convert with Number(id) when needed, and call notFound() on an invalid value."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Routing & Pages](/courses/nextjs/routing-and-pages), [JavaScript async/await](/courses/javascript/async-await) |
+| **Alongside** | [Loading, Error & Not Found UI](/courses/nextjs/loading-and-error-ui), [React use hook](/courses/react/use-hook) |
+| **After** | [Rendering Strategies](/courses/nextjs/rendering-strategies), [Data Fetching](/courses/nextjs/data-fetching), [Metadata & SEO](/courses/nextjs/metadata-and-seo) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| Syntax | `[slug]`, `[...slug]`, `[[...slug]]` |
+| Where the value is | `params` prop (a Promise) |
+| In a Server Component | `await params` |
+| In a Client Component | `use(params)` or `useParams()` |
+| Prerendering | `generateStaticParams` |
+| Missing data | `notFound()` |
+
+<Callout variant="important" title="Remember">
+
+**Square brackets = dynamic segment.** In Next.js 16, always await `params`.
+
+</Callout>

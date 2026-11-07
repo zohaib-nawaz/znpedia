@@ -1,0 +1,194 @@
+---
+title: Loops
+description: Learn JavaScript loops, the difference between for, while, do while, for...of and for...in, with break and continue, and when to use each.
+keywords:
+  - javascript loops for while
+  - for of vs for in
+  - javascript break continue
+  - do while loop javascript
+---
+
+## 1. What are loops?
+
+<Callout variant="tip" title="Short definition">
+
+**A loop runs the same code again and again while a condition stays true, or until all the items in a list are done.**
+
+</Callout>
+
+| Loop | When to use it |
+| --- | --- |
+| `for` | You know how many times to run, or you need the index |
+| `while` | You do not know how many times, it depends on a condition |
+| `do...while` | You must run at least once |
+| `for...of` | Over the **values** of an array, string, `Map` or `Set` |
+| `for...in` | Over the **keys** of an object |
+
+## 2. Why does it matter?
+
+Imagine printing the price of 100 products. Writing a separate line for each is impossible. A loop is written once and runs on every item.
+
+<CompareTable leftTitle="Without a loop" rightTitle="With a loop">
+
+A separate line for every item | One block, all the items
+More items means more code | The same code, however much data
+A chance of mistakes in every line | Logic in one place, and the fix in one place
+Hard to work out a total | The total updates on every round
+
+</CompareTable>
+
+## 3. Where is it used?
+
+| Real use | Loop |
+| --- | --- |
+| **Cart total** | `for...of` |
+| **Table from 1 to 10** | `for` |
+| **Retry until success** | `while` |
+| **Show a menu, then ask again?** | `do...while` |
+| **Printing every setting of an object** | `for...of` + `Object.entries()` |
+| **Stopping as soon as the first match is found** | `break` |
+
+## 4. How does it work?
+
+A classic `for` loop has three parts: **start**, **condition**, **update**.
+
+<Flow title="Cycle of a for loop">
+
+Start: let i = 0
+     ↓
+Check condition: is i less than 3?
+     ↓
+If true, run the body
+     ↓
+Update: i++
+     ↓
+Back to the condition check, if false the loop ends
+
+</Flow>
+
+`break` ends the loop immediately. `continue` skips only the current round and moves on to the next one.
+
+<Callout variant="important" title="Mental model">
+
+**`for...of` = every value ("of" the list). `for...in` = every key ("in" the object). For arrays, always use `for...of`.**
+
+</Callout>
+
+## 5. Code example
+
+`for` and `while`:
+
+```js
+for (let i = 1; i <= 3; i++) {
+  console.log(`5 x ${i} = ${5 * i}`);
+}
+
+let attempts = 0;
+while (attempts < 3) {
+  attempts++;
+  console.log(`Attempt ${attempts}`);
+}
+```
+
+`for...of` with arrays and objects:
+
+```js
+const cart = [
+  { name: "Book", price: 800 },
+  { name: "Pen", price: 50 },
+  { name: "Bag", price: 2500 },
+];
+
+let total = 0;
+for (const item of cart) {
+  total += item.price;
+}
+console.log(total);
+
+const settings = { theme: "dark", lang: "ur" };
+for (const [key, value] of Object.entries(settings)) {
+  console.log(`${key}: ${value}`);
+}
+```
+
+Output: `3350`, `theme: dark`, `lang: ur`.
+
+`break` and `continue`:
+
+```js
+const numbers = [4, 7, -1, 9, 12];
+
+for (const n of numbers) {
+  if (n < 0) continue;
+  if (n > 10) break;
+  console.log(n);
+}
+```
+
+Output: `4`, `7`, `9`. `-1` was skipped, and the loop stopped at `12`.
+
+### How does the code work?
+
+| Item | Meaning |
+| --- | --- |
+| `let i = 1; i <= 3; i++` | Start, condition, update |
+| `while (attempts < 3)` | Keep running while the condition is true |
+| `for (const item of cart)` | The next item on every round, no index needed |
+| `Object.entries()` | Turns an object into an array of `[key, value]` pairs |
+| `continue` | Skip this round, go to the next |
+| `break` | End the whole loop |
+
+### Interview tip
+
+"Why should you not run `for...in` on an array?" Because it gives **keys** (string indexes), not values, and it can also pick up extra properties that come from the prototype. For arrays, `for...of` or array methods are better.
+
+## 6. Common mistakes
+
+<Mistake
+  title="Creating an infinite loop"
+  why="The while condition never becomes false because you forgot to update the counter, and the page freezes."
+  better="In every while loop, check that there is an update that will make the condition false."
+/>
+
+<Mistake
+  title="Running for...in on an array"
+  why="You get string indexes instead of values, and sometimes extra properties too."
+  better="For arrays, use for...of or array methods like map and filter."
+/>
+
+<Mistake
+  title="Off by one error"
+  why="Writing i <= arr.length makes the index go out of range on the last round and gives undefined."
+  better="In an index loop write i < arr.length, or just use for...of."
+/>
+
+<Mistake
+  title="Trying to break inside forEach"
+  why="break does not work inside a forEach callback, it throws a SyntaxError."
+  better="If you need to stop midway, use for...of + break, or methods like find and some."
+/>
+
+## 7. What to learn before and after
+
+| Stage | Topics |
+| --- | --- |
+| **Before** | [Conditionals](/courses/javascript/conditionals), [Operators](/courses/javascript/operators) |
+| **After this** | [Truthy, Falsy & Equality](/courses/javascript/truthy-falsy-and-equality), [Functions](/courses/javascript/functions) |
+| **Further on** | [Arrays](/courses/javascript/arrays), [Array Methods](/courses/javascript/array-methods), [Iterators & Generators](/courses/javascript/iterators-and-generators) |
+
+## Final quick revision
+
+| Point | Detail |
+| --- | --- |
+| `for` | With a count or an index |
+| `while` | Based on a condition, count unknown |
+| `do...while` | At least once |
+| `for...of` | Values, best for arrays |
+| `for...in` | Object keys |
+| `break` / `continue` | End the loop / skip a round |
+
+<Callout variant="important" title="Remember">
+
+Use **`for...of`** on arrays, and `Object.entries()` + `for...of` on objects. Every `while` must have an **update** that makes the condition false.
+
+</Callout>
